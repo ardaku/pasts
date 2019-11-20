@@ -9,10 +9,13 @@ use {
         task::{Context, Poll},
     },
     spin::Mutex,
-    woke::{waker_ref, Woke},
 };
 
 use smallvec::*;
+
+mod waker;
+
+pub use waker::{waker_ref, Woke};
 
 /// Executor holds a list of futures to be polled.
 pub struct Executor {

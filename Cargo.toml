@@ -7,7 +7,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-woke = { path = "../woke" }
 spin = "0.5"
 smallvec = "1.0.0"
 globals = "1.0.0"
