@@ -60,12 +60,15 @@ pub mod _pasts_hide {
 }
 
 mod execute;
+mod interrupt;
 mod join;
 mod pin;
 mod select;
 mod tasks;
-mod interrupt;
 
 pub use execute::{block_on, block_until, Interrupt};
+pub use interrupt::AtomicInterrupt;
 pub use tasks::Task::{self, *};
-pub use interrupt::{ATOMIC_INTERRUPT};
+
+#[cfg(feature = "std")]
+pub use interrupt::CondvarInterrupt;

@@ -1,14 +1,21 @@
 use crate::_pasts_hide::stn::sync::atomic::{AtomicUsize, Ordering};
 
+#[cfg(feature = "std")]
+mod condvar;
+#[cfg(feature = "std")]
+pub use self::condvar::CondvarInterrupt;
+
 /// A very inefficient interrupt (only use for testing).  On no_std, make your
 /// own `Interrupt` that waits for hardware interrupts, rather than continuously
 /// checking an atomic value in a loop.
 pub struct AtomicInterrupt(AtomicUsize);
 
-/// Atomic Interrupt
-pub const ATOMIC_INTERRUPT: AtomicInterrupt = AtomicInterrupt(AtomicUsize::new(0));
-
 impl crate::Interrupt for AtomicInterrupt {
+    // Initialize the shared data for the interrupt.
+    fn new() -> Self {
+        AtomicInterrupt(AtomicUsize::new(0))
+    }
+
     // Interrupt blocking to wake up.
     fn interrupt(&self) {
         // Add 1 to the number of interrupts.
@@ -22,6 +29,6 @@ impl crate::Interrupt for AtomicInterrupt {
         self.0.fetch_sub(1, Ordering::Relaxed);
 
         // Wait until not zero.
-        while self.0.load(Ordering::Relaxed) == 0 { }
+        while self.0.load(Ordering::Relaxed) == 0 {}
     }
 }

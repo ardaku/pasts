@@ -18,16 +18,19 @@ use crate::_pasts_hide::stn::sync::atomic::{AtomicBool, Ordering};
 
 /// An interrupt handler.
 pub trait Interrupt {
+    /// Initialize the shared data for the interrupt.
+    fn new() -> Self;
     /// Interrupt blocking to wake up.
     fn interrupt(&self);
     /// Blocking wait for interrupt, if `Poll::Ready` then stop blocking.
     fn wait_for(&self);
 }
 
-/// Blocking wait until interrupt using wake handler.
-pub fn block_until<F: Future, I: Interrupt + Send + Sync>(f: F, i: I)
-    -> <F as Future>::Output
-{
+/// Run a future to completion on the current thread.  This will cause the
+/// current thread to block.
+pub fn block_until<F: Future, I: Interrupt + Send + Sync>(
+    f: F,
+) -> <F as Future>::Output {
     pub struct FutureTask<I: Interrupt>(I);
 
     impl<I: Interrupt + Send + Sync> Wake for FutureTask<I> {
@@ -38,7 +41,7 @@ pub fn block_until<F: Future, I: Interrupt + Send + Sync>(f: F, i: I)
 
     let_pin! { future_one = f; }
 
-    let task = FutureTask(i);
+    let task = FutureTask(I::new());
 
     // Check for any futures that are ready
     loop {
