@@ -66,9 +66,12 @@ mod pin;
 mod select;
 mod tasks;
 
+/// Re-export of the most common things.
+pub mod prelude;
+
 pub use execute::Interrupt;
 pub use interrupt::AtomicInterrupt;
-pub use tasks::Task::{self, *};
+pub use tasks::Task;
 
 #[cfg(feature = "std")]
 pub use interrupt::CondvarInterrupt;

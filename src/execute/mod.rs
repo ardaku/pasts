@@ -23,7 +23,9 @@ pub trait Interrupt {
     /// current thread to block.
     ///
     /// ```rust
-    /// let ret = <pasts::CondvarInterrupt as pasts::Interrupt>::block_on(
+    /// use pasts::prelude::*;
+    ///
+    /// let ret = pasts::CondvarInterrupt::block_on(
     ///     async {
     ///         /* Do some work, calling .await on futures */
     ///         "Complete!"
@@ -31,10 +33,9 @@ pub trait Interrupt {
     /// );
     /// assert_eq!(ret, "Complete!");
     /// ```
-    fn block_on<F: Future/*, I: Interrupt + Send + Sync*/>(
-        f: F,
-    ) -> <F as Future>::Output
-        where Self: Send + Sync + Sized
+    fn block_on<F: Future>(f: F) -> <F as Future>::Output
+    where
+        Self: Send + Sync + Sized,
     {
         pub struct FutureTask<I: Interrupt>(I);
 

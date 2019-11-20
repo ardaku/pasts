@@ -5,6 +5,8 @@
 /// `join!(a, b)` faster than the alternative `(a.await, b.await)`.
 ///
 /// ```rust
+/// use pasts::prelude::*;
+///
 /// async fn one() -> char {
 ///     'c'
 /// }
@@ -21,13 +23,13 @@
 ///     assert_eq!(ret, ('c', 'a'));
 /// }
 ///
-/// <pasts::CondvarInterrupt as pasts::Interrupt>::block_on(example());
+/// pasts::CondvarInterrupt::block_on(example());
 /// ```
 #[macro_export]
 macro_rules! join {
     ($($future:ident),* $(,)?) => {
         {
-            use $crate::{let_pin, Wait, Done, select};
+            use $crate::{let_pin, Task::{Wait, Done}, select};
             let_pin! { $($future = $future;)* };
             let mut count = 0;
             $( let mut $future = { count += 1; Wait($future) }; )*

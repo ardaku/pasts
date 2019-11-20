@@ -20,6 +20,8 @@
 ///     task::{Poll, Context},
 /// };
 ///
+/// use pasts::prelude::*;
+///
 /// #[derive(Debug, PartialEq)]
 /// enum Select {
 ///     One(i32),
@@ -46,8 +48,8 @@
 ///         b_fut = two();
 ///     };
 ///
-///     let mut a_fut = pasts::Wait(a_fut);
-///     let mut b_fut = pasts::Wait(b_fut);
+///     let mut a_fut = Wait(a_fut);
+///     let mut b_fut = Wait(b_fut);
 ///
 ///     let ret = pasts::select!(
 ///         a = a_fut => {
@@ -64,7 +66,7 @@
 /// }
 ///
 /// assert_eq!(
-///     <pasts::CondvarInterrupt as pasts::Interrupt>::block_on(example()),
+///     pasts::CondvarInterrupt::block_on(example()),
 ///     Select::Two('c')
 /// );
 /// ```

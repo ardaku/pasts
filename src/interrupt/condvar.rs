@@ -1,4 +1,6 @@
-use crate::_pasts_hide::stn::sync::{Mutex, Condvar};
+#![allow(clippy::mutex_atomic)]
+
+use crate::_pasts_hide::stn::sync::{Condvar, Mutex};
 
 /// **std** feature required.  A thread interrupt.  If you can use std, use this
 /// `Interrupt`.
