@@ -66,7 +66,7 @@ mod pin;
 mod select;
 mod tasks;
 
-pub use execute::{block_on, block_until, Interrupt};
+pub use execute::{block_on, Interrupt};
 pub use interrupt::AtomicInterrupt;
 pub use tasks::Task::{self, *};
 

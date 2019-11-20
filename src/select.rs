@@ -63,7 +63,10 @@
 ///     ret
 /// }
 ///
-/// assert_eq!(pasts::block_on(example()), Select::Two('c'));
+/// assert_eq!(
+///     pasts::block_on::<_, pasts::CondvarInterrupt>(example()),
+///     Select::Two('c')
+/// );
 /// ```
 #[macro_export]
 macro_rules! select {

@@ -18,7 +18,7 @@ fn main() {
     let one = timer(1);
     let two = timer(2);
 
-    let ret = pasts::block_on(async {
+    let ret = pasts::block_on::<_, pasts::CondvarInterrupt>(async {
         // This will only take two seconds, rather than `(one.await, two.await)`
         // which will take three.
         pasts::join!(one, two)
