@@ -64,7 +64,7 @@
 /// }
 ///
 /// assert_eq!(
-///     pasts::block_on::<_, pasts::CondvarInterrupt>(example()),
+///     <pasts::CondvarInterrupt as pasts::Interrupt>::block_on(example()),
 ///     Select::Two('c')
 /// );
 /// ```

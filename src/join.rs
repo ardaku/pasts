@@ -21,7 +21,7 @@
 ///     assert_eq!(ret, ('c', 'a'));
 /// }
 ///
-/// pasts::block_on::<_, pasts::CondvarInterrupt>(example());
+/// <pasts::CondvarInterrupt as pasts::Interrupt>::block_on(example());
 /// ```
 #[macro_export]
 macro_rules! join {
