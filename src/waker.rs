@@ -6,10 +6,6 @@ use core::ops::Deref;
 use core::task::{RawWaker, RawWakerVTable, Waker};
 
 pub trait Woke: Send + Sync {
-    fn wake(self: Arc<Self>) {
-        Self::wake_by_ref(&self)
-    }
-
     fn wake_by_ref(arc_self: &Arc<Self>);
 }
 
@@ -43,7 +39,7 @@ unsafe fn clone_arc_raw<T: Woke>(data: *const ()) -> RawWaker {
 
 unsafe fn wake_arc_raw<T: Woke>(data: *const ()) {
     let arc: Arc<T> = Arc::from_raw(data as *const T);
-    Woke::wake(arc);
+    Woke::wake_by_ref(&arc);
 }
 
 unsafe fn wake_by_ref_arc_raw<T: Woke>(data: *const ()) {
@@ -94,7 +90,8 @@ where
 {
     let ptr = (&**wake as *const W) as *const ();
 
-    let waker =
-        ManuallyDrop::new(unsafe { Waker::from_raw(RawWaker::new(ptr, waker_vtable::<W>())) });
+    let waker = ManuallyDrop::new(unsafe {
+        Waker::from_raw(RawWaker::new(ptr, waker_vtable::<W>()))
+    });
     WakerRef::new_unowned(waker)
 }

@@ -76,7 +76,8 @@ impl Spawner {
 }
 
 struct Task {
-    pub future: Mutex<Option<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>>,
+    pub future:
+        Mutex<Option<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>>,
     pub task_sender: SyncSender<Arc<Task>>,
 }
 
