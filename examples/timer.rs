@@ -1,14 +1,14 @@
 use {
-    pasts::{Woke, waker_ref},
+    pasts::{waker_ref, Woke},
     std::{
-        pin::Pin,
         future::Future,
+        pin::Pin,
+        sync::mpsc::{sync_channel, Receiver, SyncSender},
         sync::{Arc, Mutex},
-        sync::mpsc::{sync_channel, SyncSender, Receiver},
-        task::{Context, Poll,Waker},
-        time::Duration,
+        task::{Context, Poll, Waker},
         thread,
-    }
+        time::Duration,
+    },
 };
 
 pub struct TimerFuture {
@@ -18,7 +18,8 @@ pub struct TimerFuture {
 impl Future for TimerFuture {
     type Output = ();
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-         let mut shared_state = self.shared_state.lock().unwrap();
+        let mut shared_state = self.shared_state.lock().unwrap();
+
         if shared_state.completed {
             Poll::Ready(())
         } else {
@@ -82,13 +83,16 @@ struct Task {
 fn new_executor_and_spawner() -> (Executor, Spawner) {
     const MAX_QUEUED_TASKS: usize = 10_000;
     let (task_sender, ready_queue) = sync_channel(MAX_QUEUED_TASKS);
-    (Executor { ready_queue }, Spawner { task_sender})
+    (Executor { ready_queue }, Spawner { task_sender })
 }
 
 impl Woke for Task {
     fn wake_by_ref(arc_self: &Arc<Self>) {
         let cloned = arc_self.clone();
-        arc_self.task_sender.send(cloned).expect("too many tasks queued");
+        arc_self
+            .task_sender
+            .send(cloned)
+            .expect("too many tasks queued");
     }
 }
 

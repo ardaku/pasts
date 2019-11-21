@@ -1,9 +1,9 @@
+use alloc::sync::Arc;
 use core::marker::PhantomData;
 use core::mem;
 use core::mem::ManuallyDrop;
 use core::ops::Deref;
 use core::task::{RawWaker, RawWakerVTable, Waker};
-use alloc::sync::Arc;
 
 pub trait Woke: Send + Sync {
     fn wake(self: Arc<Self>) {
@@ -95,8 +95,6 @@ where
     let ptr = (&**wake as *const W) as *const ();
 
     let waker =
-        ManuallyDrop::new(unsafe {
-            Waker::from_raw(RawWaker::new(ptr, waker_vtable::<W>()))
-        });
+        ManuallyDrop::new(unsafe { Waker::from_raw(RawWaker::new(ptr, waker_vtable::<W>())) });
     WakerRef::new_unowned(waker)
 }
