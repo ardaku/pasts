@@ -11,10 +11,10 @@ pub trait Woke: Send + Sync {
 
 pub fn waker_vtable<W: Woke>() -> &'static RawWakerVTable {
     &RawWakerVTable::new(
-        clone_arc_raw::<W>,
-        wake_arc_raw::<W>,
-        wake_by_ref_arc_raw::<W>,
-        drop_arc_raw::<W>,
+        clone_raw::<W>,
+        wake_raw::<W>,
+        wake_by_ref_raw::<W>,
+        drop_raw::<W>,
     )
 }
 
@@ -32,23 +32,23 @@ unsafe fn increase_refcount<T: Woke>(data: *const ()) {
     let _arc_clone: mem::ManuallyDrop<_> = arc.clone();
 }
 
-unsafe fn clone_arc_raw<T: Woke>(data: *const ()) -> RawWaker {
+unsafe fn clone_raw<T: Woke>(data: *const ()) -> RawWaker {
     increase_refcount::<T>(data);
     RawWaker::new(data, waker_vtable::<T>())
 }
 
-unsafe fn wake_arc_raw<T: Woke>(data: *const ()) {
+unsafe fn wake_raw<T: Woke>(data: *const ()) {
     let arc: Arc<T> = Arc::from_raw(data as *const T);
     Woke::wake_by_ref(&arc);
 }
 
-unsafe fn wake_by_ref_arc_raw<T: Woke>(data: *const ()) {
+unsafe fn wake_by_ref_raw<T: Woke>(data: *const ()) {
     // Retain Arc, but don't touch refcount by wrapping in ManuallyDrop
     let arc = mem::ManuallyDrop::new(Arc::<T>::from_raw(data as *const T));
     Woke::wake_by_ref(&arc);
 }
 
-unsafe fn drop_arc_raw<T: Woke>(data: *const ()) {
+unsafe fn drop_raw<T: Woke>(data: *const ()) {
     drop(Arc::<T>::from_raw(data as *const T))
 }
 
