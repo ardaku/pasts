@@ -18,10 +18,7 @@ pub fn waker_vtable<W: Woke>() -> &'static RawWakerVTable {
     )
 }
 
-pub fn waker<W>(wake: Arc<W>) -> Waker
-where
-    W: Woke,
-{
+pub fn waker<W: Woke>(wake: Arc<W>) -> Waker {
     let ptr = Arc::into_raw(wake) as *const ();
 
     unsafe { Waker::from_raw(RawWaker::new(ptr, waker_vtable::<W>())) }
@@ -84,10 +81,7 @@ impl Deref for WakerRef<'_> {
 }
 
 #[inline]
-pub fn waker_ref<W>(wake: &Arc<W>) -> WakerRef<'_>
-where
-    W: Woke,
-{
+pub fn waker_ref<W: Woke>(wake: &Arc<W>) -> WakerRef<'_> {
     let ptr = (&**wake as *const W) as *const ();
 
     let waker = ManuallyDrop::new(unsafe {
