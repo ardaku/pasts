@@ -5,12 +5,13 @@ use core::task::{RawWaker, RawWakerVTable, Waker};
 /// - A static mutable condvar (for threads to sleep while waiting for waker,
 ///   requires std)
 pub trait Wake: Send + Sync + Sized {
-    fn wake_up();
+    /// This function should either modify a condvar or mutable atomic to let
+    /// the asynchronous loop wake up.
+    unsafe fn wake_up();
 
-    fn into_waker(waker: *const Self) -> Waker {
-        unsafe {
-            Waker::from_raw(RawWaker::new(waker as *const (), vtable::<Self>()))
-        }
+    /// Get a `Waker` from type that implements `Wake`.
+    unsafe fn into_waker(waker: *const Self) -> Waker {
+        Waker::from_raw(RawWaker::new(waker as *const (), vtable::<Self>()))
     }
 }
 

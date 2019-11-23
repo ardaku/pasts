@@ -1,4 +1,7 @@
+//! Minimal and simpler alternative to the futures crate.
+
 #![no_std]
+#![warn(missing_docs)]
 
 mod wake;
 
