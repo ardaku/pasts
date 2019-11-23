@@ -1,9 +1,8 @@
 use {
-    pasts::{waker_ref, Woke},
+    pasts::Woke,
     std::{
         future::Future,
         pin::Pin,
-        sync::mpsc::{sync_channel, Receiver, SyncSender},
         sync::{Arc, Mutex},
         task::{Context, Poll, Waker},
         thread,
@@ -65,14 +64,14 @@ fn main() {
     pub struct FutureZeroTask();
 
     impl Woke for FutureZeroTask {
-        fn wake_by_ref(_arc_self: &Arc<Self>) {
+        fn wake_by_ref(&self) {
             unsafe {
                 FUTURE_CONDVARS[0].store(true, Ordering::Relaxed);
             }
         }
     }
 
-    let task = Arc::new(FutureZeroTask());
+    let task = FutureZeroTask();
     pasts::let_pin! {
         future_one = async {
             println!("Waiting 2 seconds…");
@@ -86,8 +85,8 @@ fn main() {
     loop {
         if unsafe { FUTURE_CONDVARS[0].load(Ordering::Relaxed) } {
             // This runs whenever woke.
-            let waker = waker_ref(&task);
-            let context = &mut Context::from_waker(&*waker);
+            let task = FutureZeroTask::into_waker(&task);
+            let context = &mut Context::from_waker(&task);
             if let Poll::Pending = future_one.as_mut().poll(context) {
                 // Go back to "sleep".
                 unsafe {

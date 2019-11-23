@@ -3,7 +3,7 @@ extern crate alloc;
 
 mod waker;
 
-pub use waker::{waker_ref, Woke};
+pub use waker::{Woke};
 
 /// Pin a variable to a location in the stack.
 ///

@@ -5,8 +5,14 @@ use core::mem::ManuallyDrop;
 use core::ops::Deref;
 use core::task::{RawWaker, RawWakerVTable, Waker};
 
-pub trait Woke: Send + Sync {
-    fn wake_by_ref(arc_self: &Arc<Self>);
+pub trait Woke: Send + Sync + Sized {
+    fn wake_by_ref(&self);
+
+    fn into_waker(waker: *const Self) -> Waker {
+        unsafe {
+            Waker::from_raw(RawWaker::new(waker as *const (), waker_vtable::<Self>()))
+        }
+    }
 }
 
 pub fn waker_vtable<W: Woke>() -> &'static RawWakerVTable {
@@ -35,57 +41,14 @@ unsafe fn clone_raw<T: Woke>(data: *const ()) -> RawWaker {
 }
 
 unsafe fn wake_raw<T: Woke>(data: *const ()) {
-    let arc: Arc<T> = Arc::from_raw(data as *const T);
-    Woke::wake_by_ref(&arc);
+    Woke::wake_by_ref(&*(data as *const T));
 }
 
 unsafe fn wake_by_ref_raw<T: Woke>(data: *const ()) {
     // Retain Arc, but don't touch refcount by wrapping in ManuallyDrop
-    let arc = mem::ManuallyDrop::new(Arc::<T>::from_raw(data as *const T));
-    Woke::wake_by_ref(&arc);
+    Woke::wake_by_ref(&*(data as *const T));
 }
 
 unsafe fn drop_raw<T: Woke>(data: *const ()) {
     drop(Arc::<T>::from_raw(data as *const T))
-}
-
-#[derive(Debug)]
-pub struct WakerRef<'a> {
-    waker: ManuallyDrop<Waker>,
-    _marker: PhantomData<&'a ()>,
-}
-
-impl<'a> WakerRef<'a> {
-    pub fn new(waker: &'a Waker) -> Self {
-        let waker = ManuallyDrop::new(unsafe { core::ptr::read(waker) });
-        WakerRef {
-            waker,
-            _marker: PhantomData,
-        }
-    }
-
-    pub fn new_unowned(waker: ManuallyDrop<Waker>) -> Self {
-        WakerRef {
-            waker,
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl Deref for WakerRef<'_> {
-    type Target = Waker;
-
-    fn deref(&self) -> &Waker {
-        &self.waker
-    }
-}
-
-#[inline]
-pub fn waker_ref<W: Woke>(wake: &Arc<W>) -> WakerRef<'_> {
-    let ptr = (&**wake as *const W) as *const ();
-
-    let waker = ManuallyDrop::new(unsafe {
-        Waker::from_raw(RawWaker::new(ptr, waker_vtable::<W>()))
-    });
-    WakerRef::new_unowned(waker)
 }
