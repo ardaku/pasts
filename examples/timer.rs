@@ -56,30 +56,6 @@ struct SharedState {
     waker: Option<Waker>,
 }
 
-/// Pins a value on the stack.
-///
-/// ```
-/// # use pin_utils::pin_mut;
-/// # use core::pin::Pin;
-/// # struct Foo {}
-/// let foo = Foo { /* ... */ };
-/// pin_mut!(foo);
-/// let _: Pin<&mut Foo> = foo;
-/// ```
-#[macro_export]
-macro_rules! pin_mut {
-    ($($x:ident),* $(,)?) => { $(
-        // Move the value to ensure that it is owned
-        let mut $x = $x;
-        // Shadow the original binding so that it can't be directly accessed
-        // ever again.
-        #[allow(unused_mut)]
-        let mut $x = unsafe {
-            std::pin::Pin::new_unchecked(&mut $x)
-        };
-    )* }
-}
-
 fn main() {
     // TODO: Eventually generate executor (this function) with macro.
     use std::sync::atomic::{AtomicBool, Ordering};
@@ -97,12 +73,13 @@ fn main() {
     }
 
     let task = Arc::new(FutureZeroTask());
-    let mut future_one = async {
-        println!("Waiting 2 seconds…");
-        TimerFuture::new(Duration::new(2, 0)).await;
-        println!("Done!");
+    pasts::let_pin! {
+        future_one = async {
+            println!("Waiting 2 seconds…");
+            TimerFuture::new(Duration::new(2, 0)).await;
+            println!("Done!");
+        };
     };
-    pin_mut!(future_one);
 
     // Check for any futures that are ready
 
