@@ -1,9 +1,8 @@
 #![no_std]
-extern crate alloc;
 
-mod waker;
+mod wake;
 
-pub use waker::{Woke};
+pub use wake::{Wake};
 
 /// Pin a variable to a location in the stack.
 ///
@@ -15,7 +14,7 @@ pub use waker::{Woke};
 /// ```
 #[macro_export]
 macro_rules! let_pin {
-    {$($x:ident = $y:expr),* $(;)?} => { $(
+    ($($x:ident = $y:expr);* $(;)?) => { $(
         // Force move.
         let mut $x = $y;
         // Shadow to prevent future use.

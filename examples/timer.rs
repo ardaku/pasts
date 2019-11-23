@@ -1,5 +1,5 @@
 use {
-    pasts::Woke,
+    pasts::Wake,
     std::{
         future::Future,
         pin::Pin,
@@ -63,21 +63,21 @@ fn main() {
 
     pub struct FutureZeroTask();
 
-    impl Woke for FutureZeroTask {
-        fn wake_by_ref(&self) {
+    impl Wake for FutureZeroTask {
+        fn wake_up() {
             unsafe {
                 FUTURE_CONDVARS[0].store(true, Ordering::Relaxed);
             }
         }
     }
 
-    let task = FutureZeroTask();
     pasts::let_pin! {
         future_one = async {
             println!("Waiting 2 seconds…");
             TimerFuture::new(Duration::new(2, 0)).await;
             println!("Done!");
         };
+        task = FutureZeroTask();
     };
 
     // Check for any futures that are ready
@@ -85,7 +85,7 @@ fn main() {
     loop {
         if unsafe { FUTURE_CONDVARS[0].load(Ordering::Relaxed) } {
             // This runs whenever woke.
-            let task = FutureZeroTask::into_waker(&task);
+            let task = FutureZeroTask::into_waker(&*task);
             let context = &mut Context::from_waker(&task);
             if let Poll::Pending = future_one.as_mut().poll(context) {
                 // Go back to "sleep".
