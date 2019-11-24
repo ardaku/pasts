@@ -1,4 +1,4 @@
-use core::task::{RawWaker, RawWakerVTable, Waker};
+use crate::stn::task::{RawWaker, RawWakerVTable, Waker};
 
 /// Implement this trait to turn a unit struct into a waker.  Your
 /// implementation should modify one of:
