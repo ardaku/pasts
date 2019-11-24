@@ -34,13 +34,16 @@
 #![no_std]
 #![warn(missing_docs)]
 
+#[doc(hidden)]
 #[cfg(feature = "std")]
-extern crate std;
+pub extern crate std;
+#[doc(hidden)]
 #[cfg(feature = "std")]
-use std as stn;
+pub use std as stn;
 
+#[doc(hidden)]
 #[cfg(not(feature = "std"))]
-use core as stn;
+pub use core as stn;
 
 mod wake;
 mod pin;
