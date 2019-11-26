@@ -241,3 +241,83 @@ macro_rules! join {
         }
     }
 }
+
+/// ```rust
+/// #[derive(Debug, PartialEq)]
+/// enum Select {
+///     One(i32),
+///     Two(char),
+/// }
+///
+/// async fn one() -> i32 {
+///     loop { } // Never returns
+/// }
+///
+/// async fn two() -> char {
+///     'c'
+/// }
+///
+/// async fn example() {
+///     // Joined await on the two futures.
+///     let ret = pasts::select![
+///         async { Select::One(one().await) },
+///         async { Select::Two(two().await) },
+///     ];
+///     assert_eq!(ret, Select::Two('c'));
+/// }
+///
+/// pasts::block_on(example());
+/// ```
+#[macro_export]
+macro_rules! select {
+    [$($future_list:expr),* $(,)?] => {
+        {
+            use $crate::stn::{
+                future::Future,
+                task::{Poll, Context},
+                pin::Pin,
+            };
+
+            enum Status<'a, T> {
+                Pending(&'a mut Future<Output = T>),
+                Complete,
+            }
+
+            struct JoinedFuture<'a, T> {
+                futures: &'a mut [Status<'a, T>],
+            }
+
+            impl<'a, T> Future for JoinedFuture<'a, T> {
+                type Output = T;
+
+                fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>)
+                    -> Poll<Self::Output>
+                {
+                    /*for future in self.futures {
+                        match future {
+                            Status::Pending(f) => {
+                                match Future::poll(*f, cx) {
+                                    Poll::Ready(r) => {
+                                        *future = Status::Complete;
+                                        return Poll::Ready(r);
+                                    }
+                                    _ => { /* not ready yet */ }
+                                }
+                            }
+                            _ => unreachable!(),
+                        }
+                    }*/
+                    Poll::Pending
+                }
+            }
+
+            let futures = &mut [$(Status::Pending(&mut $future_list)),*][..];
+
+            let joined_future = JoinedFuture {
+                futures: &mut futures,
+            };
+
+            joined_future.await
+        }
+    }
+}

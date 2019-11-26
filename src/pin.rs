@@ -8,6 +8,14 @@
 /// ```
 #[macro_export]
 macro_rules! let_pin {
+    ($($x:ident = &mut $y:expr);* $(;)?) => { $(
+        // Force move.
+        let mut $x = &mut $y;
+        // Shadow to prevent future use.
+        #[allow(unused_mut)]
+        let mut $x = unsafe { core::pin::Pin::new_unchecked($x) };
+    )* };
+
     ($($x:ident = $y:expr);* $(;)?) => { $(
         // Force move.
         let mut $x = $y;
