@@ -4,26 +4,66 @@ use pasts::stn::{
     pin::Pin,
 };
 
-struct SelectorFuture<'a, T> {
-    futures: &'a mut [Pin<&'a mut dyn Future<Output = T>>],
-}
+/// return: type = future => { /* do something with return */ },
+macro_rules! select {
+    ($($pattern:pat = $var:ident: $typ:ty => $branch:expr),* $(,)?) => {
+        {
+            use pasts::{
+                let_pin,
+                stn::{
+                    future::Future,
+                    pin::Pin,
+                },
+            };
 
-impl<'a, T> Future for SelectorFuture<'a, T> {
-    type Output = T;
+            let_pin! {
+                $(
+                    $var = $var;
+                )*
+            }
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>)
-        -> Poll<Self::Output>
-    {
-        for i in 0..self.futures.len() {
-            match Future::poll(self.futures[i].as_mut(), cx) {
-                Poll::Ready(r) => {
-                    return Poll::Ready(r);
+            #[allow(non_camel_case_types)]
+            enum Which {
+                $($var($typ)),*
+            }
+
+            struct Selector<'a> {
+                $($var: Pin<&'a mut dyn Future<Output = $typ>>),*
+            }
+
+            impl<'a> Future for Selector<'a> {
+                type Output = Which;
+
+                fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>)
+                    -> Poll<Self::Output>
+                {
+                    $(
+                        match Future::poll(self.$var.as_mut(), cx) {
+                            Poll::Ready(r) => {
+                                return Poll::Ready(Which::$var(r));
+                            }
+                            _ => { /* not ready yet */ }
+                        }
+                    )*
+
+                    // None are ready yet.
+                    Poll::Pending
                 }
-                _ => { /* not ready yet */ }
+            }
+
+            let selector = Selector {
+                $(
+                    $var: $var
+                ),*
+            };
+
+            match selector.await {
+                $(
+                    Which :: $var ( $pattern ) => { $branch }
+                ),*
             }
         }
-        Poll::Pending
-    }
+    };
 }
 
 fn main() {
@@ -50,21 +90,19 @@ fn main() {
     }
 
     async fn example() -> Select {
-        pasts::let_pin! {
-            future_a = &mut async { Select::One(AlwaysPending().await) };
-            future_b = &mut async { Select::Two(two().await) };
-        };
-        let mut futures: [Pin<&mut dyn Future<Output = Select>>; 2] = [
-             future_a, future_b,
-        ];
+        // Inputs
+        let a_fut = async { AlwaysPending().await };
+        let b_fut = async { two().await };
 
-        let joined_future = SelectorFuture {
-            futures: &mut futures[..],
-        };
+        // MACRO_START:
 
-        let ret = joined_future.await;
-
-        ret
+        select!(
+            a = a_fut: i32 => {
+                println!("This will never print!");
+                Select::One(a)
+            },
+            b = b_fut: char => Select::Two(b),
+        )
     }
 
     assert_eq!(pasts::block_on(example()), Select::Two('c'));
