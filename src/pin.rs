@@ -13,6 +13,6 @@ macro_rules! let_pin {
         let mut $x = $y;
         // Shadow to prevent future use.
         #[allow(unused_mut)]
-        let mut $x = unsafe { $crate::stn::pin::Pin::new_unchecked(&mut $x) };
+        let mut $x = $crate::_pasts_hide::new_pin(&mut $x);
     )* };
 }

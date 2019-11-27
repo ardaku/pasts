@@ -2,10 +2,11 @@
 //!
 //! - No required std
 //! - No allocations
-//! - No procedural macros
+//! - No procedural macros (for faster compile times)
 //! - No dependencies
 //! - No cost (True zero-cost abstractions!)
 //! - No pain (API super easy to learn & use!)
+//! - No unsafe code in pinning macro (allowing you to `forbid(unsafe_code)`)
 //!
 //! # Before using no_std (Read this!)
 //! This library uses std by default, even though you can disable it.  The
@@ -33,18 +34,31 @@
 //! schedule more processing time for other processes.
 
 #![no_std]
+#![deny(unsafe_code)]
 #![warn(missing_docs)]
 
 #[doc(hidden)]
-#[cfg(feature = "std")]
-pub extern crate std;
-#[doc(hidden)]
-#[cfg(feature = "std")]
-pub use std as stn;
+pub mod _pasts_hide {
+    #[cfg(feature = "std")]
+    pub extern crate std;
 
-#[doc(hidden)]
-#[cfg(not(feature = "std"))]
-pub use core as stn;
+    #[cfg(feature = "std")]
+    pub use std as stn;
+
+    #[cfg(not(feature = "std"))]
+    pub use core as stn;
+
+    /// Not actually safe pinning only for use in `let_pin!()`.
+    #[allow(unsafe_code)]
+    #[inline(always)]
+    pub fn new_pin<P>(pointer: P) -> self::stn::pin::Pin<P>
+        where P: self::stn::ops::Deref
+    {
+        unsafe {
+            self::stn::pin::Pin::new_unchecked(pointer)
+        }
+    }
+}
 
 mod execute;
 mod pin;

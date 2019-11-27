@@ -1,12 +1,13 @@
 # Pasts
 Minimal and simpler alternative to the futures crate.
 
-- No std
+- No required std
 - No allocations
-- No procedural macros
+- No procedural macros (for faster compile times)
 - No dependencies
 - No cost (True zero-cost abstractions!)
 - No pain (API super easy to learn & use!)
+- No unsafe code in pinning macro (allowing you to `forbid(unsafe_code)`)
 
 ## Before using no_std (Read this!)
 This library uses std by default, even though you can disable it.  The

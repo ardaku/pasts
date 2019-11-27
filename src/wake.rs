@@ -1,4 +1,4 @@
-use crate::stn::task::{RawWaker, RawWakerVTable, Waker};
+use crate::_pasts_hide::stn::task::{RawWaker, RawWakerVTable, Waker};
 
 /// Implement this trait to turn a unit struct into a waker.  Your
 /// implementation should modify one of:
@@ -12,13 +12,12 @@ pub trait Wake: Send + Sync + Sized {
 
     /// Get a `Waker` from type that implements `Wake`.
     fn into_waker(waker: *const Self) -> Waker {
-        unsafe {
-            Waker::from_raw(RawWaker::new(waker as *const (), vtable::<Self>()))
-        }
+        new_waker(waker)
     }
 }
 
-fn vtable<W: Wake>() -> &'static RawWakerVTable {
+#[allow(unsafe_code)]
+fn new_waker<W: Wake>(waker: *const W) -> Waker {
     unsafe fn clone<T: Wake>(data: *const ()) -> RawWaker {
         RawWaker::new(data, vtable::<T>())
     }
@@ -33,5 +32,11 @@ fn vtable<W: Wake>() -> &'static RawWakerVTable {
 
     unsafe fn drop<T: Wake>(_data: *const ()) {}
 
-    &RawWakerVTable::new(clone::<W>, wake::<W>, ref_wake::<W>, drop::<W>)
+    unsafe fn vtable<W: Wake>() -> &'static RawWakerVTable {
+        &RawWakerVTable::new(clone::<W>, wake::<W>, ref_wake::<W>, drop::<W>)
+    }
+
+    unsafe {
+        Waker::from_raw(RawWaker::new(waker as *const (), vtable::<W>()))
+    }
 }
