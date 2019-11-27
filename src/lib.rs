@@ -63,6 +63,8 @@ pub mod _pasts_hide {
 mod execute;
 mod pin;
 mod wake;
+mod select;
+mod join;
 
 pub use execute::block_on;
 pub use wake::Wake;
