@@ -242,6 +242,15 @@ macro_rules! join {
     }
 }
 
+/// Poll multiple futures at once, and run the future that is ready first.  Only
+/// usable inside async functions and blocks.
+///
+/// The API is like a match statement: `match_pattern = future => expression`.
+/// The expression will be run with the pattern (returned from the future) in
+/// scope when the future is the first to complete.  This usage is the same as
+/// the one from the futures crate.
+///
+/// # Example
 /// ```rust
 /// use core::{
 ///     pin::Pin,
@@ -270,7 +279,6 @@ macro_rules! join {
 /// }
 ///
 /// async fn example() -> Select {
-///     // Inputs
 ///     let a_fut = AlwaysPending();
 ///     let b_fut = two();
 ///
@@ -278,15 +286,15 @@ macro_rules! join {
 ///         a = a_fut => {
 ///             println!("This will never print!");
 ///             Select::One(a)
-///         },
-///         b = b_fut => Select::Two(b),
+///         }
+///         b = b_fut => Select::Two(b)
 ///     )
 /// }
 ///
 /// assert_eq!(pasts::block_on(example()), Select::Two('c'));
 /// ```
 #[macro_export] macro_rules! select {
-    ($($pattern:pat = $var:ident => $branch:expr),* $(,)?) => {
+    ($($pattern:pat = $var:ident => $branch:expr $(,)?)*) => {
         {
             use $crate::{let_pin, stn::{future::Future, pin::Pin}};
             let_pin! { $( $var = $var; )* }

@@ -2,6 +2,7 @@
 //!
 //! - No required std
 //! - No allocations
+//! - No procedural macros
 //! - No dependencies
 //! - No cost (True zero-cost abstractions!)
 //! - No pain (API super easy to learn & use!)
