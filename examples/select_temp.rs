@@ -4,64 +4,36 @@ use pasts::stn::{
     pin::Pin,
 };
 
-/// return: type = future => { /* do something with return */ },
+/// return = future => { /* do something with return */ },
 macro_rules! select {
-    ($($pattern:pat = $var:ident: $typ:ty => $branch:expr),* $(,)?) => {
+    ($($pattern:pat = $var:ident => $branch:expr),* $(,)?) => {
         {
-            use pasts::{
-                let_pin,
-                stn::{
-                    future::Future,
-                    pin::Pin,
-                },
-            };
-
-            let_pin! {
-                $(
-                    $var = $var;
-                )*
+            use pasts::{let_pin, stn::{future::Future, pin::Pin}};
+            let_pin! { $( $var = $var; )* }
+            struct Selector<'a, T> {
+                closure: &'a mut dyn FnMut(&mut Context<'_>) -> Poll<T>,
             }
-
-            #[allow(non_camel_case_types)]
-            enum Which {
-                $($var($typ)),*
-            }
-
-            struct Selector<'a> {
-                $($var: Pin<&'a mut dyn Future<Output = $typ>>),*
-            }
-
-            impl<'a> Future for Selector<'a> {
-                type Output = Which;
-
-                fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>)
+            impl<'a, T> Future for Selector<'a, T> {
+                type Output = T;
+                fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>)
                     -> Poll<Self::Output>
                 {
-                    $(
-                        match Future::poll(self.$var.as_mut(), cx) {
-                            Poll::Ready(r) => {
-                                return Poll::Ready(Which::$var(r));
-                            }
-                            _ => { /* not ready yet */ }
-                        }
-                    )*
-
-                    // None are ready yet.
-                    Poll::Pending
+                    (self.get_mut().closure)(cx)
                 }
             }
-
-            let selector = Selector {
+            let closure = &mut |cx: &mut Context<'_>| {
                 $(
-                    $var: $var
-                ),*
+                    match Future::poll($var.as_mut(), cx) {
+                        Poll::Ready(r) => {
+                            let exec = &mut |$pattern| { $branch };
+                            return Poll::Ready(exec(r));
+                        }
+                        _ => { /* not ready yet */ }
+                    }
+                )*
+                Poll::Pending
             };
-
-            match selector.await {
-                $(
-                    Which :: $var ( $pattern ) => { $branch }
-                ),*
-            }
+            Selector { closure }.await
         }
     };
 }
@@ -97,11 +69,11 @@ fn main() {
         // MACRO_START:
 
         select!(
-            a = a_fut: i32 => {
+            a = a_fut => {
                 println!("This will never print!");
                 Select::One(a)
             },
-            b = b_fut: char => Select::Two(b),
+            b = b_fut => Select::Two(b),
         )
     }
 
