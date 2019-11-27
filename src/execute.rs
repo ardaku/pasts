@@ -4,9 +4,8 @@ use crate::stn::{
 };
 
 #[cfg(feature = "std")]
-use crate::stn::{
-    mem::MaybeUninit,
-    sync::{Condvar, Mutex},
+use crate::stn::sync::{
+    Condvar, Mutex
 };
 
 #[cfg(not(feature = "std"))]
@@ -27,68 +26,66 @@ use crate::{let_pin, Wake};
 /// assert_eq!(ret, "Complete!");
 /// ```
 pub fn block_on<F: Future>(f: F) -> <F as Future>::Output {
-    #[cfg(feature = "std")]
-    static mut FUTURE_CONDVARS: MaybeUninit<[(Mutex<bool>, Condvar); 1]> =
+/*    #[cfg(feature = "std")]
+    static mut FUTURE_CONDVARS: MaybeUninit<(Mutex<bool>, Condvar)> =
         MaybeUninit::uninit();
 
     #[cfg(not(feature = "std"))]
-    static mut FUTURE_CONDVARS: [AtomicBool; 1] = [AtomicBool::new(true)];
+    static mut FUTURE_CONDVARS: AtomicBool = AtomicBool::new(true);*/
 
-    pub struct FutureTask(usize);
+    #[cfg(feature = "std")]
+    pub struct FutureTask(Mutex<bool>, Condvar);
+
+    #[cfg(not(feature = "std"))]
+    pub struct FutureTask(AtomicBool);
 
     impl Wake for FutureTask {
         #[cfg(feature = "std")]
-        unsafe fn wake_up(&self) {
-            *(*FUTURE_CONDVARS.as_ptr())[self.0].0.lock().unwrap() = true;
-            (*FUTURE_CONDVARS.as_ptr())[self.0].1.notify_one();
+        fn wake_up(&self) {
+            *self.0.lock().unwrap() = true;
+            self.1.notify_one();
         }
 
         #[cfg(not(feature = "std"))]
-        unsafe fn wake_up(&self) {
-            FUTURE_CONDVARS[self.0].store(true, Ordering::Relaxed);
+        fn wake_up(&self) {
+            self.0.store(true, Ordering::Relaxed);
         }
     }
 
-    let_pin! {
-        future_one = f;
-        task = FutureTask(0);
-    };
+    let_pin! { future_one = f; }
+
+    #[cfg(feature = "std")]
+    let_pin! { task = FutureTask(Mutex::new(true), Condvar::new()); };
+
+    #[cfg(not(feature = "std"))]
+    let_pin! { task = FutureTask(AtomicBool::new(true)); };
 
     // Check for any futures that are ready
     #[cfg(not(feature = "std"))]
     loop {
-        if unsafe { FUTURE_CONDVARS[0].load(Ordering::Relaxed) } {
+        if task.0.load(Ordering::Relaxed) {
             // This runs whenever woke.
-            let task = unsafe { FutureTask::into_waker(&*task) };
-            let context = &mut Context::from_waker(&task);
+            let waker = FutureTask::into_waker(&*task);
+            let context = &mut Context::from_waker(&waker);
             match future_one.as_mut().poll(context) {
                 // Go back to "sleep".
-                Poll::Pending => unsafe {
-                    FUTURE_CONDVARS[0].store(false, Ordering::Relaxed);
-                },
+                Poll::Pending => task.0.store(false, Ordering::Relaxed),
                 Poll::Ready(ret) => break ret,
             }
         }
     }
 
-    // Initialize mutable static.
     #[cfg(feature = "std")]
-    unsafe {
-        FUTURE_CONDVARS =
-            MaybeUninit::new([(Mutex::new(true), Condvar::new())]);
-    }
-    #[cfg(feature = "std")]
-    let mut guard = unsafe { (*FUTURE_CONDVARS.as_ptr())[0].0.lock().unwrap() };
+    let mut guard = task.0.lock().unwrap();
     #[cfg(feature = "std")]
     loop {
         // Save some processing, by putting the thread to sleep.
         if !(*guard) {
-            guard = unsafe { (*FUTURE_CONDVARS.as_ptr())[0].1.wait(guard) }
-                .unwrap();
+            guard = task.1.wait(guard).unwrap();
         }
         if *guard {
             // This runs whenever woke.
-            let task = unsafe { FutureTask::into_waker(&*task) };
+            let task = FutureTask::into_waker(&*task);
             let context = &mut Context::from_waker(&task);
             match future_one.as_mut().poll(context) {
                 // Go back to "sleep".

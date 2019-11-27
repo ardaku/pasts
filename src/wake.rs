@@ -8,11 +8,13 @@ use crate::stn::task::{RawWaker, RawWakerVTable, Waker};
 pub trait Wake: Send + Sync + Sized {
     /// This function should either modify a condvar or mutable atomic to let
     /// the asynchronous loop wake up.
-    unsafe fn wake_up(&self);
+    fn wake_up(&self);
 
     /// Get a `Waker` from type that implements `Wake`.
-    unsafe fn into_waker(waker: *const Self) -> Waker {
-        Waker::from_raw(RawWaker::new(waker as *const (), vtable::<Self>()))
+    fn into_waker(waker: *const Self) -> Waker {
+        unsafe {
+            Waker::from_raw(RawWaker::new(waker as *const (), vtable::<Self>()))
+        }
     }
 }
 
