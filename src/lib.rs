@@ -45,9 +45,9 @@ pub use std as stn;
 #[cfg(not(feature = "std"))]
 pub use core as stn;
 
-mod wake;
-mod pin;
 mod execute;
+mod pin;
+mod wake;
 
-pub use wake::{Wake};
-pub use execute::{block_on};
+pub use execute::block_on;
+pub use wake::Wake;

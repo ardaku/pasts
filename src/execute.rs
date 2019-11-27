@@ -5,16 +5,14 @@ use crate::stn::{
 
 #[cfg(feature = "std")]
 use crate::stn::{
-    sync::{Condvar, Mutex},
     mem::MaybeUninit,
+    sync::{Condvar, Mutex},
 };
 
 #[cfg(not(feature = "std"))]
-use crate::stn::{
-    sync::atomic::{AtomicBool, Ordering},
-};
+use crate::stn::sync::atomic::{AtomicBool, Ordering};
 
-use crate::{Wake, let_pin};
+use crate::{let_pin, Wake};
 
 /// Run a future to completion on the current thread.  This will cause the
 /// current thread to block.
@@ -67,8 +65,8 @@ pub fn block_on<F: Future>(f: F) -> <F as Future>::Output {
                 // Go back to "sleep".
                 Poll::Pending => unsafe {
                     FUTURE_CONDVARS[0].store(false, Ordering::Relaxed);
-                }
-                Poll::Ready(ret) => break ret
+                },
+                Poll::Ready(ret) => break ret,
             }
         }
     }
@@ -76,7 +74,8 @@ pub fn block_on<F: Future>(f: F) -> <F as Future>::Output {
     // Initialize mutable static.
     #[cfg(feature = "std")]
     unsafe {
-        FUTURE_CONDVARS = MaybeUninit::new([(Mutex::new(true), Condvar::new())]);
+        FUTURE_CONDVARS =
+            MaybeUninit::new([(Mutex::new(true), Condvar::new())]);
     }
     #[cfg(feature = "std")]
     let mut guard = unsafe { (*FUTURE_CONDVARS.as_ptr())[0].0.lock().unwrap() };
@@ -84,7 +83,8 @@ pub fn block_on<F: Future>(f: F) -> <F as Future>::Output {
     loop {
         // Save some processing, by putting the thread to sleep.
         if !(*guard) {
-            guard = unsafe { (*FUTURE_CONDVARS.as_ptr())[0].1.wait(guard) }.unwrap();
+            guard = unsafe { (*FUTURE_CONDVARS.as_ptr())[0].1.wait(guard) }
+                .unwrap();
         }
         if *guard {
             // This runs whenever woke.
@@ -93,7 +93,7 @@ pub fn block_on<F: Future>(f: F) -> <F as Future>::Output {
             match future_one.as_mut().poll(context) {
                 // Go back to "sleep".
                 Poll::Pending => *guard = false,
-                Poll::Ready(ret) => break ret
+                Poll::Ready(ret) => break ret,
             }
         }
     }
@@ -243,81 +243,72 @@ macro_rules! join {
 }
 
 /// ```rust
+/// use core::{
+///     pin::Pin,
+///     future::Future,
+///     task::{Poll, Context},
+/// };
+///
 /// #[derive(Debug, PartialEq)]
 /// enum Select {
 ///     One(i32),
 ///     Two(char),
 /// }
 ///
-/// async fn one() -> i32 {
-///     loop { } // Never returns
+/// pub struct AlwaysPending();
+///
+/// impl Future for AlwaysPending {
+///     type Output = i32;
+///
+///     fn poll(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<i32> {
+///         Poll::Pending
+///     }
 /// }
 ///
 /// async fn two() -> char {
 ///     'c'
 /// }
 ///
-/// async fn example() {
-///     // Joined await on the two futures.
-///     let ret = pasts::select![
-///         async { Select::One(one().await) },
-///         async { Select::Two(two().await) },
-///     ];
-///     assert_eq!(ret, Select::Two('c'));
+/// async fn example() -> Select {
+///     // Inputs
+///     let a_fut = AlwaysPending();
+///     let b_fut = two();
+///
+///     pasts::select!(
+///         a = a_fut => {
+///             println!("This will never print!");
+///             Select::One(a)
+///         },
+///         b = b_fut => Select::Two(b),
+///     )
 /// }
 ///
-/// pasts::block_on(example());
+/// assert_eq!(pasts::block_on(example()), Select::Two('c'));
 /// ```
-#[macro_export]
-macro_rules! select {
-    [$($future_list:expr),* $(,)?] => {
+#[macro_export] macro_rules! select {
+    ($($pattern:pat = $var:ident => $branch:expr),* $(,)?) => {
         {
-            use $crate::stn::{
-                future::Future,
-                task::{Poll, Context},
-                pin::Pin,
-            };
-
-            enum Status<'a, T> {
-                Pending(&'a mut Future<Output = T>),
-                Complete,
+            use $crate::{let_pin, stn::{future::Future, pin::Pin}};
+            let_pin! { $( $var = $var; )* }
+            struct Selector<'a, T> {
+                closure: &'a mut dyn FnMut(&mut Context<'_>) -> Poll<T>,
             }
-
-            struct JoinedFuture<'a, T> {
-                futures: &'a mut [Status<'a, T>],
-            }
-
-            impl<'a, T> Future for JoinedFuture<'a, T> {
+            impl<'a, T> Future for Selector<'a, T> {
                 type Output = T;
-
-                fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>)
-                    -> Poll<Self::Output>
-                {
-                    /*for future in self.futures {
-                        match future {
-                            Status::Pending(f) => {
-                                match Future::poll(*f, cx) {
-                                    Poll::Ready(r) => {
-                                        *future = Status::Complete;
-                                        return Poll::Ready(r);
-                                    }
-                                    _ => { /* not ready yet */ }
-                                }
-                            }
-                            _ => unreachable!(),
-                        }
-                    }*/
-                    Poll::Pending
+                fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
+                    (self.get_mut().closure)(cx)
                 }
             }
-
-            let futures = &mut [$(Status::Pending(&mut $future_list)),*][..];
-
-            let joined_future = JoinedFuture {
-                futures: &mut futures,
-            };
-
-            joined_future.await
+            Selector { closure: &mut |cx: &mut Context<'_>| {
+                $(
+                    match Future::poll($var.as_mut(), cx) {
+                        Poll::Ready(r) =>
+                            return Poll::Ready((&mut |$pattern| $branch)(r)),
+                        Poll::Pending => {},
+                    }
+                )*
+                Poll::Pending
+            } }.await
         }
-    }
+    };
 }

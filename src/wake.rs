@@ -29,7 +29,7 @@ fn vtable<W: Wake>() -> &'static RawWakerVTable {
         T::wake_up(&*(data as *const T));
     }
 
-    unsafe fn drop<T: Wake>(_data: *const ()) { }
+    unsafe fn drop<T: Wake>(_data: *const ()) {}
 
     &RawWakerVTable::new(clone::<W>, wake::<W>, ref_wake::<W>, drop::<W>)
 }
