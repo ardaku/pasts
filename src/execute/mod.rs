@@ -1,7 +1,11 @@
-use crate::_pasts_hide::stn::{
+mod wake;
+
+use self::wake::Wake;
+
+use crate::{ let_pin, _pasts_hide::stn::{
     future::Future,
     task::{Context, Poll},
-};
+}};
 
 #[cfg(feature = "std")]
 use crate::_pasts_hide::stn::sync::{
@@ -10,8 +14,6 @@ use crate::_pasts_hide::stn::sync::{
 
 #[cfg(not(feature = "std"))]
 use crate::_pasts_hide::stn::sync::atomic::{AtomicBool, Ordering};
-
-use crate::{let_pin, Wake};
 
 /// Run a future to completion on the current thread.  This will cause the
 /// current thread to block.

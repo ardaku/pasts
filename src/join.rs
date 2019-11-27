@@ -1,5 +1,5 @@
-/// Poll two futures concurrently, and return a tuple of returned values from
-/// each future.  Only usable inside async functions and blocks.
+/// Poll multiple futures concurrently, and return a tuple of returned values
+/// from each future.  Only usable inside async functions and blocks.
 ///
 /// Futures that are ready first will be executed first.  This makes
 /// `join!(a, b)` faster than the alternative `(a.await, b.await)`.

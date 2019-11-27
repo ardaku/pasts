@@ -5,7 +5,7 @@ use crate::_pasts_hide::stn::task::{RawWaker, RawWakerVTable, Waker};
 /// - A static mutable atomic (for no_std)
 /// - A static mutable condvar (for threads to sleep while waiting for waker,
 ///   requires std)
-pub trait Wake: Send + Sync + Sized {
+pub(super) trait Wake: Send + Sync + Sized {
     /// This function should either modify a condvar or mutable atomic to let
     /// the asynchronous loop wake up.
     fn wake_up(&self);

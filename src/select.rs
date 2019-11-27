@@ -1,5 +1,5 @@
-/// Poll multiple futures at once, and run the future that is ready first.  Only
-/// usable inside async functions and blocks.
+/// Poll multiple futures concurrently, and run the future that is ready first.
+/// Only usable inside async functions and blocks.
 ///
 /// The API is like a match statement: `match_pattern = future => expression`.
 /// The expression will be run with the pattern (returned from the future) in
@@ -52,7 +52,14 @@
 #[macro_export] macro_rules! select {
     ($($pattern:pat = $var:ident => $branch:expr $(,)?)*) => {
         {
-            use $crate::{let_pin, _pasts_hide::stn::{future::Future, pin::Pin}};
+            use $crate::{
+                let_pin,
+                _pasts_hide::stn::{
+                    future::Future,
+                    pin::Pin,
+                    task::{Poll, Context},
+                },
+            };
             let_pin! { $( $var = $var; )* }
             struct Selector<'a, T> {
                 closure: &'a mut dyn FnMut(&mut Context<'_>) -> Poll<T>,
