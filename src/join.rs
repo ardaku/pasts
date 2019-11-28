@@ -26,8 +26,38 @@
 #[macro_export]
 macro_rules! join {
     ($($y:expr),* $(,)?) => {
+        /*{
+            use $crate::{
+                let_pin,
+                _pasts_hide::stn::{
+                    future::Future,
+                    pin::Pin,
+                    task::{Poll, Context},
+                },
+            };
+            struct Selector<'a, T> {
+                closure: &'a mut dyn FnMut(&mut Context<'_>) -> Poll<T>,
+            }
+            impl<'a, T> Future for Selector<'a, T> {
+                type Output = T;
+                fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
+                    (self.get_mut().closure)(cx)
+                }
+            }
+            let_pin! { $( $var = $var; )* }
+            Selector { closure: &mut |cx: &mut Context<'_>| {
+                $(
+                    match Future::poll($var.as_mut(), cx) {
+                        Poll::Ready(r) =>
+                            return Poll::Ready((&mut |$pattern| $branch)(r)),
+                        Poll::Pending => {},
+                    }
+                )*
+                Poll::Pending
+            } }.await
+        }*/
         {
             ('c', 'a')
         }
-    }
+    };
 }

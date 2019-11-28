@@ -1,10 +1,16 @@
 /// Poll multiple futures concurrently, and run the future that is ready first.
 /// Only usable inside async functions and blocks.
 ///
-/// The API is like a match statement: `match_pattern = future => expression`.
-/// The expression will be run with the pattern (returned from the future) in
-/// scope when the future is the first to complete.  This usage is the same as
-/// the one from the futures crate.
+/// The API is like a match statement:
+/// `match_pattern = pinnned_future => expression`.  The expression will be run
+/// with the pattern (returned from the future) in scope when the future is the
+/// first to complete.  This usage is the similar to the one from the futures
+/// crate; Although, neither `default` or `complete` are supported, and rather
+/// than using fused futures, this API uses optional futures that are turned to
+/// `None` on completion.
+///
+/// This is the lowest level async control structure.  All other async control
+/// structures can be built on top of `select!()`.
 ///
 /// # Example
 /// ```rust
@@ -35,16 +41,23 @@
 /// }
 ///
 /// async fn example() -> Select {
-///     let a_fut = AlwaysPending();
-///     let b_fut = two();
+///     pasts::let_pin! {
+///         a_fut = Some(AlwaysPending());
+///         b_fut = Some(two());
+///     };
 ///
-///     pasts::select!(
+///     let ret = pasts::select!(
 ///         a = a_fut => {
 ///             println!("This will never print!");
 ///             Select::One(a)
 ///         }
 ///         b = b_fut => Select::Two(b)
-///     )
+///     );
+///
+///     assert!(a_fut.is_some());
+///     assert!(b_fut.is_none());
+///
+///     ret
 /// }
 ///
 /// assert_eq!(pasts::block_on(example()), Select::Two('c'));
@@ -60,7 +73,6 @@
                     task::{Poll, Context},
                 },
             };
-            let_pin! { $( $var = $var; )* }
             struct Selector<'a, T> {
                 closure: &'a mut dyn FnMut(&mut Context<'_>) -> Poll<T>,
             }
@@ -70,12 +82,17 @@
                     (self.get_mut().closure)(cx)
                 }
             }
+            // let_pin! { $( $var = $var; )* }
             Selector { closure: &mut |cx: &mut Context<'_>| {
                 $(
-                    match Future::poll($var.as_mut(), cx) {
-                        Poll::Ready(r) =>
-                            return Poll::Ready((&mut |$pattern| $branch)(r)),
-                        Poll::Pending => {},
+                    if let Some(future) = $var.as_mut().as_pin_mut() {
+                        match Future::poll(future, cx) {
+                            Poll::Ready(r) => {
+                                $var.set(None); // Future is invalid.
+                                return Poll::Ready((&mut |$pattern| $branch)(r))
+                            }
+                            Poll::Pending => {}
+                        }
                     }
                 )*
                 Poll::Pending

@@ -6,8 +6,10 @@ async fn timer(how_long: u64) -> u64 {
 }
 
 fn main() {
-    let one = timer(1);
-    let two = timer(2);
+/*    pasts::let_pin! {
+        one = Some(timer(1));
+        two = Some(timer(2));
+    };
 
     let mut one_ret = None;
     let mut two_ret = None;
@@ -22,5 +24,5 @@ fn main() {
 
         (one_ret.unwrap(), two_ret.unwrap())
     });
-    println!("Future returned: \"{:?}\"", ret);
+    println!("Future returned: \"{:?}\"", ret);*/
 }
