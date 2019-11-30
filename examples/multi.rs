@@ -24,12 +24,9 @@ macro_rules! join {
 }*/
 
 fn main() {
-    let mut one = timer(1);
-    let mut two = timer(2);
-
     pasts::let_pin! {
-        one = pasts::Task::Wait(&mut one);
-        two = pasts::Task::Wait(&mut two);
+        one = pasts::Task::Wait(timer(1));
+        two = pasts::Task::Wait(timer(2));
     };
 
     let ret = pasts::block_on(async {

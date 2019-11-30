@@ -41,12 +41,9 @@
 /// }
 ///
 /// async fn example() -> Select {
-///     let mut a_fut = AlwaysPending();
-///     let mut b_fut = two();
-///
 ///     pasts::let_pin! {
-///         a_fut = pasts::Task::Wait(&mut a_fut);
-///         b_fut = pasts::Task::Wait(&mut b_fut);
+///         a_fut = pasts::Task::Wait(AlwaysPending());
+///         b_fut = pasts::Task::Wait(two());
 ///     };
 ///
 ///     let ret = pasts::select!(

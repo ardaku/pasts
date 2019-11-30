@@ -6,16 +6,16 @@ use crate::_pasts_hide::{
 };
 
 /// A task that is either not yet ready, or has completed.
-pub enum Task<'a, F, O>
+pub enum Task<F, O>
     where F: Future<Output = O>
 {
     /// Still have to wait for future.
-    Wait(&'a mut F),
+    Wait(F),
     /// Future has completed.
     Done(O),
 }
 
-impl<'a, F, O> Task<'a, F, O>
+impl<F, O> Task<F, O>
     where F: Future<Output = O>
 {
     /// Return true if still have to wait for future.
