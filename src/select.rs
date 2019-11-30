@@ -63,10 +63,10 @@
 /// assert_eq!(pasts::block_on(example()), Select::Two('c'));
 /// ```
 #[macro_export] macro_rules! select {
-    ($($pattern:pat = $var:ident => $branch:expr $(,)?)*) => {
+    ($($pattern:ident = $future:ident => $branch:expr $(,)?)*) => {
         {
             use $crate::{
-                let_pin,
+                let_pin, Task,
                 _pasts_hide::stn::{
                     future::Future,
                     pin::Pin,
@@ -82,14 +82,14 @@
                     (self.get_mut().closure)(cx)
                 }
             }
-            // let_pin! { $( $var = $var; )* }
             Selector { closure: &mut |cx: &mut Context<'_>| {
                 $(
-                    if let Some(future) = $var.as_mut().as_pin_mut() {
+                    if let Some(future) = $future.as_mut().as_pin_mut() {
                         match Future::poll(future, cx) {
                             Poll::Ready(r) => {
-                                $var.set(None); // Future is invalid.
-                                return Poll::Ready((&mut |$pattern| $branch)(r))
+                                let ret = { $branch };
+                                $future.set(Task::Done(r));
+                                return Poll::Ready(ret);
                             }
                             Poll::Pending => {}
                         }

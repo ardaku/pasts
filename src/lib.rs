@@ -58,11 +58,22 @@ pub mod _pasts_hide {
             self::stn::pin::Pin::new_unchecked(pointer)
         }
     }
+
+    /// Not actually safe assume init for use in `join!()`.
+    #[allow(unsafe_code)]
+    #[inline(always)]
+    pub fn assume_init<T>(initialized: self::stn::mem::MaybeUninit<T>) -> T {
+        unsafe {
+            initialized.assume_init()
+        }
+    }
 }
 
 mod execute;
 mod pin;
 mod select;
 mod join;
+mod task;
 
 pub use execute::block_on;
+pub use task::Task::{self, *};

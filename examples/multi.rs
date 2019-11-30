@@ -5,24 +5,47 @@ async fn timer(how_long: u64) -> u64 {
     how_long
 }
 
-fn main() {
-/*    pasts::let_pin! {
-        one = Some(timer(1));
-        two = Some(timer(2));
-    };
+/*
+macro_rules! join {
+    ($($future:ident),* $(,)?) => {
+        {
+            use pasts::{
+                let_pin,
+                _pasts_hide::stn::mem::MaybeUninit,
+            };
 
-    let mut one_ret = None;
-    let mut two_ret = None;
+            let_pin! {
+                $(
+                    $future = Some($future);
+                )
+            }
+        }
+    };
+}*/
+
+fn main() {
+    let mut one = timer(1);
+    let mut two = timer(2);
+
+    pasts::let_pin! {
+        one = pasts::Task::Wait(&mut one);
+        two = pasts::Task::Wait(&mut two);
+    };
 
     let ret = pasts::block_on(async {
         for _ in 0..2 { // Push 2 futures to completion.
             pasts::select! {
-                a = one => one_ret = Some(a),
-                b = two => two_ret = Some(b),
+                a = one => println!("Finished 1"),
+                b = two => println!("Finished 2"),
             }
         }
 
-        (one_ret.unwrap(), two_ret.unwrap())
+        (
+            one.unwrap(),
+            two.unwrap(),
+//            pasts::_pasts_hide::assume_init(one),
+//            pasts::_pasts_hide::assume_init(two),
+        )
     });
-    println!("Future returned: \"{:?}\"", ret);*/
+    println!("Future returned: \"{:?}\"", ret);
 }
