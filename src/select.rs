@@ -41,9 +41,12 @@
 /// }
 ///
 /// async fn example() -> Select {
+///     let mut a_fut = AlwaysPending();
+///     let mut b_fut = two();
+///
 ///     pasts::let_pin! {
-///         a_fut = Some(AlwaysPending());
-///         b_fut = Some(two());
+///         a_fut = pasts::Task::Wait(&mut a_fut);
+///         b_fut = pasts::Task::Wait(&mut b_fut);
 ///     };
 ///
 ///     let ret = pasts::select!(
@@ -54,8 +57,8 @@
 ///         b = b_fut => Select::Two(b)
 ///     );
 ///
-///     assert!(a_fut.is_some());
-///     assert!(b_fut.is_none());
+///     assert!(a_fut.is_wait());
+///     assert!(b_fut.is_done());
 ///
 ///     ret
 /// }
@@ -86,9 +89,9 @@
                 $(
                     if let Some(future) = $future.as_mut().as_pin_mut() {
                         match Future::poll(future, cx) {
-                            Poll::Ready(r) => {
+                            Poll::Ready($pattern) => {
                                 let ret = { $branch };
-                                $future.set(Task::Done(r));
+                                $future.set(Task::Done($pattern));
                                 return Poll::Ready(ret);
                             }
                             Poll::Pending => {}
