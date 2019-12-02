@@ -1,7 +1,6 @@
 use crate::_pasts_hide::stn::{
     future::Future,
     pin::Pin,
-    //        mem::replace,
 };
 
 /// A task that is either not yet ready, or has completed.
