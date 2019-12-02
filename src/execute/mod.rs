@@ -76,7 +76,7 @@ pub fn block_on<F: Future>(f: F) -> <F as Future>::Output {
         let waker = FutureTask::into_waker(&*task);
         let context = &mut Context::from_waker(&waker);
         match future_one.as_mut().poll(context) {
-            Poll::Pending => { /* continue, going back to sleep */},
+            Poll::Pending => { /* continue, going back to sleep */ }
             Poll::Ready(ret) => break ret,
         }
 

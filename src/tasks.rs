@@ -1,7 +1,4 @@
-use crate::_pasts_hide::stn::{
-    future::Future,
-    pin::Pin,
-};
+use crate::_pasts_hide::stn::{future::Future, pin::Pin};
 
 /// A task that is either not yet ready, or has completed.
 pub enum Task<'a, F, O>
