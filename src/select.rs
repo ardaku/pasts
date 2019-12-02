@@ -6,11 +6,11 @@
 /// with the pattern (returned from the future) in scope when the future is the
 /// first to complete.  This usage is the similar to the one from the futures
 /// crate; Although, neither `default` or `complete` are supported, and rather
-/// than using fused futures, this API uses optional futures that are turned to
-/// `None` on completion.
+/// than using fused futures, this API uses [`Task`](enum.Task.html)s that are
+/// turned to [`Done`](enum.Task.html#variant.Done) on completion.
 ///
 /// This is the lowest level async control structure.  All other async control
-/// structures can be built on top of `select!()`.
+/// structures can be built on top of [`select!()`](macro.select.html).
 ///
 /// # Example
 /// ```rust
