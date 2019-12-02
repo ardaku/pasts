@@ -42,9 +42,12 @@
 ///
 /// async fn example() -> Select {
 ///     pasts::let_pin! {
-///         a_fut = pasts::Task::Wait(AlwaysPending());
-///         b_fut = pasts::Task::Wait(two());
+///         a_fut = AlwaysPending();
+///         b_fut = two();
 ///     };
+///
+///     let mut a_fut = pasts::Wait(a_fut);
+///     let mut b_fut = pasts::Wait(b_fut);
 ///
 ///     let ret = pasts::select!(
 ///         a = a_fut => {
@@ -84,11 +87,11 @@
             }
             Selector { closure: &mut |cx: &mut Context<'_>| {
                 $(
-                    if let Some(future) = $future.as_mut().as_pin_mut() {
-                        match Future::poll(future, cx) {
+                    if let Task::Wait(future) = &mut $future {
+                        match Future::poll(future.as_mut(), cx) {
                             Poll::Ready($pattern) => {
                                 let ret = { $branch };
-                                $future.set(Task::Done($pattern));
+                                $future = Task::Done($pattern);
                                 return Poll::Ready(ret);
                             }
                             Poll::Pending => {}

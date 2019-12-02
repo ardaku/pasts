@@ -20,12 +20,11 @@ macro_rules! join {
             use pasts::{
                 let_pin,
                 _pasts_hide::stn::mem::MaybeUninit,
-                Task::Wait,
             };
 
             let_pin! {
                 $(
-                    $future = Wait($future);
+                    $future = Some($future);
                 )*
             };
         }
@@ -35,9 +34,12 @@ macro_rules! join {
 fn main() {
     let ret = pasts::block_on(async {
         pasts::let_pin! {
-            one = pasts::Task::Wait(timer(1));
-            two = pasts::Task::Wait(timer(2));
+            one = timer(1);
+            two = timer(2);
         };
+
+        let mut one = pasts::Wait(one);
+        let mut two = pasts::Wait(two);
 
         for _ in 0..2 { // Push 2 futures to completion.
             pasts::select! {
@@ -47,8 +49,14 @@ fn main() {
         }
 
         (
-            one.take().unwrap(),
-            two.take().unwrap(),
+            match one {
+                pasts::Done(r) => r,
+                pasts::Wait(_) => unreachable!(),
+            },
+            match two {
+                pasts::Done(r) => r,
+                pasts::Wait(_) => unreachable!(),
+            },
         )
     });
     println!("Future returned: \"{:?}\"", ret);

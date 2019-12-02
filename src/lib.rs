@@ -64,7 +64,7 @@ mod execute;
 mod pin;
 mod select;
 mod join;
-mod task;
+mod tasks;
 
 pub use execute::block_on;
-pub use task::Task::{self, *};
+pub use tasks::Task::{self, *};
