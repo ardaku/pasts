@@ -30,7 +30,7 @@ use crate::_pasts_hide::stn::sync::atomic::{AtomicBool, Ordering};
 /// ```
 pub fn block_on<F: Future>(f: F) -> <F as Future>::Output {
     #[cfg(feature = "std")]
-    pub struct FutureTask(Mutex<bool>, Condvar);
+    pub struct FutureTask(Mutex<()>, Condvar);
 
     #[cfg(not(feature = "std"))]
     pub struct FutureTask(AtomicBool);
@@ -38,7 +38,6 @@ pub fn block_on<F: Future>(f: F) -> <F as Future>::Output {
     impl Wake for FutureTask {
         #[cfg(feature = "std")]
         fn wake_up(&self) {
-            *self.0.lock().unwrap() = true;
             self.1.notify_one();
         }
 
@@ -68,24 +67,20 @@ pub fn block_on<F: Future>(f: F) -> <F as Future>::Output {
     }
 
     #[cfg(feature = "std")]
-    let_pin! { task = FutureTask(Mutex::new(true), Condvar::new()); };
+    let_pin! { task = FutureTask(Mutex::new(()), Condvar::new()); };
     #[cfg(feature = "std")]
     let mut guard = task.0.lock().unwrap();
     #[cfg(feature = "std")]
     loop {
+        // This runs whenever woke.
+        let waker = FutureTask::into_waker(&*task);
+        let context = &mut Context::from_waker(&waker);
+        match future_one.as_mut().poll(context) {
+            Poll::Pending => { /* continue, going back to sleep */},
+            Poll::Ready(ret) => break ret,
+        }
+
         // Save some processing, by putting the thread to sleep.
-        if !(*guard) {
-            guard = task.1.wait(guard).unwrap();
-        }
-        if *guard {
-            // This runs whenever woke.
-            let task = FutureTask::into_waker(&*task);
-            let context = &mut Context::from_waker(&task);
-            match future_one.as_mut().poll(context) {
-                // Go back to "sleep".
-                Poll::Pending => *guard = false,
-                Poll::Ready(ret) => break ret,
-            }
-        }
+        guard = task.1.wait(guard).unwrap();
     }
 }
