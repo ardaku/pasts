@@ -2,15 +2,16 @@ mod wake;
 
 use self::wake::Wake;
 
-use crate::{ let_pin, _pasts_hide::stn::{
-    future::Future,
-    task::{Context, Poll},
-}};
+use crate::{
+    _pasts_hide::stn::{
+        future::Future,
+        task::{Context, Poll},
+    },
+    let_pin,
+};
 
 #[cfg(feature = "std")]
-use crate::_pasts_hide::stn::sync::{
-    Condvar, Mutex
-};
+use crate::_pasts_hide::stn::sync::{Condvar, Mutex};
 
 #[cfg(not(feature = "std"))]
 use crate::_pasts_hide::stn::sync::atomic::{AtomicBool, Ordering};

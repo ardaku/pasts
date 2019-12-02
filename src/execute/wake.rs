@@ -36,7 +36,5 @@ fn new_waker<W: Wake>(waker: *const W) -> Waker {
         &RawWakerVTable::new(clone::<W>, wake::<W>, ref_wake::<W>, drop::<W>)
     }
 
-    unsafe {
-        Waker::from_raw(RawWaker::new(waker as *const (), vtable::<W>()))
-    }
+    unsafe { Waker::from_raw(RawWaker::new(waker as *const (), vtable::<W>())) }
 }

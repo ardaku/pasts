@@ -52,18 +52,17 @@ pub mod _pasts_hide {
     #[allow(unsafe_code)]
     #[inline(always)]
     pub fn new_pin<P>(pointer: P) -> self::stn::pin::Pin<P>
-        where P: self::stn::ops::Deref
+    where
+        P: self::stn::ops::Deref,
     {
-        unsafe {
-            self::stn::pin::Pin::new_unchecked(pointer)
-        }
+        unsafe { self::stn::pin::Pin::new_unchecked(pointer) }
     }
 }
 
 mod execute;
+mod join;
 mod pin;
 mod select;
-mod join;
 mod tasks;
 
 pub use execute::block_on;

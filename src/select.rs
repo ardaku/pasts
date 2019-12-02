@@ -65,7 +65,8 @@
 ///
 /// assert_eq!(pasts::block_on(example()), Select::Two('c'));
 /// ```
-#[macro_export] macro_rules! select {
+#[macro_export]
+macro_rules! select {
     ($($pattern:ident = $future:ident => $branch:expr $(,)?)*) => {
         {
             use $crate::{
