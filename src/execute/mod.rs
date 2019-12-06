@@ -16,6 +16,42 @@ use crate::_pasts_hide::stn::sync::{Condvar, Mutex};
 #[cfg(not(feature = "std"))]
 use crate::_pasts_hide::stn::sync::atomic::{AtomicBool, Ordering};
 
+/// An interrupt handler.
+pub trait Interrupt {
+    /// Interrupt blocking to wake up.
+    fn interrupt(&self);
+    /// Blocking wait for interrupt, if `Poll::Ready` then stop blocking.
+    fn wait_for(&self);
+}
+
+/// Blocking wait until interrupt using wake handler.
+pub fn block_until<F: Future, I: Interrupt + Send + Sync>(f: F, i: I)
+    -> <F as Future>::Output
+{
+    pub struct FutureTask<I: Interrupt>(I);
+
+    impl<I: Interrupt + Send + Sync> Wake for FutureTask<I> {
+        fn wake_up(&self) {
+            self.0.interrupt();
+        }
+    }
+
+    let_pin! { future_one = f; }
+
+    let task = FutureTask(i);
+
+    // Check for any futures that are ready
+    loop {
+        let waker = FutureTask::into_waker(&task);
+        let context = &mut Context::from_waker(&waker);
+        match future_one.as_mut().poll(context) {
+            // Go back to waiting for interrupt.
+            Poll::Pending => task.0.wait_for(),
+            Poll::Ready(ret) => break ret,
+        }
+    }
+}
+
 /// Run a future to completion on the current thread.  This will cause the
 /// current thread to block.
 ///
