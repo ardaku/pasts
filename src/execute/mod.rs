@@ -16,7 +16,7 @@ pub trait Interrupt {
     fn new() -> Self;
     /// Interrupt blocking to wake up.
     fn interrupt(&self);
-    /// Blocking wait for interrupt, if `Poll::Ready` then stop blocking.
+    /// Blocking wait until interrupt.
     fn wait_for(&self);
 
     /// Run a future to completion on the current thread.  This will cause the
