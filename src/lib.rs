@@ -40,6 +40,7 @@ mod join;
 mod pin;
 mod select;
 mod tasks;
+mod run;
 
 /// Re-export of the most common things.
 pub mod prelude;
