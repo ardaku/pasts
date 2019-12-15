@@ -27,7 +27,7 @@
 ///     assert_eq!(ret, ('c', 'a'));
 /// }
 ///
-/// pasts::CondvarInterrupt::block_on(example());
+/// pasts::ThreadInterrupt::block_on(example());
 /// ```
 #[macro_export]
 macro_rules! join {

@@ -25,7 +25,7 @@ pub trait Interrupt {
     /// ```rust
     /// use pasts::prelude::*;
     ///
-    /// let ret = pasts::CondvarInterrupt::block_on(
+    /// let ret = pasts::ThreadInterrupt::block_on(
     ///     async {
     ///         /* Do some work, calling .await on futures */
     ///         "Complete!"

@@ -69,7 +69,7 @@
 /// }
 ///
 /// assert_eq!(
-///     pasts::CondvarInterrupt::block_on(example()),
+///     pasts::ThreadInterrupt::block_on(example()),
 ///     Select::Two('c')
 /// );
 /// ```
