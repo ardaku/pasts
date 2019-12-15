@@ -1,16 +1,13 @@
-mod wake;
-
-use self::wake::Wake;
-
 use crate::{
     _pasts_hide::{new_pin, stn::{
         future::Future,
         task::{Context, Poll},
+        task::{RawWaker, RawWakerVTable, Waker},
     }},
 };
 
 /// An interrupt handler.
-pub trait Interrupt {
+pub trait Interrupt: Send + Sync + Sized {
     /// Initialize the shared data for the interrupt.
     fn new() -> Self;
     /// Interrupt blocking to wake up.
@@ -32,31 +29,45 @@ pub trait Interrupt {
     /// );
     /// assert_eq!(ret, "Complete!");
     /// ```
-    fn block_on<F: Future>(mut f: F) -> <F as Future>::Output
-    where
-        Self: Send + Sync + Sized,
-    {
-        pub struct FutureTask<I: Interrupt>(I);
-
-        impl<I: Interrupt + Send + Sync> Wake for FutureTask<I> {
-            fn wake_up(&self) {
-                self.0.interrupt();
-            }
-        }
-
+    fn block_on<F: Future>(mut f: F) -> <F as Future>::Output {
         let mut f = new_pin(&mut f);
 
-        let task = FutureTask::<Self>(Interrupt::new());
+        let task: Self = Interrupt::new();
 
         // Check for any futures that are ready
         loop {
-            let waker = FutureTask::into_waker(&task);
+            let waker = waker(&task);
             let context = &mut Context::from_waker(&waker);
             match f.as_mut().poll(context) {
                 // Go back to waiting for interrupt.
-                Poll::Pending => task.0.wait_for(),
+                Poll::Pending => task.wait_for(),
                 Poll::Ready(ret) => break ret,
             }
         }
     }
+}
+
+// Safe wrapper around `Waker` API to get a `Waker` from an `Interrupt`.
+#[inline(always)]
+#[allow(unsafe_code)]
+fn waker<I: Interrupt>(interrupt: *const I) -> Waker {
+    unsafe fn clone<I: Interrupt>(data: *const ()) -> RawWaker {
+        RawWaker::new(data, vtable::<I>())
+    }
+
+    unsafe fn wake<I: Interrupt>(data: *const ()) {
+        ref_wake::<I>(data)
+    }
+
+    unsafe fn ref_wake<I: Interrupt>(data: *const ()) {
+        I::interrupt(&*(data as *const I));
+    }
+
+    unsafe fn drop<I: Interrupt>(_data: *const ()) {}
+
+    unsafe fn vtable<I: Interrupt>() -> &'static RawWakerVTable {
+        &RawWakerVTable::new(clone::<I>, wake::<I>, ref_wake::<I>, drop::<I>)
+    }
+
+    unsafe { Waker::from_raw(RawWaker::new(interrupt as *const (), vtable::<I>())) }
 }
