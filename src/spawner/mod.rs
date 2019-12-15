@@ -14,11 +14,6 @@ mod thread_pool;
 
 use thread_pool::ThreadPool;
 
-// A task on a thread
-trait ThreadTask {
-    type Output;
-}
-
 struct ThreadFuture<R> {
     shared_state: Arc<(Mutex<Option<Waker>>, AtomicBool)>,
     handle: Option<thread_pool::ThreadHandle>,
