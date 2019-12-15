@@ -23,7 +23,7 @@ pub mod _pasts_hide {
     #[cfg(not(feature = "std"))]
     pub use core as stn;
 
-    /// Not actually safe pinning only for use in `let_pin!()`.
+    /// Not actually safe pinning only for use in `tasks!()`.
     #[allow(unsafe_code)]
     #[inline(always)]
     pub fn new_pin<P>(pointer: P) -> self::stn::pin::Pin<P>
@@ -36,7 +36,6 @@ pub mod _pasts_hide {
 
 mod execute;
 mod join;
-mod pin;
 mod select;
 mod tasks;
 mod run;

@@ -3,11 +3,10 @@ mod wake;
 use self::wake::Wake;
 
 use crate::{
-    _pasts_hide::stn::{
+    _pasts_hide::{new_pin, stn::{
         future::Future,
         task::{Context, Poll},
-    },
-    let_pin,
+    }},
 };
 
 /// An interrupt handler.
@@ -33,7 +32,7 @@ pub trait Interrupt {
     /// );
     /// assert_eq!(ret, "Complete!");
     /// ```
-    fn block_on<F: Future>(f: F) -> <F as Future>::Output
+    fn block_on<F: Future>(mut f: F) -> <F as Future>::Output
     where
         Self: Send + Sync + Sized,
     {
@@ -45,7 +44,7 @@ pub trait Interrupt {
             }
         }
 
-        let_pin! { future_one = f; }
+        let mut f = new_pin(&mut f);
 
         let task = FutureTask::<Self>(Interrupt::new());
 
@@ -53,7 +52,7 @@ pub trait Interrupt {
         loop {
             let waker = FutureTask::into_waker(&task);
             let context = &mut Context::from_waker(&waker);
-            match future_one.as_mut().poll(context) {
+            match f.as_mut().poll(context) {
                 // Go back to waiting for interrupt.
                 Poll::Pending => task.0.wait_for(),
                 Poll::Ready(ret) => break ret,

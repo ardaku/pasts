@@ -46,13 +46,10 @@
 /// }
 ///
 /// async fn example() -> Select {
-///     pasts::let_pin! {
+///     pasts::tasks! {
 ///         a_fut = AlwaysPending();
 ///         b_fut = two();
 ///     };
-///
-///     let mut a_fut = Wait(a_fut);
-///     let mut b_fut = Wait(b_fut);
 ///
 ///     let ret = pasts::select!(
 ///         a = a_fut => {
@@ -78,7 +75,7 @@ macro_rules! select {
     ($($pattern:ident = $future:ident => $branch:expr $(,)?)*) => {
         {
             use $crate::{
-                let_pin, Task,
+                Task,
                 _pasts_hide::stn::{
                     future::Future,
                     pin::Pin,

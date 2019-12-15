@@ -40,3 +40,25 @@ where
         }
     }
 }
+
+/// Turn `Future`s into `Task::Wait`s.
+///
+/// ```rust
+/// #![forbid(unsafe_code)]
+///
+/// pasts::tasks! {
+///     task = async { "Hello, world" };
+/// };
+///
+/// assert!(task.is_wait());
+/// ```
+#[macro_export]
+macro_rules! tasks {
+    ($($x:ident = $y:expr);* $(;)?) => { $(
+        // Force move.
+        let mut $x = $y;
+        // Shadow to prevent future use.
+        #[allow(unused_mut)]
+        let mut $x = $crate::Task::Wait($crate::_pasts_hide::new_pin(&mut $x));
+    )* };
+}

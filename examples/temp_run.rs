@@ -37,7 +37,7 @@ async fn every_second() -> AsyncFn {
 }
 
 async fn example() -> Select {
-    pasts::let_pin! {
+    pasts::tasks! {
         a_fut = AlwaysPending();
         b_fut = two();
     };

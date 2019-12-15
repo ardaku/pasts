@@ -33,10 +33,9 @@
 macro_rules! join {
     ($($future:ident),* $(,)?) => {
         {
-            use $crate::{let_pin, Task::{Wait, Done}, select};
-            let_pin! { $($future = $future;)* };
+            use $crate::{tasks, Task::{Wait, Done}, select};
             let mut count = 0;
-            $( let mut $future = { count += 1; Wait($future) }; )*
+            tasks! { $($future = { count += 1; $future};)* };
             for _ in 0..count { select! { $( _ref = $future => {} ),* } }
             ($(match $future { Done(r) => r, Wait(_) => unreachable!(), } ),* )
         }
