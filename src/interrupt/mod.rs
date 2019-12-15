@@ -1,13 +1,14 @@
 use crate::_pasts_hide::stn::sync::atomic::{AtomicUsize, Ordering};
 
 #[cfg(feature = "std")]
-mod condvar;
+mod thread;
 #[cfg(feature = "std")]
-pub use self::condvar::CondvarInterrupt;
+pub use self::thread::ThreadInterrupt;
 
-/// A very inefficient interrupt (only use for testing).  On no_std, make your
-/// own `Interrupt` that waits for hardware interrupts, rather than continuously
-/// checking an atomic value in a loop.
+/// A very inefficient interrupt (only use for testing).
+///
+/// On no_std, make your own `Interrupt` that waits for hardware interrupts,
+/// rather than continuously checking an atomic value in a loop.
 pub struct AtomicInterrupt(AtomicUsize);
 
 impl crate::Interrupt for AtomicInterrupt {

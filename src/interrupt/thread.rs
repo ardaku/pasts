@@ -2,14 +2,15 @@
 
 use crate::_pasts_hide::stn::sync::{Condvar, Mutex};
 
-/// **std** feature required.  A thread interrupt.  If you can use std, use this
-/// `Interrupt`.
-pub struct CondvarInterrupt(Mutex<usize>, Condvar);
+/// **std** feature required.  An efficient thread interrupt.
+///
+/// If you can use std, use this `Interrupt`.
+pub struct ThreadInterrupt(Mutex<usize>, Condvar);
 
-impl crate::Interrupt for CondvarInterrupt {
+impl crate::Interrupt for ThreadInterrupt {
     // Initialize the shared data for the interrupt.
     fn new() -> Self {
-        CondvarInterrupt(Mutex::new(0), Condvar::new())
+        ThreadInterrupt(Mutex::new(0), Condvar::new())
     }
 
     // Interrupt blocking to wake up.

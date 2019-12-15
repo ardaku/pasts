@@ -1,5 +1,6 @@
 /// Poll multiple futures concurrently, and run the future that is ready first.
-/// Only usable inside async functions and blocks.
+///
+/// This macro is only usable inside async functions and blocks.
 ///
 /// The API is like a match statement:
 /// `match_pattern = pinnned_future => expression`.  The expression will be run

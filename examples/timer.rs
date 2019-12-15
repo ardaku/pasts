@@ -2,12 +2,14 @@
 
 use pasts::prelude::*;
 
-mod timerfuture;
+async fn timer_future(duration: std::time::Duration) {
+    pasts::spawn_blocking(move || std::thread::sleep(duration)).await
+}
 
 fn main() {
-    let ret = pasts::CondvarInterrupt::block_on(async {
+    let ret = pasts::ThreadInterrupt::block_on(async {
         println!("Waiting 2 seconds…");
-        timerfuture::TimerFuture::new(std::time::Duration::new(2, 0)).await;
+        timer_future(std::time::Duration::new(2, 0)).await;
         println!("Waited 2 seconds.");
         "Complete!"
     });

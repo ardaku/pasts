@@ -1,41 +1,51 @@
-use crate::_pasts_hide::stn::{
+/*use crate::_pasts_hide::stn::{
     thread, vec, vec::Vec
 };
 
 struct Thread {
-    // Whether or not thread is busy
-    busy: bool,
-    //
-    
-    //
-    
 }
 
 /// **std** feature required.  A thread pool to offload expensive tasks to from
 /// the async loop.
 pub struct ThreadPool {
     // Whether or not thread is busy, thread handle.
-    threads: Vec<(bool, )>,
+    threads: Vec<Thread>,
+    // Available thread indices.
+    unused: Vec<usize>,
 }
 
 // A thread that can run futures.
-fn futures_thread() {
-    loop {
-        
-    }
-}
-
 impl ThreadPool {
-    /// Spawn `count` threads for offloading expensive tasks to from the async
-    /// loop.
-    pub fn new(count: usize) -> Self {
-        for i in 0..count {
-            thread::spawn(|| {});
+    /// New thead pool for offloading expensive tasks to from the async loop.
+    pub fn new() -> Self {
+        // Start with 2 threads, we can add more if needed.
+        Self::with_capacity(2)
+    }
+
+    /// New thead pool for offloading expensive tasks to from the async loop.
+    pub fn with_capacity(num: usize) -> Self {
+        let mut threads: Vec::with_capacity(num);
+        let mut unused: Vec::with_capacity(num);
+
+        for i in 0..num {
+            unused.push(i);
+
+            thread.push(Thread {
+                busy: false,
+            });
+
+            thread::spawn(move || {
+                loop {
+                }
+            });
         }
 
-        ThreadPool {
-            threads: vec![(false, ); count],
-        }
+        ThreadPool { threads,  }
+    }
+
+    /// Spawn a blocking call as a task on this thread pool.
+    pub fn spawn() {
+        
     }
 }
 
@@ -43,4 +53,4 @@ impl Drop for ThreadPool {
     fn drop(&mut self) {
         
     }
-}
+}*/

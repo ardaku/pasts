@@ -1,12 +1,9 @@
-//! This is an implementation of a timer future for testing purposes.
-
-use std::{
+use crate::_pasts_hide::stn::{
     future::Future,
     pin::Pin,
     sync::{Arc, Mutex},
     task::{Context, Poll, Waker},
     thread,
-    time::Duration,
 };
 
 struct SharedState {
@@ -14,10 +11,7 @@ struct SharedState {
     waker: Option<Waker>,
 }
 
-/// A general purpose future that can be constructed from a blocking function.
-/// The function will be run on a separate thread in a dynamically sized thread
-/// pool.
-pub struct ThreadFuture<R> {
+struct ThreadFuture<R> {
     shared_state: Arc<Mutex<SharedState>>,
     handle: Option<thread::JoinHandle<R>>,
 }
@@ -67,7 +61,13 @@ impl<R> ThreadFuture<R> where R: Send + 'static {
     }
 }
 
-/// Get a timer future.
-pub async fn timer_future(duration: Duration) {
-    ThreadFuture::new(move || thread::sleep(duration)).await
+/// **std** feature required.  Construct a future from a blocking function.  The
+/// function will be run on a separate thread in a dynamically sized thread pool.
+pub fn spawn_blocking<F, R>(function: F) -> impl Future<Output = R>
+where
+    F: FnOnce() -> R,
+    F: Send + 'static,
+    R: Send + 'static
+{
+    ThreadFuture::new(function)
 }

@@ -43,7 +43,7 @@ mod tasks;
 mod run;
 
 #[cfg(feature = "std")]
-mod thread_pool;
+mod spawner;
 
 /// Re-export of the most common things.
 pub mod prelude;
@@ -53,6 +53,6 @@ pub use interrupt::AtomicInterrupt;
 pub use tasks::Task;
 
 #[cfg(feature = "std")]
-pub use interrupt::CondvarInterrupt;
+pub use interrupt::ThreadInterrupt;
 #[cfg(feature = "std")]
-pub use thread_pool::ThreadPool;
+pub use spawner::spawn_blocking;
