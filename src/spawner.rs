@@ -1,18 +1,17 @@
 use crate::_pasts_hide::stn::{
     future::Future,
     pin::Pin,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}},
     task::{Context, Poll, Waker},
     thread,
 };
 
 struct SharedState {
-    completed: bool,
     waker: Option<Waker>,
 }
 
 struct ThreadFuture<R> {
-    shared_state: Arc<Mutex<SharedState>>,
+    shared_state: Arc<(Mutex<SharedState>, AtomicBool)>,
     handle: Option<thread::JoinHandle<R>>,
 }
 
@@ -22,16 +21,14 @@ impl<R> Future for ThreadFuture<R> {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>)
         -> Poll<Self::Output>
     {
-        {
-            let mut shared_state = self.shared_state.lock().unwrap();
+        if !self.shared_state.1.load(Ordering::Relaxed) {
+            let mut shared_state = self.shared_state.0.lock().unwrap();
 
-            if !shared_state.completed {
-                shared_state.waker = Some(cx.waker().clone());
-                return Poll::Pending;
-            }
+            shared_state.waker = Some(cx.waker().clone());
+            Poll::Pending
+        } else {
+            Poll::Ready(self.handle.take().unwrap().join().unwrap())
         }
-
-        Poll::Ready(self.handle.take().unwrap().join().unwrap())
     }
 }
 
@@ -41,16 +38,15 @@ impl<R> ThreadFuture<R> where R: Send + 'static {
         F: FnOnce() -> R,
         F: Send + 'static,
     {
-        let shared_state = Arc::new(Mutex::new(SharedState {
-            completed: false,
+        let shared_state = Arc::new((Mutex::new(SharedState {
             waker: None,
-        }));
+        }), AtomicBool::new(false)));
 
         let thread_shared_state = shared_state.clone();
         let handle = Some(thread::spawn(move || {
             let ret = function();
-            let mut shared_state = thread_shared_state.lock().unwrap();
-            shared_state.completed = true;
+            let mut shared_state = thread_shared_state.0.lock().unwrap();
+            thread_shared_state.1.store(true, Ordering::Relaxed);
             if let Some(waker) = shared_state.waker.take() {
                 waker.wake()
             }

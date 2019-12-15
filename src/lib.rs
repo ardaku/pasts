@@ -40,7 +40,7 @@ mod select;
 mod tasks;
 mod run;
 
-/// Re-export of the most common things.
+/// Re-export of traits.
 pub mod prelude;
 
 pub use execute::Interrupt;
