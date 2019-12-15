@@ -42,6 +42,9 @@ mod select;
 mod tasks;
 mod run;
 
+#[cfg(feature = "std")]
+mod thread_pool;
+
 /// Re-export of the most common things.
 pub mod prelude;
 
@@ -51,3 +54,5 @@ pub use tasks::Task;
 
 #[cfg(feature = "std")]
 pub use interrupt::CondvarInterrupt;
+#[cfg(feature = "std")]
+pub use thread_pool::ThreadPool;

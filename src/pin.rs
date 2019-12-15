@@ -1,6 +1,8 @@
 /// Pin a variable to a location in the stack.
 ///
 /// ```rust
+/// #![forbid(unsafe_code)]
+///
 /// pasts::let_pin! {
 ///     var = "Hello, world";
 /// };

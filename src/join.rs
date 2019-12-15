@@ -5,6 +5,8 @@
 /// `join!(a, b)` faster than the alternative `(a.await, b.await)`.
 ///
 /// ```rust
+/// #![forbid(unsafe_code)]
+///
 /// use pasts::prelude::*;
 ///
 /// async fn one() -> char {

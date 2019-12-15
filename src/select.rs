@@ -14,6 +14,8 @@
 ///
 /// # Example
 /// ```rust
+/// #![forbid(unsafe_code)]
+///
 /// use core::{
 ///     pin::Pin,
 ///     future::Future,

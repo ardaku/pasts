@@ -33,10 +33,13 @@ macro_rules! run {
     ($interrupt:ty, $($future:expr),* $(,)?) => {
         {
             use $crate::{let_pin, Task::{Wait, Done}, select};
-            let_pin! { $($future = $future;)* };
-            let mut count = 0;
-            $( let mut $future = { count += 1; Wait($future) }; )*
-            for _ in 0..count { select! { $( _ref = $future => {} ),* } }
+            $(
+                let_pin! { $future = $future; };
+                let mut $future = { Wait($future) };
+            )*
+            loop { select! { $( _ref = $future => {
+                // TODO: Re-spawn future.
+            } ),* } }
             ($(match $future { Done(r) => r, Wait(_) => unreachable!(), } ),* )
         }
     };

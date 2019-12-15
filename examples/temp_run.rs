@@ -1,10 +1,12 @@
-use core::{
+/*use core::{
     pin::Pin,
     future::Future,
     task::{Poll, Context},
 };
 
 use pasts::prelude::*;
+
+type AsyncFn = async fn() -> AsyncFn;
 
 #[derive(Debug, PartialEq)]
 enum Select {
@@ -22,8 +24,16 @@ impl Future for AlwaysPending {
     }
 }
 
-async fn two() -> char {
-    'c'
+async fn always_pending() -> AsyncFn {
+    AlwaysPending().await
+
+    always_pending
+}
+
+async fn every_second() -> AsyncFn {
+    // TODO
+
+    every_second
 }
 
 async fn example() -> Select {
@@ -38,20 +48,23 @@ async fn example() -> Select {
     let ret = pasts::select!(
         a = a_fut => {
             println!("This will never print!");
+            
             Select::One(a)
         }
-        b = b_fut => Select::Two(b)
+        b = b_fut => {
+            Select::Two(b)
+        }
     );
 
     assert!(a_fut.is_wait());
     assert!(b_fut.is_done());
 
     ret
-}
+}*/
 
 fn main() {
-    assert_eq!(
+/*    assert_eq!(
         pasts::CondvarInterrupt::block_on(example()),
         Select::Two('c')
-    );
+    );*/
 }
