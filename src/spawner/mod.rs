@@ -53,13 +53,14 @@ impl<R> Thread<R> {
     }
 }
 
-struct ThreadFuture {
+struct ThreadFuture<R> {
     shared_state: Arc<(Mutex<Option<Waker>>, AtomicBool)>,
     handle: Option<thread_pool::ThreadHandle>,
+    ret: Arc<Mutex<Option<R>>>,
 }
 
-impl Future for ThreadFuture {
-    type Output = (); // R;
+impl<R> Future for ThreadFuture<R> {
+    type Output = R;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>)
         -> Poll<Self::Output>
@@ -70,31 +71,38 @@ impl Future for ThreadFuture {
             *shared_state = Some(cx.waker().clone());
             Poll::Pending
         } else {
-            Poll::Ready(self.handle.take().unwrap().join())
+            Poll::Ready({
+                self.handle.take().unwrap().join();
+                self.ret.lock().unwrap().take().unwrap()
+            })
         }
     }
 }
 
-impl ThreadFuture {
+impl<R> ThreadFuture<R> {
     pub fn new<F>(function: F) -> Self
     where
-        F: FnOnce(),
+        F: FnOnce() -> R,
         F: Send + 'static,
+        R: Send + 'static,
     {
         let shared_state: Arc<(Mutex<Option<Waker>>, AtomicBool)> = Arc::new((Mutex::new(None), AtomicBool::new(false)));
 
         let thread_shared_state = shared_state.clone();
+
+        let ret = Arc::new(Mutex::new(None));
+        let thread_ret = ret.clone();
+
         let handle = Some(thread_pool().spawn(move || {
-            let ret = function();
+            *thread_ret.lock().unwrap() = Some(function());
             let mut shared_state = thread_shared_state.0.lock().unwrap();
             thread_shared_state.1.store(true, Ordering::Relaxed);
             if let Some(waker) = shared_state.take() {
                 waker.wake()
             }
-            ret
         }));
 
-        ThreadFuture { shared_state, handle }
+        ThreadFuture { shared_state, handle, ret }
     }
 }
 
@@ -117,11 +125,11 @@ fn thread_pool() -> Arc<ThreadPool> {
 
 /// **std** feature required.  Construct a future from a blocking function.  The
 /// function will be run on a separate thread in a dynamically sized thread pool.
-pub fn spawn_blocking<F>(function: F) -> impl Future<Output = ()>
+pub fn spawn_blocking<F, R>(function: F) -> impl Future<Output = R>
 where
-    F: FnOnce(),
+    F: FnOnce() -> R,
     F: Send + 'static,
-//    R: Send + 'static
+    R: Send + 'static
 {
     ThreadFuture::new(function)
 }
