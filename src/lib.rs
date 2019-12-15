@@ -36,9 +36,9 @@ pub mod _pasts_hide {
 
 mod execute;
 mod join;
+mod run;
 mod select;
 mod tasks;
-mod run;
 
 /// Re-export of traits.
 pub mod prelude;
@@ -47,11 +47,11 @@ pub use execute::Interrupt;
 pub use tasks::Task;
 
 #[cfg(feature = "std")]
-mod thread_interrupt;
-#[cfg(feature = "std")]
 mod spawner;
+#[cfg(feature = "std")]
+mod thread_interrupt;
 
 #[cfg(feature = "std")]
-pub use thread_interrupt::ThreadInterrupt;
-#[cfg(feature = "std")]
 pub use spawner::spawn_blocking;
+#[cfg(feature = "std")]
+pub use thread_interrupt::ThreadInterrupt;

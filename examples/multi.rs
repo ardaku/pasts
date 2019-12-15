@@ -10,7 +10,8 @@ async fn timer_future(duration: u64) -> Length {
         std::thread::sleep(std::time::Duration::new(duration, 0));
         println!("Slept for {}", duration);
         Length(duration)
-    }).await
+    })
+    .await
 }
 
 fn main() {

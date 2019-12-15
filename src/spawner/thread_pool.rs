@@ -1,8 +1,8 @@
 use crate::_pasts_hide::stn::{
-    sync::{Arc, Mutex, Condvar},
     boxed::Box,
-    vec, vec::Vec,
-    thread,
+    sync::{Arc, Condvar, Mutex},
+    thread, vec,
+    vec::Vec,
 };
 
 // A thread that may or may not be running a task for the async loop.
@@ -30,27 +30,24 @@ pub(super) struct ThreadHandle {
 
 impl ThreadHandle {
     pub(super) fn join(self) {
-        let ret = loop {
+        loop {
             // Lock the mutex.
             let mut guard = self.join.mutex.lock().unwrap();
 
             // Return if task has completed.
-            if let Some(ret) = guard.take() {
-                break ret;
+            if guard.take().is_some() {
+                break;
             }
 
             // Wait until not zero (unlock mutex).
             let _guard = self.join.condvar.wait(guard).unwrap();
-        };
+        }
 
         // Add back to the stack, as task has completed.
         let pool = self.pool.clone();
         let mut stack = pool.available.lock().unwrap();
 
         (*stack).push(self);
-
-        // Return
-        ret
     }
 }
 

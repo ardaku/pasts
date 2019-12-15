@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use core::sync::{atomic::{AtomicUsize, Ordering}};
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 use pasts::prelude::*;
 

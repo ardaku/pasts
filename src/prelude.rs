@@ -1,4 +1,1 @@
-pub use crate::{
-    // Re-export traits.
-    Interrupt,
-};
+pub use crate::Interrupt;

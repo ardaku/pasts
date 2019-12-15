@@ -48,7 +48,7 @@ async fn example() -> Select {
     let ret = pasts::select!(
         a = a_fut => {
             println!("This will never print!");
-            
+
             Select::One(a)
         }
         b = b_fut => {
@@ -63,7 +63,7 @@ async fn example() -> Select {
 }*/
 
 fn main() {
-/*    assert_eq!(
+    /*    assert_eq!(
         pasts::CondvarInterrupt::block_on(example()),
         Select::Two('c')
     );*/

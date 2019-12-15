@@ -1,12 +1,13 @@
 use crate::_pasts_hide::stn::{
     future::Future,
+    mem::MaybeUninit,
     pin::Pin,
-    sync::{Arc, Condvar, Mutex, Once, atomic::{AtomicBool, Ordering}},
-    task::{Context, Poll, Waker},
-    mem::{MaybeUninit},
-    vec::Vec, vec,
-    marker::PhantomData,
     ptr,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex, Once,
+    },
+    task::{Context, Poll, Waker},
 };
 
 mod thread_pool;
@@ -16,41 +17,6 @@ use thread_pool::ThreadPool;
 // A task on a thread
 trait ThreadTask {
     type Output;
-
-    
-}
-
-/*enum ThreadState<R> {
-    Working(&'static dyn Fn()),
-    Done(R),
-}*/
-
-struct Thread<R> {
-    mutex: Mutex<Option<R>>,
-    condvar: Condvar,
-}
-
-// Waiting on thread for tasks.
-struct TaskWaiter<R> {
-    mutex: Mutex<Option<R>>,
-    condvar: Condvar,
-}
-
-impl<R> Thread<R> {
-    fn join(&self) -> R {
-        loop {
-            // Lock the mutex.
-            let mut guard = self.mutex.lock().unwrap();
-
-            // Return if task has completed.
-            if let Some(ret) = guard.take() {
-                return ret;
-            }
-
-            // Wait until not zero (unlock mutex).
-            let _guard = self.condvar.wait(guard).unwrap();
-        }
-    }
 }
 
 struct ThreadFuture<R> {
@@ -62,9 +28,10 @@ struct ThreadFuture<R> {
 impl<R> Future for ThreadFuture<R> {
     type Output = R;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>)
-        -> Poll<Self::Output>
-    {
+    fn poll(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Self::Output> {
         if !self.shared_state.1.load(Ordering::Relaxed) {
             let mut shared_state = self.shared_state.0.lock().unwrap();
 
@@ -86,7 +53,8 @@ impl<R> ThreadFuture<R> {
         F: Send + 'static,
         R: Send + 'static,
     {
-        let shared_state: Arc<(Mutex<Option<Waker>>, AtomicBool)> = Arc::new((Mutex::new(None), AtomicBool::new(false)));
+        let shared_state: Arc<(Mutex<Option<Waker>>, AtomicBool)> =
+            Arc::new((Mutex::new(None), AtomicBool::new(false)));
 
         let thread_shared_state = shared_state.clone();
 
@@ -102,7 +70,11 @@ impl<R> ThreadFuture<R> {
             }
         }));
 
-        ThreadFuture { shared_state, handle, ret }
+        ThreadFuture {
+            shared_state,
+            handle,
+            ret,
+        }
     }
 }
 
@@ -112,15 +84,11 @@ static START: Once = Once::new();
 // Return the global thread pool.
 #[allow(unsafe_code)]
 fn thread_pool() -> Arc<ThreadPool> {
-    START.call_once(|| {
-        unsafe {
-            ptr::write(THREAD_POOL.as_mut_ptr(), ThreadPool::new());
-        }
+    START.call_once(|| unsafe {
+        ptr::write(THREAD_POOL.as_mut_ptr(), ThreadPool::new());
     });
 
-    unsafe {
-        (*THREAD_POOL.as_ptr()).clone()
-    }
+    unsafe { (*THREAD_POOL.as_ptr()).clone() }
 }
 
 /// **std** feature required.  Construct a future from a blocking function.  The
@@ -129,7 +97,7 @@ pub fn spawn_blocking<F, R>(function: F) -> impl Future<Output = R>
 where
     F: FnOnce() -> R,
     F: Send + 'static,
-    R: Send + 'static
+    R: Send + 'static,
 {
     ThreadFuture::new(function)
 }

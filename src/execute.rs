@@ -1,9 +1,10 @@
-use crate::{
-    _pasts_hide::{new_pin, stn::{
+use crate::_pasts_hide::{
+    new_pin,
+    stn::{
         future::Future,
         task::{Context, Poll},
         task::{RawWaker, RawWakerVTable, Waker},
-    }},
+    },
 };
 
 /// An interrupt handler.
@@ -69,5 +70,7 @@ fn waker<I: Interrupt>(interrupt: *const I) -> Waker {
         &RawWakerVTable::new(clone::<I>, wake::<I>, ref_wake::<I>, drop::<I>)
     }
 
-    unsafe { Waker::from_raw(RawWaker::new(interrupt as *const (), vtable::<I>())) }
+    unsafe {
+        Waker::from_raw(RawWaker::new(interrupt as *const (), vtable::<I>()))
+    }
 }
