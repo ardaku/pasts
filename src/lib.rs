@@ -35,24 +35,24 @@ pub mod _pasts_hide {
 }
 
 mod execute;
-mod interrupt;
 mod join;
 mod pin;
 mod select;
 mod tasks;
 mod run;
 
-#[cfg(feature = "std")]
-mod spawner;
-
 /// Re-export of the most common things.
 pub mod prelude;
 
 pub use execute::Interrupt;
-pub use interrupt::AtomicInterrupt;
 pub use tasks::Task;
 
 #[cfg(feature = "std")]
-pub use interrupt::ThreadInterrupt;
+mod thread_interrupt;
+#[cfg(feature = "std")]
+mod spawner;
+
+#[cfg(feature = "std")]
+pub use thread_interrupt::ThreadInterrupt;
 #[cfg(feature = "std")]
 pub use spawner::spawn_blocking;

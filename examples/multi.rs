@@ -2,27 +2,22 @@
 
 use pasts::prelude::*;
 
-mod timerfuture;
-
 #[derive(Debug)]
 struct Length(u64);
 
-impl Drop for Length {
-    fn drop(&mut self) {
-        println!("Dropping {}", self.0);
-    }
-}
-
-async fn timer(how_long: u64) -> Length {
-    timerfuture::TimerFuture::new(std::time::Duration::new(how_long, 0)).await;
-    Length(how_long)
+async fn timer_future(duration: u64) -> Length {
+    pasts::spawn_blocking(move || {
+        std::thread::sleep(std::time::Duration::new(duration, 0));
+        println!("Slept for {}", duration);
+        Length(duration)
+    }).await
 }
 
 fn main() {
-    let one = timer(1);
-    let two = timer(2);
+    let one = timer_future(1);
+    let two = timer_future(2);
 
-    let ret = pasts::CondvarInterrupt::block_on(async {
+    let ret = pasts::ThreadInterrupt::block_on(async {
         // This will only take two seconds, rather than `(one.await, two.await)`
         // which will take three.
         pasts::join!(one, two)
