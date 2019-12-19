@@ -69,9 +69,6 @@ mod run;
 mod select;
 mod tasks;
 
-/// Re-export of traits.
-pub mod prelude;
-
 pub use execute::Interrupt;
 pub use tasks::Task;
 

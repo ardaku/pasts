@@ -23,8 +23,6 @@
 ///     task::{Poll, Context},
 /// };
 ///
-/// use pasts::prelude::*;
-///
 /// #[derive(Debug, PartialEq)]
 /// enum Select {
 ///     One(i32),
@@ -66,7 +64,7 @@
 /// }
 ///
 /// assert_eq!(
-///     pasts::ThreadInterrupt::block_on(example()),
+///     <pasts::ThreadInterrupt as pasts::Interrupt>::block_on(example()),
 ///     Select::Two('c')
 /// );
 /// ```

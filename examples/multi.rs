@@ -1,7 +1,5 @@
 #![forbid(unsafe_code)]
 
-use pasts::prelude::*;
-
 #[derive(Debug)]
 struct Length(u64);
 
@@ -18,7 +16,7 @@ fn main() {
     let one = timer_future(1);
     let two = timer_future(2);
 
-    let ret = pasts::ThreadInterrupt::block_on(async {
+    let ret = <pasts::ThreadInterrupt as pasts::Interrupt>::block_on(async {
         // This will only take two seconds, rather than `(one.await, two.await)`
         // which will take three.
         pasts::join!(one, two)
