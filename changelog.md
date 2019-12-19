@@ -1,0 +1,27 @@
+# Changelog
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://code.plopgrizzly.com/semver/).
+
+## [Unreleased]
+### Added
+### Fixed
+### Changed
+### Removed
+
+## [0.0.1] - 2019-12-19
+### Added
+- `join!()` similar to macro from `futures` crate.
+- `select!()` similar to macro from `futures` crate.
+- `run!()` a macro that builds an asynchronous loop.
+- `task!()` a pinning macro, which unlike `pin-util`'s `pin_mut!()` doesn't
+  insert unsafe code.
+- `Task` - an abstraction over a pinned future, that disallows attempting to run
+  futures after completion.
+- `ThreadInterrupt` - a condvar-based interrupt (requires std library feature to
+  be enabled).
+- `Interrupt` - a safe way to define asynchronous waking in the executor.
+- `spawn_blocking` - like `tokio`'s `spawn_blocking`, creates a future from a
+  closure by running it on a dynamically sized thread pool (also requires std
+  library feature to be enabled).

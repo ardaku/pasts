@@ -7,6 +7,7 @@ edition = "2018"
 license = "MIT / BSL-1.0"
 description = "Minimal and simpler alternative to the futures crate."
 documentation = "https://docs.rs/pasts"
+homepage = "https://github.com/lordaldaron/pasts/changelog.md"
 repository = "https://github.com/lordaldaron/pasts"
 readme = "README.md"
 keywords = ["futures", "platform-agnostic", "cross-platform", "io", "interrupt"]
