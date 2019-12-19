@@ -7,16 +7,16 @@ edition = "2018"
 license = "MIT / BSL-1.0"
 description = "Minimal and simpler alternative to the futures crate."
 documentation = "https://docs.rs/pasts"
-homepage = "https://github.com/lordaldaron/pasts/changelog.md"
-repository = "https://github.com/lordaldaron/pasts"
+homepage = "https://github.com/LordAldaron/pasts/blob/master/changelog.md"
+repository = "https://github.com/LordAldaron/pasts"
 readme = "README.md"
 keywords = ["futures", "platform-agnostic", "cross-platform", "io", "interrupt"]
 categories = ["asynchronous", "embedded", "no-std", "rust-patterns"]
 
 [badges]
-travis-ci = { repository = "lordaldaron/pasts" }
-is-it-maintained-issue-resolution = { repository = "lordaldaron/pasts" }
-is-it-maintained-open-issues = { repository = "lordaldaron/pasts" }
+travis-ci = { repository = "LordAldaron/pasts" }
+is-it-maintained-issue-resolution = { repository = "LordAldaron/pasts" }
+is-it-maintained-open-issues = { repository = "LordAldaron/pasts" }
 maintenance = { status = "actively-developed" }
 
 [dependencies]
