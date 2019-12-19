@@ -4,13 +4,11 @@ use crate::_pasts_hide::stn::{
     task::{Context, Poll},
 };
 
-/// A task that is either not yet ready, or has completed.
+/// A task that is either working or has completed.
 pub struct Task<'a, F, O>
 where
     F: Future<Output = O>,
 {
-    /// Return value of future.  FIXME: Redundant
-    value: Option<O>,
     /// Future waiting on.
     future: Pin<&'a mut F>,
     /// True if future is still valid.
@@ -24,7 +22,6 @@ where
     // Create a new task (in Wait state) from a pinned future.
     pub(crate) fn new(future: Pin<&'a mut F>) -> Self {
         Task {
-            value: None,
             future,
             valid: true,
         }
@@ -59,16 +56,10 @@ where
         self.valid
     }
 
-    /// Return true if future has returned.
+    /// Return true if future has completed.
     #[inline(always)]
     pub fn is_done(&self) -> bool {
         !self.is_wait()
-    }
-
-    /// Get return value of completed task if done, otherwise returns `None`.
-    #[inline(always)]
-    pub fn take(&mut self) -> Option<O> {
-        self.value.take()
     }
 }
 
