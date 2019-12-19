@@ -32,7 +32,7 @@ macro_rules! join {
     ($($future:ident),* $(,)?) => {
         {
             use $crate::{
-                tasks, select, _pasts_hide::{stn::mem::MaybeUninit, join}
+                select, _pasts_hide::{stn::mem::MaybeUninit, join}
             };
             let mut count = 0;
             $(

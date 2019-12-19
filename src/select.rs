@@ -44,10 +44,8 @@
 /// }
 ///
 /// async fn example() -> Select {
-///     pasts::tasks! {
-///         a_fut = AlwaysPending();
-///         b_fut = two();
-///     };
+///     pasts::task!(a_fut = AlwaysPending());
+///     pasts::task!(b_fut = two());
 ///
 ///     let ret = pasts::select!(
 ///         a = a_fut => {

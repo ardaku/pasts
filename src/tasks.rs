@@ -63,24 +63,22 @@ where
     }
 }
 
-/// Turn `Future`s into `Task`s.
+/// Turn a `Future` into a `Task` (abstraction over pinned future).
 ///
 /// ```rust
 /// #![forbid(unsafe_code)]
 ///
-/// pasts::tasks! {
-///     task = async { "Hello, world" };
-/// };
+/// pasts::task!(task = async { "Hello, world" });
 ///
 /// assert!(task.is_wait());
 /// ```
 #[macro_export]
-macro_rules! tasks {
-    ($($x:ident = $y:expr);* $(;)?) => { $(
+macro_rules! task {
+    ($x:ident = $y:expr) => {
         // Force move.
         let mut $x = $y;
         // Shadow to prevent future use.
         #[allow(unused_mut)]
         let mut $x = $crate::_pasts_hide::new_task(&mut $x).0;
-    )* };
+    };
 }
