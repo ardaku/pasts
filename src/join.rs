@@ -9,8 +9,6 @@
 /// ```rust
 /// #![forbid(unsafe_code)]
 ///
-/// use pasts::Interrupt;
-///
 /// async fn one() -> char {
 ///     'c'
 /// }
@@ -27,7 +25,7 @@
 ///     assert_eq!(ret, ('c', 'a'));
 /// }
 ///
-/// pasts::ThreadInterrupt::block_on(example());
+/// <pasts::ThreadInterrupt as pasts::Interrupt>::block_on(example());
 /// ```
 #[macro_export]
 macro_rules! join {
