@@ -19,7 +19,7 @@ async fn two(context: &mut usize) {
 async fn example() {
     let mut context: usize = 0;
 
-    pasts::run!(true, context, one, two)
+    pasts::run!(context while true; one, two)
 }
 
 fn main() {

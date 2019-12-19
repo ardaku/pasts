@@ -28,14 +28,14 @@
 /// async fn example() {
 ///     let mut context: usize = 0;
 ///
-///     pasts::run!(true, context, one, two)
+///     pasts::run!(context while true; one, two)
 /// }
 ///
 /// <pasts::ThreadInterrupt as pasts::Interrupt>::block_on(example());
 /// ```
 #[macro_export]
 macro_rules! run {
-    ($exit:expr, $context:ident, $($generator:ident),* $(,)?) => {
+    ($context:ident while $exit:expr; $($generator:ident),* $(,)?) => {
         {
             use $crate::_pasts_hide::{new_task, ref_from_ptr};
 
