@@ -28,7 +28,7 @@
 /// async fn example() {
 ///     let mut context: usize = 0;
 ///
-///     pasts::run!(context while true; one, two)
+///     pasts::run!(context while context < 10; one, two)
 /// }
 ///
 /// <pasts::ThreadInterrupt as pasts::Interrupt>::block_on(example());
