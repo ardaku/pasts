@@ -63,7 +63,8 @@ where
     }
 }
 
-/// Turn a `Future` into a `Task` (abstraction over pinned future).
+/// Turn a `Future` into a `Task` (abstraction over pinned future).  Use with
+/// [`select!()`](macro.select.html).
 ///
 /// ```rust
 /// #![forbid(unsafe_code)]

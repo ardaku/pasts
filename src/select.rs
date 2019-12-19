@@ -13,6 +13,8 @@
 /// This is the lowest level async control structure.  All other async control
 /// structures can be built on top of [`select!()`](macro.select.html).
 ///
+/// Note: If possible, use [`run!()`](macro.run.html) instead.
+///
 /// # Example
 /// ```rust
 /// #![forbid(unsafe_code)]
