@@ -23,14 +23,23 @@ pub mod _pasts_hide {
     #[cfg(not(feature = "std"))]
     pub use core as stn;
 
-    /// Not actually safe pinning only for use in `tasks!()`.
+    #[inline(always)]
+    pub fn new_task<F, O>(
+        future: &mut F,
+    ) -> (crate::Task<F, O>, stn::mem::MaybeUninit<O>)
+    where
+        F: self::stn::future::Future<Output = O>,
+    {
+        (
+            crate::Task::new(crate::tasks::new_pin(future)),
+            stn::mem::MaybeUninit::uninit(),
+        )
+    }
+
     #[allow(unsafe_code)]
     #[inline(always)]
-    pub fn new_pin<P>(pointer: P) -> self::stn::pin::Pin<P>
-    where
-        P: self::stn::ops::Deref,
-    {
-        unsafe { self::stn::pin::Pin::new_unchecked(pointer) }
+    pub fn join<O>(output: stn::mem::MaybeUninit<O>) -> O {
+        unsafe { output.assume_init() }
     }
 }
 

@@ -33,11 +33,25 @@
 macro_rules! join {
     ($($future:ident),* $(,)?) => {
         {
-            use $crate::{tasks, Task::{Wait, Done}, select};
+            use $crate::{
+                tasks, select, _pasts_hide::{stn::mem::MaybeUninit, join}
+            };
             let mut count = 0;
-            tasks! { $($future = { count += 1; $future};)* };
-            for _ in 0..count { select! { $( _ref = $future => {} ),* } }
-            ($(match $future { Done(r) => r, Wait(_) => unreachable!(), } ),* )
+            $(
+                // Force move.
+                let mut $future = $future;
+                // Shadow to prevent future use.
+                #[allow(unused_mut)]
+                let mut $future = $crate::_pasts_hide::new_task(&mut $future);
+
+                count += 1;
+            )*
+            for _ in 0..count {
+                select! {
+                    $( ret = $future.0 => $future.1 = MaybeUninit::new(ret) ),*
+                }
+            }
+            ($(join($future.1)),*)
         }
     };
 }

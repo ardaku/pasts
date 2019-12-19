@@ -1,70 +1,34 @@
-/*use core::{
-    pin::Pin,
-    future::Future,
-    task::{Poll, Context},
-};
+#![forbid(unsafe_code)]
 
 use pasts::prelude::*;
 
-type AsyncFn = async fn() -> AsyncFn;
-
-#[derive(Debug, PartialEq)]
-enum Select {
-    One(i32),
-    Two(char),
+async fn timer_future(duration: std::time::Duration) {
+    pasts::spawn_blocking(move || std::thread::sleep(duration)).await
 }
 
-pub struct AlwaysPending();
+async fn example() -> ! {
+    let every_one = || timer_future(std::time::Duration::new(1, 0));
+    let every_two = || timer_future(std::time::Duration::new(2, 0));
 
-impl Future for AlwaysPending {
-    type Output = i32;
+    pasts::tasks! {
+        a_fut = every_one();
+        b_fut = every_two();
+    };
 
-    fn poll(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<i32> {
-        Poll::Pending
+    loop {
+        pasts::select!(
+            a = a_fut => {
+                println!("1 Second has passed");
+                a_fut.set(every_one());
+            },
+            b = b_fut => {
+                println!("2 Seconds have passed");
+                b_fut.set(every_two());
+            },
+        );
     }
 }
 
-async fn always_pending() -> AsyncFn {
-    AlwaysPending().await
-
-    always_pending
-}
-
-async fn every_second() -> AsyncFn {
-    // TODO
-
-    every_second
-}
-
-async fn example() -> Select {
-    pasts::tasks! {
-        a_fut = AlwaysPending();
-        b_fut = two();
-    };
-
-    let mut a_fut = Wait(a_fut);
-    let mut b_fut = Wait(b_fut);
-
-    let ret = pasts::select!(
-        a = a_fut => {
-            println!("This will never print!");
-
-            Select::One(a)
-        }
-        b = b_fut => {
-            Select::Two(b)
-        }
-    );
-
-    assert!(a_fut.is_wait());
-    assert!(b_fut.is_done());
-
-    ret
-}*/
-
 fn main() {
-    /*    assert_eq!(
-        pasts::CondvarInterrupt::block_on(example()),
-        Select::Two('c')
-    );*/
+    pasts::ThreadInterrupt::block_on(example());
 }

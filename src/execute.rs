@@ -1,10 +1,7 @@
-use crate::_pasts_hide::{
-    new_pin,
-    stn::{
-        future::Future,
-        task::{Context, Poll},
-        task::{RawWaker, RawWakerVTable, Waker},
-    },
+use crate::_pasts_hide::stn::{
+    future::Future,
+    task::{Context, Poll},
+    task::{RawWaker, RawWakerVTable, Waker},
 };
 
 /// An interrupt handler.
@@ -31,7 +28,7 @@ pub trait Interrupt: Send + Sync + Sized {
     /// assert_eq!(ret, "Complete!");
     /// ```
     fn block_on<F: Future>(mut f: F) -> <F as Future>::Output {
-        let mut f = new_pin(&mut f);
+        let mut f = crate::tasks::new_pin(&mut f);
 
         let task: Self = Interrupt::new();
 

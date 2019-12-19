@@ -72,7 +72,7 @@
 /// ```
 #[macro_export]
 macro_rules! select {
-    ($($pattern:ident = $future:ident => $branch:expr $(,)?)*) => {
+    ($($pattern:ident = $future:expr => $branch:expr $(,)?)*) => {
         {
             use $crate::{
                 Task,
@@ -82,26 +82,23 @@ macro_rules! select {
                     task::{Poll, Context},
                 },
             };
-            struct Selector<'a, T> {
+            struct __Pasts_Selector<'a, T> {
                 closure: &'a mut dyn FnMut(&mut Context<'_>) -> Poll<T>,
             }
-            impl<'a, T> Future for Selector<'a, T> {
+            impl<'a, T> Future for __Pasts_Selector<'a, T> {
                 type Output = T;
                 fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
                     (self.get_mut().closure)(cx)
                 }
             }
-            Selector { closure: &mut |cx: &mut Context<'_>| {
+            __Pasts_Selector { closure: &mut |__pasts_cx: &mut Context<'_>| {
                 $(
-                    if let Task::Wait(future) = &mut $future {
-                        match Future::poll(future.as_mut(), cx) {
-                            Poll::Ready($pattern) => {
-                                let ret = { $branch };
-                                $future = Task::Done($pattern);
-                                return Poll::Ready(ret);
-                            }
-                            Poll::Pending => {}
+                    match $future.poll(__pasts_cx) {
+                        Poll::Ready($pattern) => {
+                            let ret = { $branch };
+                            return Poll::Ready(ret);
                         }
+                        Poll::Pending => {}
                     }
                 )*
                 Poll::Pending
