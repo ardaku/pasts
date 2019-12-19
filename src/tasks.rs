@@ -1,6 +1,5 @@
 use crate::_pasts_hide::stn::{
     future::Future,
-    ops::Deref,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -73,7 +72,7 @@ where
     }
 }
 
-/// Turn `Future`s into `Task::Wait`s.
+/// Turn `Future`s into `Task`s.
 ///
 /// ```rust
 /// #![forbid(unsafe_code)]
@@ -93,14 +92,4 @@ macro_rules! tasks {
         #[allow(unused_mut)]
         let mut $x = $crate::_pasts_hide::new_task(&mut $x).0;
     )* };
-}
-
-/// Not actually safe pinning only for use in `tasks!()`.
-#[allow(unsafe_code)]
-#[inline(always)]
-pub(crate) fn new_pin<P>(pointer: P) -> Pin<P>
-where
-    P: Deref,
-{
-    unsafe { Pin::new_unchecked(pointer) }
 }

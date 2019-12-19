@@ -9,7 +9,7 @@
 /// ```rust
 /// #![forbid(unsafe_code)]
 ///
-/// use pasts::prelude::*;
+/// use pasts::Interrupt;
 ///
 /// async fn one() -> char {
 ///     'c'

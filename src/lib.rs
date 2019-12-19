@@ -23,6 +23,7 @@ pub mod _pasts_hide {
     #[cfg(not(feature = "std"))]
     pub use core as stn;
 
+    /// Not actually safe task pinning only for use in macros.
     #[inline(always)]
     pub fn new_task<F, O>(
         future: &mut F,
@@ -31,15 +32,34 @@ pub mod _pasts_hide {
         F: self::stn::future::Future<Output = O>,
     {
         (
-            crate::Task::new(crate::tasks::new_pin(future)),
+            crate::Task::new(self::new_pin(future)),
             stn::mem::MaybeUninit::uninit(),
         )
     }
 
+    /// Not actually safe pinning only for use in macros.
+    #[allow(unsafe_code)]
+    #[inline(always)]
+    pub fn new_pin<P>(pointer: P) -> stn::pin::Pin<P>
+    where
+        P: stn::ops::Deref,
+    {
+        unsafe { stn::pin::Pin::new_unchecked(pointer) }
+    }
+
+    /// Not actually safe: This is needed for join to return a tuple.
     #[allow(unsafe_code)]
     #[inline(always)]
     pub fn join<O>(output: stn::mem::MaybeUninit<O>) -> O {
         unsafe { output.assume_init() }
+    }
+
+    /// Not actually safe: This is needed to create a single-threaded "Mutex" to
+    /// satisfy the borrow checker in `run!()`.
+    #[allow(unsafe_code)]
+    #[inline(always)]
+    pub fn ref_from_ptr<'a, T>(ptr: *mut T) -> &'a mut T {
+        unsafe { stn::mem::transmute(ptr) }
     }
 }
 

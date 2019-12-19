@@ -86,8 +86,8 @@ fn thread_pool() -> Arc<ThreadPool> {
     unsafe { (*THREAD_POOL.as_ptr()).clone() }
 }
 
-/// **std** feature required.  Construct a future from a blocking function.  The
-/// function will be run on a separate thread in a dynamically sized thread pool.
+/// **std** feature required.  Construct a future from a blocking function to
+/// be run on a dynamically sized thread pool.
 pub fn spawn_blocking<F, R>(function: F) -> impl Future<Output = R>
 where
     F: FnOnce() -> R,
