@@ -44,7 +44,7 @@ macro_rules! task_queue {
             count += 1;
         )*
 
-        let mut queue = unsafe { transmute(queue) };
+        let mut queue = $crate::_pasts_hide::transmute_slice(queue);
 
         // Turn task slice into TaskQueue structure
         let mut $x = $crate::TaskQueue::new(queue);

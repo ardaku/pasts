@@ -47,11 +47,13 @@ pub mod _pasts_hide {
         unsafe { stn::pin::Pin::new_unchecked(pointer) }
     }
 
-    /// Not actually safe: This is needed for join to return a tuple.
+    /// Not actually safe: This is needed to initialize task queue.
     #[allow(unsafe_code)]
     #[inline(always)]
-    pub fn assume_init<O>(output: stn::mem::MaybeUninit<O>) -> O {
-        unsafe { output.assume_init() }
+    pub fn transmute_slice<A: Sized, B: Sized>(a: &mut [A]) -> &mut [B] {
+        unsafe {
+            stn::mem::transmute::<&mut [A], &mut [B]>(a)
+        }
     }
 
     /// Not actually safe: This is needed for join to return a tuple.
