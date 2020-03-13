@@ -18,15 +18,16 @@ macro_rules! task_queue {
         use $crate::_pasts_hide::stn::{
             pin::Pin,
             future::Future,
-            mem::{MaybeUninit, transmute},
         };
 
         // Allocate buffer for task queue.
         let queue = &mut [
             $(
                 {
-                    {&$y};
-                    MaybeUninit::<(bool, Pin<&mut dyn Future<Output = _>>)>::uninit()
+                    if false { { &$y }; }
+                    $crate::_pasts_hide::stn::mem::MaybeUninit::<
+                        (bool, Pin<&mut dyn Future<Output = _>>)
+                    >::uninit()
                 }
             ),*
         ][..];
@@ -40,7 +41,9 @@ macro_rules! task_queue {
             let mut temp_future = &mut temp_future;
             // Safely create Pin 
             queue[count] =
-                MaybeUninit::new((true, $crate::_pasts_hide::new_pin(temp_future)));
+                $crate::_pasts_hide::stn::mem::MaybeUninit::new(
+                    (true, $crate::_pasts_hide::new_pin(temp_future))
+                );
             count += 1;
         )*
 

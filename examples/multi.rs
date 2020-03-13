@@ -1,5 +1,7 @@
 #![forbid(unsafe_code)]
 
+use pasts::Interrupt;
+
 #[derive(Debug)]
 struct Length(u64);
 
@@ -13,7 +15,7 @@ async fn timer_future(duration: u64) -> Length {
 }
 
 fn main() {
-    let ret = <pasts::ThreadInterrupt as pasts::Interrupt>::block_on(async {
+    let ret = pasts::ThreadInterrupt::block_on(async {
         let one = timer_future(1);
         let two = timer_future(2);
 

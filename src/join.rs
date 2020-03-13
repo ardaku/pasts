@@ -29,47 +29,97 @@
 /// ```
 #[macro_export]
 macro_rules! join {
-    ($($future:ident),* $(,)?) => {
+    () => {{ () }};
+    ($a:expr) => {{ $a.await }};
+    ($a:expr, $b:expr) => {{
+        $crate::__pasts_join_internal!((a, ra, $a), (b, rb, $b))
+    }};
+    ($a:expr, $b:expr, $c:expr) => {{
+        $crate::__pasts_join_internal!((a, ra, $a), (b, rb, $b), (c, rc, $c))
+    }};
+    ($a:expr, $b:expr, $c:expr, $d:expr) => {{
+        $crate::__pasts_join_internal!(
+            (a, ra, $a), (b, rb, $b), (c, rc, $c), (d, rd, $d)
+        )
+    }};
+    ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr) => {{
+        $crate::__pasts_join_internal!(
+            (a, ra, $a), (b, rb, $b), (c, rc, $c), (d, rd, $d),
+            (e, re, $e)
+        )
+    }};
+    ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr) => {{
+        $crate::__pasts_join_internal!(
+            (a, ra, $a), (b, rb, $b), (c, rc, $c), (d, rd, $d),
+            (e, re, $e), (f, rf, $f)
+        )
+    }};
+    ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr,
+        $g:expr) =>
+    {{
+        $crate::__pasts_join_internal!(
+            (a, ra, $a), (b, rb, $b), (c, rc, $c), (d, rd, $d),
+            (e, re, $e), (f, rf, $f), (g, rg, $g)
+        )
+    }};
+    ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr,
+        $g:expr, $h:expr) =>
+    {{
+        $crate::__pasts_join_internal!(
+            (a, ra, $a), (b, rb, $b), (c, rc, $c), (d, rd, $d),
+            (e, re, $e), (f, rf, $f), (g, rg, $g), (h, rh, $h),
+        )
+    }};
+    ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr,
+        $g:expr, $h:expr, $i:expr) =>
+    {{
+        $crate::__pasts_join_internal!(
+            (a, ra, $a), (b, rb, $b), (c, rc, $c), (d, rd, $d),
+            (e, re, $e), (f, rf, $f), (g, rg, $g), (h, rh, $h),
+            (i, ri, $i)
+        )
+    }};
+    ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr,
+        $g:expr, $h:expr, $i:expr, $j:expr) =>
+    {{
+        $crate::__pasts_join_internal!(
+            (a, ra, $a), (b, rb, $b), (c, rc, $c), (d, rd, $d),
+            (e, re, $e), (f, rf, $f), (g, rg, $g), (h, rh, $h),
+            (i, ri, $i), (j, rj, $j)
+        )
+    }};
+    ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr,
+        $g:expr, $h:expr, $i:expr, $j:expr, $k:expr) =>
+    {{
+        $crate::__pasts_join_internal!(
+            (a, ra, $a), (b, rb, $b), (c, rc, $c), (d, rd, $d),
+            (e, re, $e), (f, rf, $f), (g, rg, $g), (h, rh, $h),
+            (i, ri, $i), (j, rj, $j), (k, rk, $k)
+        )
+    }};
+    ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr,
+        $g:expr, $h:expr, $i:expr, $j:expr, $k:expr, $l:expr) =>
+    {{
+        $crate::__pasts_join_internal!(
+            (a, ra, $a), (b, rb, $b), (c, rc, $c), (d, rd, $d),
+            (e, re, $e), (f, rf, $f), (g, rg, $g), (h, rh, $h),
+            (i, ri, $i), (j, rj, $j), (k, rk, $k), (l, rl, $l),
+        )
+    }};
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __pasts_join_internal {
+    ($(($ai:ident, $ra:ident, $ae:expr)),*) => {{
+        $( let mut $ra: Option<_> = None; )*
         {
-            /*$crate::task_queue!( task_queue = [ $( $future ),* ] );
-            let mut out = [$(
-                {
-                    {&$future};
-                    None
-                }
-            ),*];
+            $( let $ai = async { $ra = Some($ae.await) }; )*
+            $crate::task_queue!(task_queue = [$($ai),*]);
             for _ in 0..task_queue.capacity() {
-                let (i, r) = task_queue.select();
-                out[i] = Some(r);
+                let _: (usize, ()) = task_queue.select().await;
             }
-            let index = 0;
-            [$({
-                {&$future};
-                let r = Some(out[index].unwrap());
-                index += 1;
-                r
-            })*]*/
-        // }
-
-            use $crate::{
-                select, _pasts_hide::{stn::mem::MaybeUninit, join}
-            };
-            let mut count = 0;
-            $(
-                // Force move.
-                let mut $future = $future;
-                // Shadow to prevent future use.
-                #[allow(unused_mut)]
-                let mut $future = $crate::_pasts_hide::new_task(&mut $future);
-
-                count += 1;
-            )*
-            for _ in 0..count {
-                select! {
-                    $( ret = $future.0 => $future.1 = MaybeUninit::new(ret) ),*
-                }
-            }
-            ($(join($future.1)),*)
         }
-    };
+        ($($ra.take().unwrap()),*)
+    }}
 }
