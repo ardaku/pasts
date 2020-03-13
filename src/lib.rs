@@ -59,7 +59,12 @@ pub mod _pasts_hide {
     #[allow(unsafe_code)]
     #[inline(always)]
     pub fn ref_from_ptr<'a, T>(ptr: *mut T) -> &'a mut T {
-        unsafe { stn::mem::transmute(ptr) }
+        // Make clippy not complain
+        fn deref<'a, T>(ptr: *mut T) -> &'a mut T {
+            unsafe { ptr.as_mut().unwrap() }
+        }
+
+        deref(ptr)
     }
 }
 

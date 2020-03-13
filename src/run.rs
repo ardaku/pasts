@@ -37,13 +37,20 @@
 macro_rules! run {
     ($context:ident while $exit:expr; $($generator:ident),* $(,)?) => {
         {
-            use $crate::_pasts_hide::{new_task, ref_from_ptr};
+            use $crate::_pasts_hide::{
+                new_task, ref_from_ptr,
+                stn::{
+                    future::Future,
+                    pin::Pin,
+                    task::{Poll, Context},
+                }
+            };
 
-            let cx: &mut _ = &mut $context;
-            let cx: *mut _ = cx;
+            let state: &mut _ = &mut $context;
+            let state: *mut _ = state;
 
             $(
-                let mut __pasts_future = $generator(ref_from_ptr(cx));
+                let mut __pasts_future = $generator(ref_from_ptr(state));
                 #[allow(unused_mut)]
                 let mut $generator = (
                     new_task(&mut __pasts_future).0,
@@ -52,13 +59,27 @@ macro_rules! run {
             )*
 
             while $exit {
-                $crate::select!(
+                struct __Pasts_Selector<'a> {
+                    closure: &'a mut dyn FnMut(&mut Context<'_>) -> Poll<()>,
+                }
+                impl<'a> Future for __Pasts_Selector<'a> {
+                    type Output = ();
+                    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+                        (self.get_mut().closure)(cx)
+                    }
+                }
+                __Pasts_Selector { closure: &mut |__pasts_cx: &mut Context<'_>| {
                     $(
-                        _a = $generator.0 => {
-                            $generator.0.set(($generator.1)(ref_from_ptr(cx)));
+                        match $generator.0.poll(__pasts_cx) {
+                            Poll::Ready(_) => {
+                                $generator.0.set(($generator.1)(ref_from_ptr(state)));
+                                return Poll::Ready(());
+                            }
+                            Poll::Pending => {}
                         }
-                    ),*
-                );
+                    )*
+                    Poll::Pending
+                } }.await
             }
         }
     };
