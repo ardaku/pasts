@@ -65,8 +65,8 @@ impl<'a, T> TaskQueue<'a, T> {
         Self { tasks }
     }
 
-    /// Wait for the first task to complete.
-    /// Returns a future that may be `.await`ed.
+    /// Poll multiple futures concurrently, and return the future that is ready
+    /// first.
     ///
     /// # Example
     /// ```
