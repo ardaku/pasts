@@ -50,6 +50,13 @@ pub mod _pasts_hide {
     /// Not actually safe: This is needed for join to return a tuple.
     #[allow(unsafe_code)]
     #[inline(always)]
+    pub fn assume_init<O>(output: stn::mem::MaybeUninit<O>) -> O {
+        unsafe { output.assume_init() }
+    }
+
+    /// Not actually safe: This is needed for join to return a tuple.
+    #[allow(unsafe_code)]
+    #[inline(always)]
     pub fn join<O>(output: stn::mem::MaybeUninit<O>) -> O {
         unsafe { output.assume_init() }
     }
@@ -73,9 +80,11 @@ mod join;
 mod run;
 mod select;
 mod tasks;
+mod task_queue;
 
 pub use execute::Interrupt;
 pub use tasks::Task;
+pub use task_queue::TaskQueue;
 
 #[cfg(feature = "std")]
 mod spawner;
