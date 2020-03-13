@@ -4,7 +4,8 @@ use crate::_pasts_hide::stn::{future::Future, task::{Context, Poll}, pin::Pin};
 ///
 /// ```
 /// async fn async_main() {
-///     pasts::task_queue!(task_queue = [async { "Hello" }, async { "World!" }]);
+///     let hello = async { "Hello" };
+///     pasts::task_queue!(task_queue = [hello, async { "World!" }]);
 ///     assert_eq!((0, "Hello"), task_queue.select().await);
 ///     assert_eq!((1, "World!"), task_queue.select().await);
 /// }
@@ -14,46 +15,39 @@ use crate::_pasts_hide::stn::{future::Future, task::{Context, Poll}, pin::Pin};
 #[macro_export]
 macro_rules! task_queue {
     ($x:ident = [$($y:expr),* $(,)?]) => {
+        use $crate::_pasts_hide::stn::{
+            pin::Pin,
+            future::Future,
+            mem::{MaybeUninit, transmute},
+        };
+
         // Allocate buffer for task queue.
-        let __pasts_task_queue: &mut [Option<$crate::_pasts_hide::stn::pin::Pin<&mut dyn $crate::_pasts_hide::stn::future::Future<Output = _>>>] = &mut [
+        let queue = &mut [
             $(
                 {
                     {&$y};
-                    None
+                    MaybeUninit::<(bool, Pin<&mut dyn Future<Output = _>>)>::uninit()
                 }
             ),*
-        ];
+        ][..];
 
         // Fill buffer with pinned futures.
-        let mut __pasts_task_queue_count = 0;
+        let mut count = 0;
         $(
             // Force move (don't use this identifier from this point on).
-            let mut __pasts_temp_future = { $y };
+            let mut temp_future = { $y };
             // Shadow use to prevent future use that could move it.
-            let mut __pasts_temp_future = &mut __pasts_temp_future;
+            let mut temp_future = &mut temp_future;
             // Safely create Pin 
-            __pasts_task_queue[__pasts_task_queue_count] =
-                Some(
-                    $crate::_pasts_hide::new_pin(__pasts_temp_future)
-                );
-            __pasts_task_queue_count += 1;
+            queue[count] =
+                MaybeUninit::new((true, $crate::_pasts_hide::new_pin(temp_future)));
+            count += 1;
         )*
 
-        // Make task slice
-        __pasts_task_queue_count = 0;
-        let __pasts_task_queue: &mut [(bool, $crate::_pasts_hide::stn::pin::Pin<&mut dyn $crate::_pasts_hide::stn::future::Future<Output = _>>)] = &mut [
-            $(
-                (true, {
-                    {&$y};
-                    let ret = __pasts_task_queue[__pasts_task_queue_count].take().unwrap();
-                    __pasts_task_queue_count += 1;
-                    ret
-                })
-            ),*
-        ];
+        let mut queue = unsafe { transmute(queue) };
 
         // Turn task slice into TaskQueue structure
-        let mut $x = $crate::TaskQueue::new(__pasts_task_queue);
+        let mut $x = $crate::TaskQueue::new(queue);
     };
 }
 
@@ -83,6 +77,11 @@ impl<'a, T> TaskQueue<'a, T> {
     /// ```
     pub fn select<'b>(&'b mut self) -> Select<'a, 'b, T> {
         Select { task_queue: self }
+    }
+
+    /// Get the number of tasks the queue was initialized with.
+    pub fn capacity(&self) -> usize {
+        self.tasks.len()
     }
 }
 

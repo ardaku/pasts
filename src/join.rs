@@ -31,6 +31,26 @@
 macro_rules! join {
     ($($future:ident),* $(,)?) => {
         {
+            /*$crate::task_queue!( task_queue = [ $( $future ),* ] );
+            let mut out = [$(
+                {
+                    {&$future};
+                    None
+                }
+            ),*];
+            for _ in 0..task_queue.capacity() {
+                let (i, r) = task_queue.select();
+                out[i] = Some(r);
+            }
+            let index = 0;
+            [$({
+                {&$future};
+                let r = Some(out[index].unwrap());
+                index += 1;
+                r
+            })*]*/
+        // }
+
             use $crate::{
                 select, _pasts_hide::{stn::mem::MaybeUninit, join}
             };

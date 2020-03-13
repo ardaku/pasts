@@ -13,10 +13,10 @@ async fn timer_future(duration: u64) -> Length {
 }
 
 fn main() {
-    let one = timer_future(1);
-    let two = timer_future(2);
-
     let ret = <pasts::ThreadInterrupt as pasts::Interrupt>::block_on(async {
+        let one = timer_future(1);
+        let two = timer_future(2);
+
         // This will only take two seconds, rather than `(one.await, two.await)`
         // which will take three.
         pasts::join!(one, two)
