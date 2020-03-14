@@ -35,15 +35,11 @@ macro_rules! task_queue {
         // Fill buffer with pinned futures.
         let mut count = 0;
         $(
-            // Force move (don't use this identifier from this point on).
-            let mut temp_future = { $y };
-            // Shadow use to prevent future use that could move it.
-            let mut temp_future = &mut temp_future;
-            // Safely create Pin 
-            queue[count] =
-                $crate::_pasts_hide::stn::mem::MaybeUninit::new(
-                    (true, $crate::_pasts_hide::new_pin(temp_future))
-                );
+            let fut = { $y };
+            $crate::pin_mut!(fut);
+            queue[count] = $crate::_pasts_hide::stn::mem::MaybeUninit::new(
+                (true, fut)
+            );
             count += 1;
         )*
 

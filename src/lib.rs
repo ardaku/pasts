@@ -83,6 +83,7 @@ mod run;
 mod select;
 mod tasks;
 mod task_queue;
+mod pin_mut;
 
 pub use execute::Interrupt;
 pub use tasks::Task;

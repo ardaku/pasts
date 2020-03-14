@@ -37,6 +37,21 @@
 macro_rules! run {
     ($context:ident while $exit:expr; $($generator:ident),* $(,)?) => {
         {
+/*            $crate::task_queue!(task_queue = [$({
+                let ret: &mut dyn FnMut(_) -> _ = &mut $generator;
+                (ret)($context)
+            }),*]);
+
+            let re_gen = [$({
+                let ret: &mut dyn FnMut(_) -> _ = &mut $generator;
+                ret
+            }),*];
+
+            while $exit {
+                let (i, r) = task_queue.select().await;
+                task_queue.replace(i, futures[i]);
+            }*/
+
             use $crate::_pasts_hide::{
                 new_task, ref_from_ptr,
                 stn::{
