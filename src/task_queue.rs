@@ -82,6 +82,11 @@ impl<'a, T> TaskQueue<'a, T> {
         Select { task_queue: self }
     }
 
+    /// Replace a future in the task queue at index `i`.
+    pub fn replace<F: Future<Output = T>>(&mut self, i: usize, future: Pin<&'a mut F>) {
+        self.tasks[i] = (true, future);
+    }
+
     /// Get the number of tasks the queue was initialized with.
     pub fn capacity(&self) -> usize {
         self.tasks.len()
