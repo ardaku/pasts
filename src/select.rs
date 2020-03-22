@@ -104,33 +104,33 @@ impl<'a, 'b, T> Future for SelectFuture<'a, 'b, T> {
 /// 
 /// <pasts::ThreadInterrupt as pasts::Interrupt>::block_on(async_main());
 /// ```
-pub trait Select<'a, 'b, T> {
+pub trait Select<'a, T> {
     /// Poll multiple futures, and return the future that's ready first.
-    fn select(&'b mut self) -> SelectFuture<'a, 'b, T>;
+    fn select(&mut self) -> SelectFuture<'a, '_, T>;
 }
 
-impl<'a, 'b, T> Select<'a, 'b, T> for [&'a mut Pin<&'a mut dyn Future<Output = T>>] {
-    fn select(&'b mut self) -> SelectFuture<'a, 'b, T> {
+impl<'a, T> Select<'a, T> for [&'a mut Pin<&'a mut dyn Future<Output = T>>] {
+    fn select(&mut self) -> SelectFuture<'a, '_, T> {
         SelectFuture::Future(self)
     }
 }
 
 #[cfg(feature = "std")]
-impl<'a, 'b, T> Select<'a, 'b, T> for [&'a mut Pin<crate::std::boxed::Box<dyn Future<Output = T>>>] {
-    fn select(&'b mut self) -> SelectFuture<'a, 'b, T> {
+impl<'a, T> Select<'a, T> for [&'a mut Pin<crate::std::boxed::Box<dyn Future<Output = T>>>] {
+    fn select(&mut self) -> SelectFuture<'a, '_, T> {
         SelectFuture::Boxed(self)
     }
 }
 
-impl<'a, 'b, T> Select<'a, 'b, T> for [(&'a mut Pin<&'a mut dyn Future<Output = T>>, bool)] {
-    fn select(&'b mut self) -> SelectFuture<'a, 'b, T> {
+impl<'a, T> Select<'a, T> for [(&'a mut Pin<&'a mut dyn Future<Output = T>>, bool)] {
+    fn select(&mut self) -> SelectFuture<'a, '_, T> {
         SelectFuture::OptFuture(self)
     }
 }
 
 #[cfg(feature = "std")]
-impl<'a, 'b, T> Select<'a, 'b, T> for [(&'a mut Pin<crate::std::boxed::Box<dyn Future<Output = T>>>, bool)] {
-    fn select(&'b mut self) -> SelectFuture<'a, 'b, T> {
+impl<'a, T> Select<'a, T> for [(&'a mut Pin<crate::std::boxed::Box<dyn Future<Output = T>>>, bool)] {
+    fn select(&mut self) -> SelectFuture<'a, '_, T> {
         SelectFuture::OptBoxed(self)
     }
 }

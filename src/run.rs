@@ -1,5 +1,6 @@
 /// Poll multiple futures concurrently in a loop.  At completion of each future,
-/// the future is regenerated.
+/// the future is regenerated.  This can be used as a simple scheduler / event
+/// loop for tasks.
 ///
 /// This macro is only usable inside async functions and blocks.
 ///
@@ -28,112 +29,56 @@
 /// async fn example() {
 ///     let mut context: usize = 0;
 ///
-///     // pasts::run!(context while context < 10; one, two)
+///     pasts::tasks!(context | context < 10; one, two)
 /// }
 ///
 /// <pasts::ThreadInterrupt as pasts::Interrupt>::block_on(example());
 /// ```
 #[macro_export]
-macro_rules! run {
-    ($exit:expr; $($generator:expr),* $(,)?) => {
-        {
-            // Generate list of Pin<&mut dyn Future>s
-            let queue: &mut [$crate::_pasts_hide::stn::pin::Pin<&mut dyn $crate::_pasts_hide::stn::future::Future<Output = ()>>] = &mut [
-                $(
-                    {
-                        let fut = { $generator };
-                        $crate::pin_mut!(fut);
-                        fut
-                    }
-                ),*
-            ][..];
-
-
- /*           let futures = &mut [$(
-                {
-
-                }
-            )*,];*/
-
-            /*// Loop while exit condition is true.
-            while $exit {
-                let (i, _): (usize, ()) = task_queue.select().await;
-
-                let mut count = 0;
-                let mut done = false;
-                $(
-                    if done {
-                        /* do nothing */
-                    } else if count == i {
-                        task_queue.replace(i, $generator);
-                        done = true;
-                    } else {
-                        count += 1;
-                    }
-                )*
-
-
-            }*/
-
-/*            $crate::task_queue!(task_queue = [$({
-                let ret: &mut dyn FnMut(_) -> _ = &mut $generator;
-                (ret)($context)
-            }),*]);
-
-            let re_gen = [$({
-                let ret: &mut dyn FnMut(_) -> _ = &mut $generator;
-                ret
-            }),*];
-
-            while $exit {
-                let (i, r) = task_queue.select().await;
-                task_queue.replace(i, futures[i]);
-            }*/
-
-            /*use $crate::_pasts_hide::{
-                new_task, ref_from_ptr,
-                stn::{
-                    future::Future,
-                    pin::Pin,
-                    task::{Poll, Context},
-                }
-            };
-
-            let state: &mut _ = &mut $context;
-            let state: *mut _ = state;
-
+macro_rules! tasks {
+    ($cx:ident | $exit:expr; $($gen:ident),* $(,)?) => {{
+        // Create 2 copies of mutable references to futures.
+        $(
+            let a = &mut $gen($crate::_pasts_hide::ref_from_ptr(&mut $cx));
+            let b = $crate::_pasts_hide::ref_from_ptr(a);
+            let $gen = (a, b, $gen);
+        )*
+        // Create generically-typed futures array using first copy.
+        $(
+            let temp: core::pin::Pin<&mut dyn core::future::Future<Output = _>> = $crate::_pasts_hide::new_pin($gen.0);
+            let mut $gen = (temp, $gen.1, $gen.2);
+        )*
+        let mut tasks_count = 0;
+        let mut tasks = [
             $(
-                let mut __pasts_future = $generator(ref_from_ptr(state));
-                #[allow(unused_mut)]
-                let mut $generator = (
-                    new_task(&mut __pasts_future).0,
-                    $generator,
-                );
-            )*
+                {
+                    let temp = &mut $gen.0;
+                    tasks_count += 1;
+                    temp
+                }
+            ),*
+        ];
+        // Create uniquely-typed futures using second copy.
+        $(
+            let mut $gen = ($crate::_pasts_hide::new_pin($gen.1), $gen.2);
+        )*
 
-            while $exit {
-                struct __Pasts_Selector<'a> {
-                    closure: &'a mut dyn FnMut(&mut Context<'_>) -> Poll<()>,
+        while $exit {
+            use $crate::Select;
+
+            let (i, ()): (usize, ()) = tasks.select().await;
+
+            tasks_count = 0;
+            $({
+                if i == tasks_count {
+                    $gen.0.set(($gen.1)(pasts::_pasts_hide::ref_from_ptr(&mut $cx)));
                 }
-                impl<'a> Future for __Pasts_Selector<'a> {
-                    type Output = ();
-                    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
-                        (self.get_mut().closure)(cx)
-                    }
-                }
-                __Pasts_Selector { closure: &mut |__pasts_cx: &mut Context<'_>| {
-                    $(
-                        match $generator.0.poll(__pasts_cx) {
-                            Poll::Ready(_) => {
-                                $generator.0.set(($generator.1)(ref_from_ptr(state)));
-                                return Poll::Ready(());
-                            }
-                            Poll::Pending => {}
-                        }
-                    )*
-                    Poll::Pending
-                } }.await
-            }*/
+                tasks_count += 1;
+            })*
         }
-    };
+    }};
+
+    ($cx:ident | $($generator:expr),* $(,)?) => {{
+        tasks!(true, $($generator),*)
+    }};
 }
