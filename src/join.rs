@@ -111,13 +111,13 @@ macro_rules! join {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __pasts_join_internal {
-    ($(($ai:ident, $ra:ident, $ae:expr)),*) => {{
+    ($(($ai:ident, $ra:ident, $a_expr:expr)),*) => {{
         $( let mut $ra: Option<_> = None; )*
         {
-            $( let $ai = async { $ra = Some($ae.await) }; )*
-            $crate::task_queue!(task_queue = [$($ai),*]);
-            for _ in 0..task_queue.capacity() {
-                let _: (usize, ()) = task_queue.select().await;
+            $( $crate::pin_fut!($ai = async { $ra = Some($a_expr.await) }); )*
+            let tasks = &mut [$((&mut $ai, true)),*][..];
+            for _ in 0..tasks.len() {
+                $crate::Select::select(tasks).await;
             }
         }
         ($($ra.take().unwrap()),*)

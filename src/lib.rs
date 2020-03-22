@@ -12,6 +12,9 @@
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 
+#[cfg(feature = "std")]
+extern crate std;
+
 #[doc(hidden)]
 pub mod _pasts_hide {
     #[cfg(feature = "std")]
@@ -22,20 +25,6 @@ pub mod _pasts_hide {
 
     #[cfg(not(feature = "std"))]
     pub use core as stn;
-
-    /// Not actually safe task pinning only for use in macros.
-    #[inline(always)]
-    pub fn new_task<F, O>(
-        future: &mut F,
-    ) -> (crate::Task<F, O>, stn::mem::MaybeUninit<O>)
-    where
-        F: self::stn::future::Future<Output = O>,
-    {
-        (
-            crate::Task::new(self::new_pin(future)),
-            stn::mem::MaybeUninit::uninit(),
-        )
-    }
 
     /// Not actually safe pinning only for use in macros.
     #[allow(unsafe_code)]
@@ -81,13 +70,12 @@ mod execute;
 mod join;
 mod run;
 mod select;
-mod tasks;
 mod task_queue;
 mod pin_mut;
 
 pub use execute::Interrupt;
-pub use tasks::Task;
 pub use task_queue::TaskQueue;
+pub use select::Select;
 
 #[cfg(feature = "std")]
 mod spawner;

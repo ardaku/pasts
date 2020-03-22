@@ -1,106 +1,136 @@
-/// Poll multiple futures concurrently, and run the future that is ready first.
-///
-/// This macro is only usable inside async functions and blocks.
-///
-/// The API is like a match statement:
-/// `match_pattern = pinnned_future => expression`.  The expression will be run
-/// with the pattern (returned from the future) in scope when the future is the
-/// first to complete.  This usage is the similar to the one from the futures
-/// crate; Although, neither `default` or `complete` are supported, and rather
-/// than using fused futures, this API uses [`Task`](struct.Task.html)s which
-/// can no longer be furthered after completion.
-///
-/// This is the lowest level async control structure.  All other async control
-/// structures can be built on top of [`select!()`](macro.select.html).
-///
-/// Note: If possible, use [`run!()`](macro.run.html) instead.
-///
-/// # Example
-/// ```rust
-/// #![forbid(unsafe_code)]
-///
-/// use core::{
-///     pin::Pin,
-///     future::Future,
-///     task::{Poll, Context},
-/// };
-///
-/// #[derive(Debug, PartialEq)]
-/// enum Select {
-///     One(i32),
-///     Two(char),
-/// }
-///
-/// pub struct AlwaysPending();
-///
-/// impl Future for AlwaysPending {
-///     type Output = i32;
-///
-///     fn poll(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<i32> {
-///         Poll::Pending
-///     }
-/// }
-///
-/// async fn two() -> char {
-///     'c'
-/// }
-///
-/// async fn example() -> Select {
-///     pasts::task!(a_fut = AlwaysPending());
-///     pasts::task!(b_fut = two());
-///
-///     let ret = pasts::select!(
-///         a = a_fut => {
-///             println!("This will never print!");
-///             Select::One(a)
-///         }
-///         b = b_fut => Select::Two(b)
-///     );
-///
-///     assert!(a_fut.is_wait());
-///     assert!(b_fut.is_done());
-///
-///     ret
-/// }
-///
-/// assert_eq!(
-///     <pasts::ThreadInterrupt as pasts::Interrupt>::block_on(example()),
-///     Select::Two('c')
-/// );
-/// ```
-#[macro_export]
-macro_rules! select {
-    ($($pattern:ident = $future:expr => $branch:expr $(,)?)*) => {
-        {
-            use $crate::{
-                Task,
-                _pasts_hide::stn::{
-                    future::Future,
-                    pin::Pin,
-                    task::{Poll, Context},
-                },
-            };
-            struct __Pasts_Selector<'a, T> {
-                closure: &'a mut dyn FnMut(&mut Context<'_>) -> Poll<T>,
-            }
-            impl<'a, T> Future for __Pasts_Selector<'a, T> {
-                type Output = T;
-                fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
-                    (self.get_mut().closure)(cx)
-                }
-            }
-            __Pasts_Selector { closure: &mut |__pasts_cx: &mut Context<'_>| {
-                $(
-                    match $future.poll(__pasts_cx) {
-                        Poll::Ready($pattern) => {
-                            let ret = { $branch };
-                            return Poll::Ready(ret);
-                        }
-                        Poll::Pending => {}
+use core::{future::Future, pin::Pin, task::Poll, task::Context};
+
+pub enum SelectFuture<'a, 'b, T> {
+    Future(&'b mut [&'a mut Pin<&'a mut dyn Future<Output = T>>]),
+    OptFuture(&'b mut [(&'a mut Pin<&'a mut dyn Future<Output = T>>, bool)]),
+    #[cfg(feature = "std")]
+    Boxed(&'b mut [&'a mut Pin<std::boxed::Box<dyn Future<Output = T>>>]),
+    #[cfg(feature = "std")]
+    OptBoxed(&'b mut [(&'a mut Pin<std::boxed::Box<dyn Future<Output = T>>>, bool)]),
+}
+
+impl<'a, 'b, T> Future for SelectFuture<'a, 'b, T> {
+    type Output = (usize, T);
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let mut task_id = 0;
+        match *self {
+            SelectFuture::Future(ref mut tasks) => {
+                for task in tasks.iter_mut().map(|a| a.as_mut().poll(cx)) {
+                    match task {
+                        Poll::Ready(ret) => return Poll::Ready((task_id, ret)),
+                        Poll::Pending => {},
                     }
-                )*
-                Poll::Pending
-            } }.await
-        }
-    };
+                    task_id += 1;
+                }
+            },
+            SelectFuture::OptFuture(ref mut tasks) => {
+                for task in tasks.iter_mut() {
+                    if task.1 {
+                        match task.0.as_mut().poll(cx) {
+                            Poll::Ready(ret) => {
+                                task.1 = false;
+                                return Poll::Ready((task_id, ret))
+                            },
+                            Poll::Pending => {},
+                        }
+                    }
+                    task_id += 1;
+                }
+            },
+            #[cfg(feature = "std")]
+            SelectFuture::Boxed(ref mut tasks) => {
+                for task in tasks.iter_mut().map(|a| a.as_mut().poll(cx)) {
+                    match task {
+                        Poll::Ready(ret) => return Poll::Ready((task_id, ret)),
+                        Poll::Pending => {},
+                    }
+                    task_id += 1;
+                }
+            },
+            #[cfg(feature = "std")]
+            SelectFuture::OptBoxed(ref mut tasks) => {
+                for task in tasks.iter_mut() {
+                    if task.1 {
+                        match task.0.as_mut().poll(cx) {
+                            Poll::Ready(ret) => {
+                                task.1 = false;
+                                return Poll::Ready((task_id, ret))
+                            },
+                            Poll::Pending => {},
+                        }
+                    }
+                    task_id += 1;
+                }
+            },
+        };
+        Poll::Pending
+    }
+}
+
+/// A trait to select on a slice of futures (or boxed futures).
+///
+/// # Select on slice of futures.
+/// ```
+/// use pasts::Select;
+/// 
+/// use core::future::Future;
+/// use core::pin::Pin;
+///
+/// async fn async_main() {
+///     pasts::pin_fut!(hello = async { "Hello" });
+///     pasts::pin_fut!(world = async { "World!" });
+///     // Hello is ready, so returns with index and result.
+///     assert_eq!((0, "Hello"), [&mut hello, &mut world].select().await);
+/// }
+/// 
+/// <pasts::ThreadInterrupt as pasts::Interrupt>::block_on(async_main());
+/// ```
+///
+/// # Select on a slice of boxed futures.
+/// ```
+/// use pasts::Select;
+///
+/// use core::future::Future;
+/// use core::pin::Pin;
+///
+/// async fn async_main() {
+///     let mut hello: Pin<Box<dyn Future<Output=&str>>>
+///         = Box::pin(async { "Hello" });
+///     let mut world: Pin<Box<dyn Future<Output=&str>>>
+///         = Box::pin(async { "World!" });
+///     // Hello is ready, so returns with index and result.
+///     assert_eq!((0, "Hello"), [&mut hello, &mut world].select().await);
+/// }
+/// 
+/// <pasts::ThreadInterrupt as pasts::Interrupt>::block_on(async_main());
+/// ```
+pub trait Select<'a, 'b, T> {
+    /// Poll multiple futures, and return the future that's ready first.
+    fn select(&'b mut self) -> SelectFuture<'a, 'b, T>;
+}
+
+impl<'a, 'b, T> Select<'a, 'b, T> for [&'a mut Pin<&'a mut dyn Future<Output = T>>] {
+    fn select(&'b mut self) -> SelectFuture<'a, 'b, T> {
+        SelectFuture::Future(self)
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a, 'b, T> Select<'a, 'b, T> for [&'a mut Pin<crate::std::boxed::Box<dyn Future<Output = T>>>] {
+    fn select(&'b mut self) -> SelectFuture<'a, 'b, T> {
+        SelectFuture::Boxed(self)
+    }
+}
+
+impl<'a, 'b, T> Select<'a, 'b, T> for [(&'a mut Pin<&'a mut dyn Future<Output = T>>, bool)] {
+    fn select(&'b mut self) -> SelectFuture<'a, 'b, T> {
+        SelectFuture::OptFuture(self)
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a, 'b, T> Select<'a, 'b, T> for [(&'a mut Pin<crate::std::boxed::Box<dyn Future<Output = T>>>, bool)] {
+    fn select(&'b mut self) -> SelectFuture<'a, 'b, T> {
+        SelectFuture::OptBoxed(self)
+    }
 }

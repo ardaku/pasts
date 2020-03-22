@@ -28,15 +28,53 @@
 /// async fn example() {
 ///     let mut context: usize = 0;
 ///
-///     pasts::run!(context while context < 10; one, two)
+///     // pasts::run!(context while context < 10; one, two)
 /// }
 ///
 /// <pasts::ThreadInterrupt as pasts::Interrupt>::block_on(example());
 /// ```
 #[macro_export]
 macro_rules! run {
-    ($context:ident while $exit:expr; $($generator:ident),* $(,)?) => {
+    ($exit:expr; $($generator:expr),* $(,)?) => {
         {
+            // Generate list of Pin<&mut dyn Future>s
+            let queue: &mut [$crate::_pasts_hide::stn::pin::Pin<&mut dyn $crate::_pasts_hide::stn::future::Future<Output = ()>>] = &mut [
+                $(
+                    {
+                        let fut = { $generator };
+                        $crate::pin_mut!(fut);
+                        fut
+                    }
+                ),*
+            ][..];
+
+
+ /*           let futures = &mut [$(
+                {
+
+                }
+            )*,];*/
+
+            /*// Loop while exit condition is true.
+            while $exit {
+                let (i, _): (usize, ()) = task_queue.select().await;
+
+                let mut count = 0;
+                let mut done = false;
+                $(
+                    if done {
+                        /* do nothing */
+                    } else if count == i {
+                        task_queue.replace(i, $generator);
+                        done = true;
+                    } else {
+                        count += 1;
+                    }
+                )*
+
+
+            }*/
+
 /*            $crate::task_queue!(task_queue = [$({
                 let ret: &mut dyn FnMut(_) -> _ = &mut $generator;
                 (ret)($context)
@@ -52,7 +90,7 @@ macro_rules! run {
                 task_queue.replace(i, futures[i]);
             }*/
 
-            use $crate::_pasts_hide::{
+            /*use $crate::_pasts_hide::{
                 new_task, ref_from_ptr,
                 stn::{
                     future::Future,
@@ -95,7 +133,7 @@ macro_rules! run {
                     )*
                     Poll::Pending
                 } }.await
-            }
+            }*/
         }
     };
 }

@@ -36,7 +36,7 @@ macro_rules! task_queue {
         let mut count = 0;
         $(
             let fut = { $y };
-            $crate::pin_mut!(fut);
+            $crate::pin_fut!(fut);
             queue[count] = $crate::_pasts_hide::stn::mem::MaybeUninit::new(
                 (true, fut)
             );
@@ -80,7 +80,13 @@ impl<'a, T> TaskQueue<'a, T> {
 
     /// Replace a future in the task queue at index `i`.
     pub fn replace<F: Future<Output = T>>(&mut self, i: usize, future: Pin<&'a mut F>) {
-        self.tasks[i] = (true, future);
+        self.tasks[i].1 = future;
+        self.tasks[i].0 = true;
+    }
+
+    /// Re-Enable future.  Make sure to replace the future first.
+    pub fn enable(&mut self, i: usize) {
+        self.tasks[i].0 = true;
     }
 
     /// Get the number of tasks the queue was initialized with.
