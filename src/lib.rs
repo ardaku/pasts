@@ -68,13 +68,11 @@ pub mod _pasts_hide {
 
 mod execute;
 mod join;
-mod run;
+mod tasks;
 mod select;
-mod task_queue;
 mod pin_mut;
 
 pub use execute::Interrupt;
-pub use task_queue::TaskQueue;
 pub use select::Select;
 
 #[cfg(feature = "std")]
