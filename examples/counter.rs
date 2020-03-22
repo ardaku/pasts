@@ -19,7 +19,7 @@ async fn two(context: &mut usize) {
 async fn example() {
     let mut state: usize = 0;
 
-    pasts::tasks!(state | state < 10; one, two)
+    pasts::tasks!(state while state < 10; [one, two])
 }
 
 fn main() {

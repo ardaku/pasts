@@ -29,14 +29,14 @@
 /// async fn example() {
 ///     let mut context: usize = 0;
 ///
-///     pasts::tasks!(context | context < 10; one, two)
+///     pasts::tasks!(context while context < 10; [one, two])
 /// }
 ///
 /// <pasts::ThreadInterrupt as pasts::Interrupt>::block_on(example());
 /// ```
 #[macro_export]
 macro_rules! tasks {
-    ($cx:ident | $exit:expr; $($gen:ident),* $(,)?) => {{
+    ($cx:ident while $exit:expr; [ $($gen:ident),* $(,)? ] $(,)?) => {{
         // Create 2 copies of mutable references to futures.
         $(
             let a = &mut $gen($crate::_pasts_hide::ref_from_ptr(&mut $cx));
@@ -78,7 +78,7 @@ macro_rules! tasks {
         }
     }};
 
-    ($cx:ident | $($generator:expr),* $(,)?) => {{
+    ($cx:ident; [ $($gen:ident),* $(,)? ] $(,)?) => {{
         tasks!(true, $($generator),*)
     }};
 }
