@@ -37,7 +37,7 @@ pasts = "0.1"
 This example goes in a loop and prints "One" every second, and "Two" every other
 second.  After 10 prints, the program terminates.
 
-```rust
+```rust,no_run
 #![forbid(unsafe_code)]
 
 async fn timer_future(duration: std::time::Duration) {
@@ -59,7 +59,7 @@ async fn two(context: &mut usize) {
 async fn example() {
     let mut context: usize = 0;
 
-    pasts::run!(context while context < 10; one, two)
+    pasts::tasks!(context while context < 10; [one, two])
 }
 
 fn main() {
