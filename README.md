@@ -98,4 +98,4 @@ dual licensed as above, without any additional terms or conditions.
 Before contributing, check out the
 [contribution guidelines](https://github.com/RedAldaron/pasts/blob/master/CONTRIBUTING.md),
 and, as always, make sure to always follow the
-[code of conduct](https://github.com/RedAldaron/pasts/blob/master/CODEOFCONDUCT.md).
+[code of conduct](https://github.com/RedAldaron/pasts/blob/master/CODE_OF_CONDUCT.md).
