@@ -1,19 +1,37 @@
-//! Minimal and simpler alternative to the futures crate.
-//!
-//! - No required std
-//! - No allocations
-//! - No procedural macros (for faster compile times)
-//! - No dependencies
-//! - No cost (True zero-cost abstractions!)
-//! - No pain (API super easy to learn & use!)
-//! - No unsafe code in pinning macro (allowing you to `forbid(unsafe_code)`)
+// Pasts
+//
+// Copyright (c) 2019-2020 Jeron Aldaron Lau
+//
+// Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
+// https://apache.org/licenses/LICENSE-2.0>, or the Zlib License, <LICENSE-ZLIB
+// or http://opensource.org/licenses/Zlib>, at your option. This file may not be
+// copied, modified, or distributed except according to those terms.
 
-#![no_std]
+#![cfg_attr(feature = "docs-rs", feature(external_doc))]
+#![cfg_attr(feature = "docs-rs", doc(include = "../README.md"))]
+#![doc = ""]
+#![cfg_attr(not(feature = "std"), no_std)]
+#![doc(
+    html_logo_url = "https://libcala.github.io/logo.svg",
+    html_favicon_url = "https://libcala.github.io/icon.svg",
+    html_root_url = "https://docs.rs/pasts"
+)]
 #![deny(unsafe_code)]
-#![warn(missing_docs)]
-
-#[cfg(feature = "std")]
-extern crate std;
+#![warn(
+    anonymous_parameters,
+    missing_copy_implementations,
+    missing_debug_implementations,
+    missing_docs,
+    nonstandard_style,
+    rust_2018_idioms,
+    single_use_lifetimes,
+    trivial_casts,
+    trivial_numeric_casts,
+    unreachable_pub,
+    unused_extern_crates,
+    unused_qualifications,
+    variant_size_differences
+)]
 
 #[doc(hidden)]
 pub mod _pasts_hide {
@@ -36,14 +54,14 @@ pub mod _pasts_hide {
         unsafe { stn::pin::Pin::new_unchecked(pointer) }
     }
 
-    /// Not actually safe: This is needed to initialize task queue.
+/*    /// Not actually safe: This is needed to initialize task queue.
     #[allow(unsafe_code)]
     #[inline(always)]
     pub fn transmute_slice<A: Sized, B: Sized>(a: &mut [A]) -> &mut [B] {
         unsafe {
-            stn::mem::transmute::<&mut [A], &mut [B]>(a)
+            &mut *(a as *mut _ as *mut _)
         }
-    }
+    }*/
 
     /// Not actually safe: This is needed for join to return a tuple.
     #[allow(unsafe_code)]

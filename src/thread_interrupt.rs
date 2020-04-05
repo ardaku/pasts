@@ -1,3 +1,12 @@
+// Pasts
+//
+// Copyright (c) 2019-2020 Jeron Aldaron Lau
+//
+// Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
+// https://apache.org/licenses/LICENSE-2.0>, or the Zlib License, <LICENSE-ZLIB
+// or http://opensource.org/licenses/Zlib>, at your option. This file may not be
+// copied, modified, or distributed except according to those terms.
+
 #![allow(clippy::mutex_atomic)]
 
 use crate::_pasts_hide::stn::sync::{Condvar, Mutex};
@@ -5,6 +14,7 @@ use crate::_pasts_hide::stn::sync::{Condvar, Mutex};
 /// **std** feature required.  An efficient thread interrupt.
 ///
 /// If you can use std, use this `Interrupt`.
+#[derive(Debug)]
 pub struct ThreadInterrupt(Mutex<usize>, Condvar);
 
 impl crate::Interrupt for ThreadInterrupt {

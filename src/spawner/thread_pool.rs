@@ -1,3 +1,12 @@
+// Pasts
+//
+// Copyright (c) 2019-2020 Jeron Aldaron Lau
+//
+// Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
+// https://apache.org/licenses/LICENSE-2.0>, or the Zlib License, <LICENSE-ZLIB
+// or http://opensource.org/licenses/Zlib>, at your option. This file may not be
+// copied, modified, or distributed except according to those terms.
+
 use crate::_pasts_hide::stn::{
     boxed::Box,
     sync::{Arc, Condvar, Mutex},
@@ -53,14 +62,14 @@ impl ThreadHandle {
 
 impl ThreadPool {
     /// Create a new ThreadPool.
-    pub fn new() -> Arc<Self> {
+    pub(super) fn new() -> Arc<Self> {
         Arc::new(ThreadPool {
             available: Mutex::new(vec![]),
         })
     }
 
     // Take a thread off of the pool stack, and start execution.
-    pub fn spawn<F>(self: Arc<Self>, function: F) -> ThreadHandle
+    pub(super) fn spawn<F>(self: Arc<Self>, function: F) -> ThreadHandle
     where
         F: FnOnce() + Send + 'static,
     {

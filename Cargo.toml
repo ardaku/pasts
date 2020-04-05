@@ -1,26 +1,45 @@
+# Pasts
+#
+# Copyright (c) 2019-2020 Jeron Aldaron Lau
+# 
+# Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
+# https://apache.org/licenses/LICENSE-2.0>, or the Zlib License, <LICENSE-ZLIB
+# or http://opensource.org/licenses/Zlib>, at your option. This file may not be
+# copied, modified, or distributed except according to those terms.
+
 [package]
 name = "pasts"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["Jeron Aldaron Lau <jeronlau@plopgrizzly.com>"]
-edition = "2018"
+license = "Apache-2.0 OR Zlib"
 
-license = "MIT / BSL-1.0"
 description = "Minimal and simpler alternative to the futures crate."
+repository = "https://github.com/RedAldaron/pasts"
 documentation = "https://docs.rs/pasts"
-homepage = "https://github.com/LordAldaron/pasts/blob/master/changelog.md"
-repository = "https://github.com/LordAldaron/pasts"
-readme = "README.md"
+homepage = "https://github.com/RedAldaron/pasts/blob/master/CHANGELOG.md"
+include = ["Cargo.toml", "README.md", "LICENSE-ZLIB", "LICENSE-APACHE", "src/*"]
 keywords = ["futures", "platform-agnostic", "cross-platform", "io", "interrupt"]
 categories = ["asynchronous", "embedded", "no-std", "rust-patterns"]
+readme = "README.md"
+edition = "2018"
 
 [badges]
-travis-ci = { repository = "LordAldaron/pasts" }
-is-it-maintained-issue-resolution = { repository = "LordAldaron/pasts" }
-is-it-maintained-open-issues = { repository = "LordAldaron/pasts" }
+travis-ci = { repository = "RedAldaron/pasts" }
+is-it-maintained-issue-resolution = { repository = "RedAldaron/pasts" }
+is-it-maintained-open-issues = { repository = "RedAldaron/pasts" }
 maintenance = { status = "actively-developed" }
 
 [dependencies]
 
+[build-dependencies]
+
+[dev-dependencies]
+
+[package.metadata.docs.rs]
+all-features = true
+default-target = "x86_64-unknown-linux-gnu"
+
 [features]
 default = ["std"]
 std = []
+docs-rs = []

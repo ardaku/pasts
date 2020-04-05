@@ -1,15 +1,37 @@
+// Pasts
+//
+// Copyright (c) 2019-2020 Jeron Aldaron Lau
+//
+// Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
+// https://apache.org/licenses/LICENSE-2.0>, or the Zlib License, <LICENSE-ZLIB
+// or http://opensource.org/licenses/Zlib>, at your option. This file may not be
+// copied, modified, or distributed except according to those terms.
+
 use core::{future::Future, pin::Pin, task::Poll, task::Context};
 
 pub enum SelectFuture<'a, 'b, T> {
     Future(&'b mut [&'a mut Pin<&'a mut dyn Future<Output = T>>]),
     OptFuture(&'b mut [(&'a mut Pin<&'a mut dyn Future<Output = T>>, bool)]),
     #[cfg(feature = "std")]
-    Boxed(&'b mut [&'a mut Pin<std::boxed::Box<dyn Future<Output = T>>>]),
+    Boxed(&'b mut [&'a mut Pin<Box<dyn Future<Output = T>>>]),
     #[cfg(feature = "std")]
-    OptBoxed(&'b mut [(&'a mut Pin<std::boxed::Box<dyn Future<Output = T>>>, bool)]),
+    OptBoxed(&'b mut [(&'a mut Pin<Box<dyn Future<Output = T>>>, bool)]),
 }
 
-impl<'a, 'b, T> Future for SelectFuture<'a, 'b, T> {
+impl<T> core::fmt::Debug for SelectFuture<'_, '_, T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Future(_) => write!(f, "Future"),
+            Self::OptFuture(_) => write!(f, "OptFuture"),
+            #[cfg(feature = "std")]
+            Self::Boxed(_) => write!(f, "Boxed"),
+            #[cfg(feature = "std")]
+            Self::OptBoxed(_) => write!(f, "OptBoxed"),
+        }
+    }
+}
+
+impl<T> Future for SelectFuture<'_, '_, T> {
     type Output = (usize, T);
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let mut task_id = 0;
@@ -116,7 +138,7 @@ impl<'a, T> Select<'a, T> for [&'a mut Pin<&'a mut dyn Future<Output = T>>] {
 }
 
 #[cfg(feature = "std")]
-impl<'a, T> Select<'a, T> for [&'a mut Pin<crate::std::boxed::Box<dyn Future<Output = T>>>] {
+impl<'a, T> Select<'a, T> for [&'a mut Pin<Box<dyn Future<Output = T>>>] {
     fn select(&mut self) -> SelectFuture<'a, '_, T> {
         SelectFuture::Boxed(self)
     }
@@ -129,7 +151,7 @@ impl<'a, T> Select<'a, T> for [(&'a mut Pin<&'a mut dyn Future<Output = T>>, boo
 }
 
 #[cfg(feature = "std")]
-impl<'a, T> Select<'a, T> for [(&'a mut Pin<crate::std::boxed::Box<dyn Future<Output = T>>>, bool)] {
+impl<'a, T> Select<'a, T> for [(&'a mut Pin<Box<dyn Future<Output = T>>>, bool)] {
     fn select(&mut self) -> SelectFuture<'a, '_, T> {
         SelectFuture::OptBoxed(self)
     }
