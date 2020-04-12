@@ -10,12 +10,12 @@
 use core::{future::Future, pin::Pin, task::Poll, task::Context};
 
 pub enum SelectFuture<'a, 'b, T> {
-    Future(&'b mut [&'a mut Pin<&'a mut dyn Future<Output = T>>]),
-    OptFuture(&'b mut [(&'a mut Pin<&'a mut dyn Future<Output = T>>, bool)]),
+    Future(&'b mut [&'a mut dyn Future<Output = T>]),
+    OptFuture(&'b mut [(&'a mut dyn Future<Output = T>, bool)]),
     #[cfg(feature = "std")]
-    Boxed(&'b mut [&'a mut Pin<Box<dyn Future<Output = T>>>]),
+    Boxed(&'b mut [&'a mut Box<dyn Future<Output = T>>]),
     #[cfg(feature = "std")]
-    OptBoxed(&'b mut [(&'a mut Pin<Box<dyn Future<Output = T>>>, bool)]),
+    OptBoxed(&'b mut [(&'a mut Box<dyn Future<Output = T>>, bool)]),
 }
 
 impl<T> core::fmt::Debug for SelectFuture<'_, '_, T> {
@@ -33,11 +33,22 @@ impl<T> core::fmt::Debug for SelectFuture<'_, '_, T> {
 
 impl<T> Future for SelectFuture<'_, '_, T> {
     type Output = (usize, T);
+
+    // unsafe: This let's this future create `Pin`s from the slices it has a
+    // unique reference to.  This is safe because `SelectFuture` never calls
+    // `mem::swap()` and when `SelectFuture` drops it's no longer necessary
+    // that the memory remain pinned because it's not being polled anymore.
+    #[allow(unsafe_code)]
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let mut task_id = 0;
         match *self {
             SelectFuture::Future(ref mut tasks) => {
-                for task in tasks.iter_mut().map(|a| a.as_mut().poll(cx)) {
+                for task in tasks.iter().map(|task| {
+                    let mut pin_fut = unsafe { Pin::new_unchecked(std::ptr::read(task)) };
+                    let ret = pin_fut.as_mut().poll(cx);
+                    std::mem::forget(pin_fut);
+                    ret
+                }) {
                     match task {
                         Poll::Ready(ret) => return Poll::Ready((task_id, ret)),
                         Poll::Pending => {},
@@ -48,7 +59,12 @@ impl<T> Future for SelectFuture<'_, '_, T> {
             SelectFuture::OptFuture(ref mut tasks) => {
                 for task in tasks.iter_mut() {
                     if task.1 {
-                        match task.0.as_mut().poll(cx) {
+                        match {
+                            let mut pin_fut = unsafe { Pin::new_unchecked(std::ptr::read(&mut task.0)) };
+                            let ret = pin_fut.as_mut().poll(cx);
+                            std::mem::forget(pin_fut);
+                            ret
+                        } {
                             Poll::Ready(ret) => {
                                 task.1 = false;
                                 return Poll::Ready((task_id, ret))
@@ -61,7 +77,8 @@ impl<T> Future for SelectFuture<'_, '_, T> {
             },
             #[cfg(feature = "std")]
             SelectFuture::Boxed(ref mut tasks) => {
-                for task in tasks.iter_mut().map(|a| a.as_mut().poll(cx)) {
+                for task in tasks.iter_mut().map(|a| unsafe { Pin::new_unchecked(a.as_mut()) }.poll(cx))
+                {
                     match task {
                         Poll::Ready(ret) => return Poll::Ready((task_id, ret)),
                         Poll::Pending => {},
@@ -73,7 +90,7 @@ impl<T> Future for SelectFuture<'_, '_, T> {
             SelectFuture::OptBoxed(ref mut tasks) => {
                 for task in tasks.iter_mut() {
                     if task.1 {
-                        match task.0.as_mut().poll(cx) {
+                        match unsafe { Pin::new_unchecked(task.0.as_mut()) }.poll(cx) {
                             Poll::Ready(ret) => {
                                 task.1 = false;
                                 return Poll::Ready((task_id, ret))
@@ -131,27 +148,27 @@ pub trait Select<'a, T> {
     fn select(&mut self) -> SelectFuture<'a, '_, T>;
 }
 
-impl<'a, T> Select<'a, T> for [&'a mut Pin<&'a mut dyn Future<Output = T>>] {
+impl<'a, T> Select<'a, T> for [&'a mut dyn Future<Output = T>] {
     fn select(&mut self) -> SelectFuture<'a, '_, T> {
         SelectFuture::Future(self)
     }
 }
 
 #[cfg(feature = "std")]
-impl<'a, T> Select<'a, T> for [&'a mut Pin<Box<dyn Future<Output = T>>>] {
+impl<'a, T> Select<'a, T> for [&'a mut Box<dyn Future<Output = T>>] {
     fn select(&mut self) -> SelectFuture<'a, '_, T> {
         SelectFuture::Boxed(self)
     }
 }
 
-impl<'a, T> Select<'a, T> for [(&'a mut Pin<&'a mut dyn Future<Output = T>>, bool)] {
+impl<'a, T> Select<'a, T> for [(&'a mut dyn Future<Output = T>, bool)] {
     fn select(&mut self) -> SelectFuture<'a, '_, T> {
         SelectFuture::OptFuture(self)
     }
 }
 
 #[cfg(feature = "std")]
-impl<'a, T> Select<'a, T> for [(&'a mut Pin<Box<dyn Future<Output = T>>>, bool)] {
+impl<'a, T> Select<'a, T> for [(&'a mut Box<dyn Future<Output = T>>, bool)] {
     fn select(&mut self) -> SelectFuture<'a, '_, T> {
         SelectFuture::OptBoxed(self)
     }

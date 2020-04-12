@@ -72,19 +72,19 @@ macro_rules! tasks {
             let mut $gen = ($crate::_pasts_hide::new_pin($gen.1), $gen.2);
         )*
 
-        while $exit {
+        // while $exit {
             use $crate::Select;
 
             let (i, ()): (usize, ()) = tasks.select().await;
 
-            tasks_count = 0;
+            /*tasks_count = 0;
             $({
                 if i == tasks_count {
                     $gen.0.set(($gen.1)(pasts::_pasts_hide::ref_from_ptr(&mut $cx)));
                 }
                 tasks_count += 1;
-            })*
-        }
+            })**/
+        // }
     }};
 
     ($cx:ident; [ $($gen:ident),* $(,)? ] $(,)?) => {{
