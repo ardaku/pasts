@@ -7,7 +7,7 @@
 // or http://opensource.org/licenses/Zlib>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use crate::_pasts_hide::stn::{
+use std::{
     future::Future,
     mem::MaybeUninit,
     pin::Pin,

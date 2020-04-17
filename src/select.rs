@@ -57,15 +57,16 @@ impl<T, A: Future<Output = T>> Future for SelectFuture<'_, T, A> {
             SelectFuture::OptFuture(ref mut tasks) => {
                 for task_mut in tasks.iter_mut() {
                     if let Some(ref mut task) = task_mut {
-                        let mut pin_fut =
-                            unsafe { Pin::new_unchecked(std::ptr::read(&task)) };
+                        let mut pin_fut = unsafe {
+                            Pin::new_unchecked(std::ptr::read(&task))
+                        };
                         let task = pin_fut.as_mut().poll(cx);
                         std::mem::forget(pin_fut);
                         match task {
                             Poll::Ready(ret) => {
                                 *task_mut = None;
-                                return Poll::Ready((task_id, ret))
-                            },
+                                return Poll::Ready((task_id, ret));
+                            }
                             Poll::Pending => {}
                         }
                         task_id += 1;
@@ -116,7 +117,10 @@ impl<T, A: Future<Output = T>> Select<T, A> for [Option<A>] {
 pub struct DynFuture<'a, T>(&'a mut dyn Future<Output = T>);
 
 impl<T> core::fmt::Debug for DynFuture<'_, T> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+    fn fmt(
+        &self,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> Result<(), core::fmt::Error> {
         write!(f, "DynFuture")
     }
 }
@@ -125,11 +129,9 @@ impl<T> Future for DynFuture<'_, T> {
     type Output = T;
 
     #[allow(unsafe_code)]
-    fn poll(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Self::Output> {
-        let mut pin_fut = unsafe { Pin::new_unchecked(std::ptr::read(&self.0)) };
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let mut pin_fut =
+            unsafe { Pin::new_unchecked(std::ptr::read(&self.0)) };
         let ret = pin_fut.as_mut().poll(cx);
         std::mem::forget(pin_fut);
         ret
@@ -142,7 +144,10 @@ pub trait DynFut<'a, T> {
     fn dyn_fut(&'a mut self) -> DynFuture<'a, T>;
 }
 
-impl<'a, T, F> DynFut<'a, T> for F where F: Future<Output = T> {
+impl<'a, T, F> DynFut<'a, T> for F
+where
+    F: Future<Output = T>,
+{
     fn dyn_fut(&'a mut self) -> DynFuture<'a, T> {
         DynFuture(self)
     }

@@ -9,7 +9,7 @@
 
 #![allow(clippy::mutex_atomic)]
 
-use crate::_pasts_hide::stn::sync::{Condvar, Mutex};
+use std::sync::{Condvar, Mutex};
 
 /// **std** feature required.  An efficient thread interrupt.
 ///

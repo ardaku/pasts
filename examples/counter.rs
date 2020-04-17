@@ -34,10 +34,7 @@ async fn example() {
     let state = RefCell::new(0);
     let mut task_one = one(&state);
     let mut task_two = two(&state);
-    let mut tasks = [
-        task_one.dyn_fut(),
-        task_two.dyn_fut(),
-    ];
+    let mut tasks = [task_one.dyn_fut(), task_two.dyn_fut()];
     tasks.select().await;
 }
 
