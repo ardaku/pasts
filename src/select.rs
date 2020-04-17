@@ -9,12 +9,14 @@
 
 use core::{future::Future, pin::Pin, task::Context, task::Poll};
 
-pub enum SelectFuture<'a, 'b, T> {
-    Future(&'b mut [&'a mut dyn Future<Output = T>]),
-    OptFuture(&'b mut [Option<&'a mut dyn Future<Output = T>>]),
+pub enum SelectFuture<'b, T, A: Future<Output = T>> {
+    //Future(&'b mut [&'a mut dyn Future<Output = T>]),
+    //OptFuture(&'b mut [Option<&'a mut dyn Future<Output = T>>]),
+    Future(&'b mut [A]),
+    OptFuture(&'b mut [Option<A>]),
 }
 
-impl<T> core::fmt::Debug for SelectFuture<'_, '_, T> {
+impl<T, A: Future<Output = T>> core::fmt::Debug for SelectFuture<'_, T, A> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::Future(_) => write!(f, "Future"),
@@ -23,7 +25,7 @@ impl<T> core::fmt::Debug for SelectFuture<'_, '_, T> {
     }
 }
 
-impl<T> Future for SelectFuture<'_, '_, T> {
+impl<T, A: Future<Output = T>> Future for SelectFuture<'_, T, A> {
     type Output = (usize, T);
 
     // unsafe: This let's this future create `Pin`s from the slices it has a
@@ -38,9 +40,9 @@ impl<T> Future for SelectFuture<'_, '_, T> {
         let mut task_id = 0;
         match *self {
             SelectFuture::Future(ref mut tasks) => {
-                for task in tasks.iter().map(|task| {
+                for task in tasks.iter_mut().map(|task| {
                     let mut pin_fut =
-                        unsafe { Pin::new_unchecked(std::ptr::read(task)) };
+                        unsafe { Pin::new_unchecked(std::ptr::read(&task)) };
                     let ret = pin_fut.as_mut().poll(cx);
                     std::mem::forget(pin_fut);
                     ret
@@ -54,9 +56,9 @@ impl<T> Future for SelectFuture<'_, '_, T> {
             }
             SelectFuture::OptFuture(ref mut tasks) => {
                 for task_mut in tasks.iter_mut() {
-                    if let Some(task) = task_mut {
+                    if let Some(ref mut task) = task_mut {
                         let mut pin_fut =
-                            unsafe { Pin::new_unchecked(std::ptr::read(task)) };
+                            unsafe { Pin::new_unchecked(std::ptr::read(&task)) };
                         let task = pin_fut.as_mut().poll(cx);
                         std::mem::forget(pin_fut);
                         match task {
@@ -79,7 +81,8 @@ impl<T> Future for SelectFuture<'_, '_, T> {
 ///
 /// # Select on slice of futures.
 /// ```
-/// use pasts::Select;
+/// use pasts::prelude::*;
+/// use pasts::RefFuture;
 ///
 /// use core::future::Future;
 /// use core::pin::Pin;
@@ -88,24 +91,57 @@ impl<T> Future for SelectFuture<'_, '_, T> {
 ///     let mut hello = async { "Hello" };
 ///     let mut world = async { "World!" };
 ///     // Hello is ready, so returns with index and result.
-///     assert_eq!((0, "Hello"), [&mut hello as &mut dyn Future<Output=&str>, &mut world].select().await);
+///     assert_eq!((0, "Hello"), [RefFuture::new(&mut hello), RefFuture::new(&mut world)].select().await);
 /// }
 ///
 /// <pasts::ThreadInterrupt as pasts::Interrupt>::block_on(async_main());
 /// ```
-pub trait Select<'a, T> {
+pub trait Select<T, A: Future<Output = T>> {
     /// Poll multiple futures, and return the future that's ready first.
-    fn select(&mut self) -> SelectFuture<'a, '_, T>;
+    fn select(&mut self) -> SelectFuture<'_, T, A>;
 }
 
-impl<'a, T> Select<'a, T> for [&'a mut dyn Future<Output = T>] {
-    fn select(&mut self) -> SelectFuture<'a, '_, T> {
+impl<T, A: Future<Output = T>> Select<T, A> for [A] {
+    fn select(&mut self) -> SelectFuture<'_, T, A> {
         SelectFuture::Future(self)
     }
 }
 
-impl<'a, T> Select<'a, T> for [Option<&'a mut dyn Future<Output = T>>] {
-    fn select(&mut self) -> SelectFuture<'a, '_, T> {
+impl<T, A: Future<Output = T>> Select<T, A> for [Option<A>] {
+    fn select(&mut self) -> SelectFuture<'_, T, A> {
         SelectFuture::OptFuture(self)
+    }
+}
+
+/// A wrapper around a `Future` trait object.
+pub struct RefFuture<'a, T>(&'a mut dyn Future<Output = T>);
+
+impl<T> core::fmt::Debug for RefFuture<'_, T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        write!(f, "RefFuture")
+    }
+}
+
+impl<'a, T> RefFuture<'a, T> {
+    /// Create a new `RefFuture`.  This is a wrapper around a `Future` trait
+    /// object that implements `Future`.  Because you can't move the `Future`
+    /// out of this type, it is effectively pinned.
+    pub fn new(fut: &'a mut dyn Future<Output = T>) -> Self {
+        Self(fut)
+    }
+}
+
+impl<T> Future for RefFuture<'_, T> {
+    type Output = T;
+
+    #[allow(unsafe_code)]
+    fn poll(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Self::Output> {
+        let mut pin_fut = unsafe { Pin::new_unchecked(std::ptr::read(&self.0)) };
+        let ret = pin_fut.as_mut().poll(cx);
+        std::mem::forget(pin_fut);
+        ret
     }
 }

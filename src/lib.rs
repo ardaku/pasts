@@ -87,6 +87,7 @@ mod select;
 
 pub use execute::Interrupt;
 pub use select::Select;
+pub use select::RefFuture; // FIXME: Move
 
 #[cfg(feature = "std")]
 mod spawner;

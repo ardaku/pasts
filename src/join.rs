@@ -172,9 +172,8 @@ macro_rules! __pasts_join_internal {
     ($(($ai:ident, $ra:ident, $a_expr:expr)),*) => {{
         $( let mut $ra: Option<_> = None; )*
         {
-            $( let $ai: &mut dyn core::future::Future<Output = _>
-                = &mut async { $ra = Some($a_expr.await) }; )*
-            let tasks = &mut [$((Some($ai))),*][..];
+            $( let $ai = &mut async { $ra = Some($a_expr.await) }; )*
+            let tasks = &mut [$((Some($crate::RefFuture::new($ai)))),*][..];
             for _ in 0..tasks.len() {
                 $crate::Select::select(tasks).await;
             }

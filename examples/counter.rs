@@ -2,9 +2,9 @@
 
 use pasts::prelude::*;
 use pasts::ThreadInterrupt;
+use pasts::RefFuture;
 
 use std::cell::RefCell;
-use std::future::Future;
 
 async fn timer_future(duration: std::time::Duration) {
     pasts::spawn_blocking(move || std::thread::sleep(duration)).await
@@ -33,9 +33,11 @@ async fn two(state: &RefCell<usize>) {
 
 async fn example() {
     let state = RefCell::new(0);
-    let tasks: &mut [&mut dyn Future<Output = _>] = &mut [
-        &mut one(&state),
-        &mut two(&state),
+    let mut task_one = one(&state);
+    let mut task_two = two(&state);
+    let tasks = &mut [
+        RefFuture::new(&mut task_one),
+        RefFuture::new(&mut task_two),
     ];
     tasks.select().await;
 }
