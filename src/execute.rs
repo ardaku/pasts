@@ -9,9 +9,9 @@
 
 use core::{
     future::Future,
+    pin::Pin,
     task::{Context, Poll},
     task::{RawWaker, RawWakerVTable, Waker},
-    pin::Pin,
 };
 
 /// An interrupt handler.

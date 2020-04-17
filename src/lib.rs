@@ -43,10 +43,11 @@ pub mod prelude {
 mod execute;
 mod join;
 mod select;
+mod dyn_future;
 
 pub use execute::Interrupt;
-pub use select::DynFut;
-pub use select::DynFuture; // FIXME: Move
+pub use dyn_future::DynFut;
+pub use dyn_future::DynFuture;
 pub use select::Select;
 
 #[cfg(feature = "std")]
