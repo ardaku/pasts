@@ -38,8 +38,12 @@
 /// ```
 #[macro_export]
 macro_rules! join {
-    () => {{ () }};
-    ($a:expr) => {{ $a.await }};
+    () => {{
+        ()
+    }};
+    ($a:expr) => {{
+        $a.await
+    }};
     ($a:expr, $b:expr) => {{
         $crate::__pasts_join_internal!((a, ra, $a), (b, rb, $b))
     }};
@@ -48,71 +52,116 @@ macro_rules! join {
     }};
     ($a:expr, $b:expr, $c:expr, $d:expr) => {{
         $crate::__pasts_join_internal!(
-            (a, ra, $a), (b, rb, $b), (c, rc, $c), (d, rd, $d)
+            (a, ra, $a),
+            (b, rb, $b),
+            (c, rc, $c),
+            (d, rd, $d)
         )
     }};
     ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr) => {{
         $crate::__pasts_join_internal!(
-            (a, ra, $a), (b, rb, $b), (c, rc, $c), (d, rd, $d),
+            (a, ra, $a),
+            (b, rb, $b),
+            (c, rc, $c),
+            (d, rd, $d),
             (e, re, $e)
         )
     }};
     ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr) => {{
         $crate::__pasts_join_internal!(
-            (a, ra, $a), (b, rb, $b), (c, rc, $c), (d, rd, $d),
-            (e, re, $e), (f, rf, $f)
+            (a, ra, $a),
+            (b, rb, $b),
+            (c, rc, $c),
+            (d, rd, $d),
+            (e, re, $e),
+            (f, rf, $f)
         )
     }};
     ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr,
-        $g:expr) =>
-    {{
+        $g:expr) => {{
         $crate::__pasts_join_internal!(
-            (a, ra, $a), (b, rb, $b), (c, rc, $c), (d, rd, $d),
-            (e, re, $e), (f, rf, $f), (g, rg, $g)
+            (a, ra, $a),
+            (b, rb, $b),
+            (c, rc, $c),
+            (d, rd, $d),
+            (e, re, $e),
+            (f, rf, $f),
+            (g, rg, $g)
         )
     }};
     ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr,
-        $g:expr, $h:expr) =>
-    {{
+        $g:expr, $h:expr) => {{
         $crate::__pasts_join_internal!(
-            (a, ra, $a), (b, rb, $b), (c, rc, $c), (d, rd, $d),
-            (e, re, $e), (f, rf, $f), (g, rg, $g), (h, rh, $h),
+            (a, ra, $a),
+            (b, rb, $b),
+            (c, rc, $c),
+            (d, rd, $d),
+            (e, re, $e),
+            (f, rf, $f),
+            (g, rg, $g),
+            (h, rh, $h),
         )
     }};
     ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr,
-        $g:expr, $h:expr, $i:expr) =>
-    {{
+        $g:expr, $h:expr, $i:expr) => {{
         $crate::__pasts_join_internal!(
-            (a, ra, $a), (b, rb, $b), (c, rc, $c), (d, rd, $d),
-            (e, re, $e), (f, rf, $f), (g, rg, $g), (h, rh, $h),
+            (a, ra, $a),
+            (b, rb, $b),
+            (c, rc, $c),
+            (d, rd, $d),
+            (e, re, $e),
+            (f, rf, $f),
+            (g, rg, $g),
+            (h, rh, $h),
             (i, ri, $i)
         )
     }};
     ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr,
-        $g:expr, $h:expr, $i:expr, $j:expr) =>
-    {{
+        $g:expr, $h:expr, $i:expr, $j:expr) => {{
         $crate::__pasts_join_internal!(
-            (a, ra, $a), (b, rb, $b), (c, rc, $c), (d, rd, $d),
-            (e, re, $e), (f, rf, $f), (g, rg, $g), (h, rh, $h),
-            (i, ri, $i), (j, rj, $j)
+            (a, ra, $a),
+            (b, rb, $b),
+            (c, rc, $c),
+            (d, rd, $d),
+            (e, re, $e),
+            (f, rf, $f),
+            (g, rg, $g),
+            (h, rh, $h),
+            (i, ri, $i),
+            (j, rj, $j)
         )
     }};
     ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr,
-        $g:expr, $h:expr, $i:expr, $j:expr, $k:expr) =>
-    {{
+        $g:expr, $h:expr, $i:expr, $j:expr, $k:expr) => {{
         $crate::__pasts_join_internal!(
-            (a, ra, $a), (b, rb, $b), (c, rc, $c), (d, rd, $d),
-            (e, re, $e), (f, rf, $f), (g, rg, $g), (h, rh, $h),
-            (i, ri, $i), (j, rj, $j), (k, rk, $k)
+            (a, ra, $a),
+            (b, rb, $b),
+            (c, rc, $c),
+            (d, rd, $d),
+            (e, re, $e),
+            (f, rf, $f),
+            (g, rg, $g),
+            (h, rh, $h),
+            (i, ri, $i),
+            (j, rj, $j),
+            (k, rk, $k)
         )
     }};
     ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr,
-        $g:expr, $h:expr, $i:expr, $j:expr, $k:expr, $l:expr) =>
-    {{
+        $g:expr, $h:expr, $i:expr, $j:expr, $k:expr, $l:expr) => {{
         $crate::__pasts_join_internal!(
-            (a, ra, $a), (b, rb, $b), (c, rc, $c), (d, rd, $d),
-            (e, re, $e), (f, rf, $f), (g, rg, $g), (h, rh, $h),
-            (i, ri, $i), (j, rj, $j), (k, rk, $k), (l, rl, $l),
+            (a, ra, $a),
+            (b, rb, $b),
+            (c, rc, $c),
+            (d, rd, $d),
+            (e, re, $e),
+            (f, rf, $f),
+            (g, rg, $g),
+            (h, rh, $h),
+            (i, ri, $i),
+            (j, rj, $j),
+            (k, rk, $k),
+            (l, rl, $l),
         )
     }};
 }
@@ -125,7 +174,7 @@ macro_rules! __pasts_join_internal {
         {
             $( let $ai: &mut dyn core::future::Future<Output = _>
                 = &mut async { $ra = Some($a_expr.await) }; )*
-            let tasks = &mut [$(($ai, true)),*][..];
+            let tasks = &mut [$((Some($ai))),*][..];
             for _ in 0..tasks.len() {
                 $crate::Select::select(tasks).await;
             }

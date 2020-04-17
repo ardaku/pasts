@@ -1,8 +1,10 @@
 #![forbid(unsafe_code)]
 
-use pasts::Select;
-use std::future::Future;
+use pasts::prelude::*;
+use pasts::ThreadInterrupt;
+
 use std::cell::RefCell;
+use std::future::Future;
 
 async fn timer_future(duration: std::time::Duration) {
     pasts::spawn_blocking(move || std::thread::sleep(duration)).await
@@ -31,12 +33,13 @@ async fn two(state: &RefCell<usize>) {
 
 async fn example() {
     let state = RefCell::new(0);
-    [
-        &mut one(&state) as &mut dyn Future<Output = _>,
+    let tasks: &mut [&mut dyn Future<Output = _>] = &mut [
+        &mut one(&state),
         &mut two(&state),
-    ].select().await;
+    ];
+    tasks.select().await;
 }
 
 fn main() {
-    <pasts::ThreadInterrupt as pasts::Interrupt>::block_on(example());
+    ThreadInterrupt::block_on(example());
 }

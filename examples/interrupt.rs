@@ -1,5 +1,7 @@
 #![forbid(unsafe_code)]
 
+use pasts::prelude::*;
+
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 // A very inefficient interrupt (don't use in production!).
@@ -8,7 +10,7 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 // interrupts, rather than continuously checking an atomic value in a loop.
 struct AtomicInterrupt(AtomicUsize);
 
-impl pasts::Interrupt for AtomicInterrupt {
+impl Interrupt for AtomicInterrupt {
     // Initialize the shared data for the interrupt.
     fn new() -> Self {
         AtomicInterrupt(AtomicUsize::new(0))

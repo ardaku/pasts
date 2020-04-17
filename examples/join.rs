@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use pasts::Interrupt;
+use pasts::prelude::*;
 
 #[derive(Debug)]
 struct Length(u64);

@@ -75,11 +75,15 @@ pub mod _pasts_hide {
     }
 }
 
+/// Re-exported traits
+pub mod prelude {
+    pub use crate::Interrupt;
+    pub use crate::Select;
+}
+
 mod execute;
 mod join;
-mod tasks;
 mod select;
-mod pin_mut;
 
 pub use execute::Interrupt;
 pub use select::Select;
