@@ -82,7 +82,6 @@ impl<T, A: Future<Output = T>> Future for SelectFuture<'_, T, A> {
 /// # Select on slice of futures.
 /// ```
 /// use pasts::prelude::*;
-/// use pasts::RefFuture;
 ///
 /// use core::future::Future;
 /// use core::pin::Pin;
@@ -91,10 +90,10 @@ impl<T, A: Future<Output = T>> Future for SelectFuture<'_, T, A> {
 ///     let mut hello = async { "Hello" };
 ///     let mut world = async { "World!" };
 ///     // Hello is ready, so returns with index and result.
-///     assert_eq!((0, "Hello"), [RefFuture::new(&mut hello), RefFuture::new(&mut world)].select().await);
+///     assert_eq!((0, "Hello"), [hello.dyn_fut(), world.dyn_fut()].select().await);
 /// }
 ///
-/// <pasts::ThreadInterrupt as pasts::Interrupt>::block_on(async_main());
+/// pasts::ThreadInterrupt::block_on(async_main());
 /// ```
 pub trait Select<T, A: Future<Output = T>> {
     /// Poll multiple futures, and return the future that's ready first.
@@ -114,24 +113,15 @@ impl<T, A: Future<Output = T>> Select<T, A> for [Option<A>] {
 }
 
 /// A wrapper around a `Future` trait object.
-pub struct RefFuture<'a, T>(&'a mut dyn Future<Output = T>);
+pub struct DynFuture<'a, T>(&'a mut dyn Future<Output = T>);
 
-impl<T> core::fmt::Debug for RefFuture<'_, T> {
+impl<T> core::fmt::Debug for DynFuture<'_, T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-        write!(f, "RefFuture")
+        write!(f, "DynFuture")
     }
 }
 
-impl<'a, T> RefFuture<'a, T> {
-    /// Create a new `RefFuture`.  This is a wrapper around a `Future` trait
-    /// object that implements `Future`.  Because you can't move the `Future`
-    /// out of this type, it is effectively pinned.
-    pub fn new(fut: &'a mut dyn Future<Output = T>) -> Self {
-        Self(fut)
-    }
-}
-
-impl<T> Future for RefFuture<'_, T> {
+impl<T> Future for DynFuture<'_, T> {
     type Output = T;
 
     #[allow(unsafe_code)]
@@ -143,5 +133,17 @@ impl<T> Future for RefFuture<'_, T> {
         let ret = pin_fut.as_mut().poll(cx);
         std::mem::forget(pin_fut);
         ret
+    }
+}
+
+/// Trait for converting `Future`s to pinned trait objects.
+pub trait DynFut<'a, T> {
+    /// Get a trait object from a future.
+    fn dyn_fut(&'a mut self) -> DynFuture<'a, T>;
+}
+
+impl<'a, T, F> DynFut<'a, T> for F where F: Future<Output = T> {
+    fn dyn_fut(&'a mut self) -> DynFuture<'a, T> {
+        DynFuture(self)
     }
 }

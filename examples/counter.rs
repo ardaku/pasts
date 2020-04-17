@@ -2,7 +2,6 @@
 
 use pasts::prelude::*;
 use pasts::ThreadInterrupt;
-use pasts::RefFuture;
 
 use std::cell::RefCell;
 
@@ -35,9 +34,9 @@ async fn example() {
     let state = RefCell::new(0);
     let mut task_one = one(&state);
     let mut task_two = two(&state);
-    let tasks = &mut [
-        RefFuture::new(&mut task_one),
-        RefFuture::new(&mut task_two),
+    let mut tasks = [
+        task_one.dyn_fut(),
+        task_two.dyn_fut(),
     ];
     tasks.select().await;
 }

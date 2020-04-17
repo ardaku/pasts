@@ -40,7 +40,7 @@ async fn timer_future(duration: std::time::Duration) {
 }
 
 fn main() {
-    let ret = <AtomicInterrupt as pasts::Interrupt>::block_on(async {
+    let ret = AtomicInterrupt::block_on(async {
         println!("Waiting 2 seconds…");
         timer_future(std::time::Duration::new(2, 0)).await;
         println!("Waited 2 seconds.");

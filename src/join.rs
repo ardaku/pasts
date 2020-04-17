@@ -18,6 +18,8 @@
 /// ```rust
 /// #![forbid(unsafe_code)]
 ///
+/// use pasts::prelude::*;
+///
 /// async fn one() -> char {
 ///     'c'
 /// }
@@ -34,7 +36,7 @@
 ///     assert_eq!(ret, ('c', 'a'));
 /// }
 ///
-/// <pasts::ThreadInterrupt as pasts::Interrupt>::block_on(example());
+/// pasts::ThreadInterrupt::block_on(example());
 /// ```
 #[macro_export]
 macro_rules! join {
@@ -173,7 +175,7 @@ macro_rules! __pasts_join_internal {
         $( let mut $ra: Option<_> = None; )*
         {
             $( let $ai = &mut async { $ra = Some($a_expr.await) }; )*
-            let tasks = &mut [$((Some($crate::RefFuture::new($ai)))),*][..];
+            let tasks = &mut [$((Some($crate::DynFut::dyn_fut($ai)))),*][..];
             for _ in 0..tasks.len() {
                 $crate::Select::select(tasks).await;
             }

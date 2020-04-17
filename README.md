@@ -44,7 +44,6 @@ use pasts::prelude::*;
 use pasts::ThreadInterrupt;
 
 use std::cell::RefCell;
-use std::future::Future;
 
 async fn timer_future(duration: std::time::Duration) {
     pasts::spawn_blocking(move || std::thread::sleep(duration)).await
@@ -73,9 +72,11 @@ async fn two(state: &RefCell<usize>) {
 
 async fn example() {
     let state = RefCell::new(0);
-    let tasks: &mut [&mut dyn Future<Output = _>] = &mut [
-        &mut one(&state),
-        &mut two(&state),
+    let mut task_one = one(&state);
+    let mut task_two = two(&state);
+    let mut tasks = [
+        task_one.dyn_fut(),
+        task_two.dyn_fut(),
     ];
     tasks.select().await;
 }
@@ -85,7 +86,7 @@ fn main() {
 }
 ```
 
-### API
+:x
 API documentation can be found on [docs.rs](https://docs.rs/pasts).
 
 ### Features

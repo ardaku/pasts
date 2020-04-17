@@ -26,7 +26,9 @@ pub trait Interrupt: Send + Sync + Sized {
     /// current thread to block.
     ///
     /// ```rust
-    /// let ret = <pasts::ThreadInterrupt as pasts::Interrupt>::block_on(
+    /// use pasts::prelude::*;
+    ///
+    /// let ret = pasts::ThreadInterrupt::block_on(
     ///     async {
     ///         /* Do some work, calling .await on futures */
     ///         "Complete!"

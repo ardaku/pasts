@@ -79,6 +79,7 @@ pub mod _pasts_hide {
 pub mod prelude {
     pub use crate::Interrupt;
     pub use crate::Select;
+    pub use crate::DynFut;
 }
 
 mod execute;
@@ -87,7 +88,8 @@ mod select;
 
 pub use execute::Interrupt;
 pub use select::Select;
-pub use select::RefFuture; // FIXME: Move
+pub use select::DynFuture; // FIXME: Move
+pub use select::DynFut;
 
 #[cfg(feature = "std")]
 mod spawner;
