@@ -14,9 +14,9 @@ authors = ["Jeron Aldaron Lau <jeronlau@plopgrizzly.com>"]
 license = "Apache-2.0 OR Zlib"
 
 description = "Minimal and simpler alternative to the futures crate."
-repository = "https://github.com/RedAldaron/pasts"
+repository = "https://github.com/AldaronLau/pasts"
 documentation = "https://docs.rs/pasts"
-homepage = "https://github.com/RedAldaron/pasts/blob/master/CHANGELOG.md"
+homepage = "https://github.com/AldaronLau/pasts/blob/master/CHANGELOG.md"
 include = ["Cargo.toml", "README.md", "LICENSE-ZLIB", "LICENSE-APACHE", "src/*"]
 keywords = ["futures", "platform-agnostic", "cross-platform", "io", "interrupt"]
 categories = ["asynchronous", "embedded", "no-std", "rust-patterns"]
@@ -24,9 +24,9 @@ readme = "README.md"
 edition = "2018"
 
 [badges]
-travis-ci = { repository = "RedAldaron/pasts" }
-is-it-maintained-issue-resolution = { repository = "RedAldaron/pasts" }
-is-it-maintained-open-issues = { repository = "RedAldaron/pasts" }
+travis-ci = { repository = "AldaronLau/pasts" }
+is-it-maintained-issue-resolution = { repository = "AldaronLau/pasts" }
+is-it-maintained-open-issues = { repository = "AldaronLau/pasts" }
 maintenance = { status = "actively-developed" }
 
 [dependencies]
