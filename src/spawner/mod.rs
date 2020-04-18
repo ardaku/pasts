@@ -88,10 +88,11 @@ static START: Once = Once::new();
 // Return the global thread pool.
 #[allow(unsafe_code)]
 fn thread_pool() -> Arc<ThreadPool> {
+    // unsafe: initialize thread pool only on first call
     START.call_once(|| unsafe {
         ptr::write(THREAD_POOL.as_mut_ptr(), ThreadPool::new());
     });
-
+    // unsafe: already initialized so dereference won't be UB.
     unsafe { (*THREAD_POOL.as_ptr()).clone() }
 }
 

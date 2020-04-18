@@ -26,10 +26,10 @@ impl<T> Future for DynFuture<'_, T> {
 
     #[allow(unsafe_code)]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let mut pin_fut =
-            unsafe { Pin::new_unchecked(std::ptr::read(&self.0)) };
-        let ret = pin_fut.as_mut().poll(cx);
-        std::mem::forget(pin_fut);
+        // unsafe: This is safe because `DynFut` doesn't let you move it.
+        let mut fut = unsafe { Pin::new_unchecked(std::ptr::read(&self.0)) };
+        let ret = fut.as_mut().poll(cx);
+        std::mem::forget(fut);
         ret
     }
 }
