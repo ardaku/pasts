@@ -37,20 +37,20 @@
 pub mod prelude {
     pub use crate::DynFut;
     pub use crate::Interrupt;
-    pub use crate::Select;
     pub use crate::Join;
+    pub use crate::Select;
 }
 
+mod dyn_future;
 mod execute;
 mod join;
 mod select;
-mod dyn_future;
 
-pub use execute::Interrupt;
 pub use dyn_future::DynFut;
 pub use dyn_future::DynFuture;
-pub use select::Select;
+pub use execute::Interrupt;
 pub use join::Join;
+pub use select::Select;
 
 #[cfg(feature = "std")]
 mod spawner;
