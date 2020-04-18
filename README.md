@@ -9,11 +9,12 @@
 ### Goals/Features
 - No required std
 - No allocations
-- No procedural macros (for faster compile times)
+- No macros at all (no `pin_mut!()` macros inserting unsafe blocks into your code)
+- No slow compiling proc macros (fast compile times)
 - No dependencies
 - No cost (True zero-cost abstractions!)
 - No pain (API super easy to learn & use!)
-- No unsafe code in pinning macro (allowing you to `forbid(unsafe_code)`)
+- No unsafe code left for *you* to write for working with `Future`s
 
 ## Table of Contents
 - [Getting Started](#getting-started)
@@ -35,7 +36,7 @@ pasts = "0.1"
 
 ### Example
 This example goes in a loop and prints "One" every second, and "Two" every other
-second.  After 10 prints, the program terminates.
+second.  After 5 prints, the program prints "One" once more, then terminates.
 
 ```rust,no_run
 #![forbid(unsafe_code)]
@@ -86,7 +87,6 @@ fn main() {
 }
 ```
 
-:x
 API documentation can be found on [docs.rs](https://docs.rs/pasts).
 
 ### Features
