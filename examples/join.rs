@@ -21,7 +21,7 @@ fn main() {
 
         // This will only take two seconds, rather than `(one.await, two.await)`
         // which will take three.
-        pasts::join!(one, two)
+        (one, two).join().await
     });
     println!("Future returned: \"{:?}\"", ret);
 }
