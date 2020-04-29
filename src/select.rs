@@ -84,9 +84,6 @@ impl<T, A: Future<Output = T>> Future for SelectFuture<'_, T, A> {
 /// ```
 /// use pasts::prelude::*;
 ///
-/// use core::future::Future;
-/// use core::pin::Pin;
-///
 /// async fn async_main() {
 ///     let mut hello = async { "Hello" };
 ///     let mut world = async { "World!" };
