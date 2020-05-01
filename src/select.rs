@@ -37,26 +37,29 @@ impl<T, A: Future<Output = T>> Future for SelectFuture<'_, T, A> {
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<Self::Output> {
-        let mut task_id = 0;
         match *self {
             SelectFuture::Future(ref mut tasks) => {
-                for task in tasks.iter_mut().map(|task| {
-                    let mut pin_fut =
-                        unsafe { Pin::new_unchecked(std::ptr::read(&task)) };
-                    let ret = pin_fut.as_mut().poll(cx);
+                println!("dbg; Select Awoken");
+                let len = tasks.len();
+                for task_id in 0..len {
+                    let task = &mut tasks[task_id];
+                    let mut pin_fut = unsafe {
+                        Pin::new_unchecked(std::ptr::read(&task))
+                    };
+                    let task = pin_fut.as_mut().poll(cx);
                     std::mem::forget(pin_fut);
-                    ret
-                }) {
                     match task {
-                        Poll::Ready(ret) => return Poll::Ready((task_id, ret)),
+                        Poll::Ready(ret) => {
+                            return Poll::Ready((task_id, ret))
+                        },
                         Poll::Pending => {}
                     }
-                    task_id += 1;
                 }
             }
             SelectFuture::OptFuture(ref mut tasks) => {
-                for task_mut in tasks.iter_mut() {
-                    if let Some(ref mut task) = task_mut {
+                let len = tasks.len();
+                for task_id in 0..len {
+                    if let Some(ref mut task) = tasks[task_id] {
                         let mut pin_fut = unsafe {
                             Pin::new_unchecked(std::ptr::read(&task))
                         };
@@ -64,12 +67,11 @@ impl<T, A: Future<Output = T>> Future for SelectFuture<'_, T, A> {
                         std::mem::forget(pin_fut);
                         match task {
                             Poll::Ready(ret) => {
-                                *task_mut = None;
+                                tasks[task_id] = None;
                                 return Poll::Ready((task_id, ret));
                             }
                             Poll::Pending => {}
                         }
-                        task_id += 1;
                     }
                 }
             }
