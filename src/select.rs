@@ -39,7 +39,6 @@ impl<T, A: Future<Output = T>> Future for SelectFuture<'_, T, A> {
     ) -> Poll<Self::Output> {
         match *self {
             SelectFuture::Future(ref mut tasks) => {
-                println!("dbg; Select Awoken");
                 let len = tasks.len();
                 for task_id in 0..len {
                     let task = &mut tasks[task_id];
