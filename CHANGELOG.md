@@ -4,7 +4,17 @@ All notable changes to `pasts` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2020-05-03
+### Added
+- `Join` trait to replace `join!()`
+- `Select` trait to replace `select!()`
+- `DynFut` trait for converting `Future`s into `DynFuture`s.  This lets you put
+  your futures into arrays.
+- `prelude` module for traits.
+
+### Removed
+- All macros
+- `Task`
 
 ## [0.0.1] - 2019-12-19
 ### Added
