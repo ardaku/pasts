@@ -37,14 +37,14 @@ impl<T> Future for DynFuture<'_, T> {
 /// Trait for converting `Future`s to pinned trait objects.
 pub trait DynFut<'a, T> {
     /// Get a trait object from a future.
-    fn dyn_fut(&'a mut self) -> DynFuture<'a, T>;
+    fn fut(&'a mut self) -> DynFuture<'a, T>;
 }
 
 impl<'a, T, F> DynFut<'a, T> for F
 where
     F: Future<Output = T>,
 {
-    fn dyn_fut(&'a mut self) -> DynFuture<'a, T> {
+    fn fut(&'a mut self) -> DynFuture<'a, T> {
         DynFuture(self)
     }
 }
