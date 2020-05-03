@@ -34,9 +34,10 @@ impl<T> Future for DynFuture<'_, T> {
     }
 }
 
-/// Trait for converting `Future`s to pinned trait objects.
+/// Trait for converting `Future`s into an abstraction of pinned trait objects.
 pub trait DynFut<'a, T> {
-    /// Get a trait object from a future.
+    /// Turn a future into a generic type.  This is useful for creating an array
+    /// of `Future`s.
     fn fut(&'a mut self) -> DynFuture<'a, T>;
 }
 

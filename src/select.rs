@@ -76,7 +76,7 @@ impl<T, A: Future<Output = T>> Future for SelectFuture<'_, T, A> {
     }
 }
 
-/// A trait to select on a slice of futures (or boxed futures).
+/// A trait to select on a slice of `Future`s or `Option<Future>`s.
 ///
 /// # Select on slice of futures.
 /// ```
@@ -92,7 +92,8 @@ impl<T, A: Future<Output = T>> Future for SelectFuture<'_, T, A> {
 /// pasts::ThreadInterrupt::block_on(async_main());
 /// ```
 pub trait Select<T, A: Future<Output = T>> {
-    /// Poll multiple futures, and return the future that's ready first.
+    /// Poll multiple futures, and return the value from future that returns
+    /// `Ready` first.
     fn select(&mut self) -> SelectFuture<'_, T, A>;
 }
 
