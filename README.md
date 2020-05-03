@@ -84,11 +84,17 @@ fn main() {
 }
 ```
 
+### API
 API documentation can be found on [docs.rs](https://docs.rs/pasts).
 
 ### Features
 Some APIs are only available with the **std** feature enabled.  They are labeled
 as such on [docs.rs](https://docs.rs/pasts).
+
+## Upgrade
+You can use the
+[changelog](https://github.com/AldaronLau/pasts/blob/master/CHANGELOG.md)
+to facilitate upgrading this crate as a dependency.
 
 ## License
 Licensed under either of
