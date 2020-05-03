@@ -86,7 +86,7 @@ impl<T, A: Future<Output = T>> Future for SelectFuture<'_, T, A> {
 ///     let mut hello = async { "Hello" };
 ///     let mut world = async { "World!" };
 ///     // Hello is ready, so returns with index and result.
-///     assert_eq!((0, "Hello"), [hello.dyn_fut(), world.dyn_fut()].select().await);
+///     assert_eq!((0, "Hello"), [hello.fut(), world.fut()].select().await);
 /// }
 ///
 /// pasts::ThreadInterrupt::block_on(async_main());
