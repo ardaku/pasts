@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 ### Changed
 - Simplified `select!()` implementation.  This also reduces the amount of bounds
   checking.
+- `Select` trait now requires that `Future`s are `Unpin`, this fixes a bug that
+  allowed for pinned futures to be moved between calls to `.select()`.
 
 ### Fixed
 - `.select()` allowing for moving pinned futures.
