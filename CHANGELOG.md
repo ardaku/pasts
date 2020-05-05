@@ -4,6 +4,16 @@ All notable changes to `pasts` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
+## [0.1.1] - Unreleased
+### Changed
+- Simplified `select!()` implementation.  This also reduces the amount of bounds
+  checking.
+
+### Contributors
+Thanks to everyone who contributed to make this version of pasts possible!
+
+- [Darksonn](https://github.com/Darksonn)
+
 ## [0.1.0] - 2020-05-03
 ### Added
 - `Join` trait to replace `join!()`
