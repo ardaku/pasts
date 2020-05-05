@@ -10,8 +10,6 @@
 use core::{future::Future, pin::Pin, task::Context, task::Poll};
 
 pub enum SelectFuture<'b, T, A: Future<Output = T>> {
-    //Future(&'b mut [&'a mut dyn Future<Output = T>]),
-    //OptFuture(&'b mut [Option<&'a mut dyn Future<Output = T>>]),
     Future(&'b mut [A]),
     OptFuture(&'b mut [Option<A>]),
 }
@@ -83,19 +81,19 @@ impl<T, A: Future<Output = T>> Future for SelectFuture<'_, T, A> {
 ///
 /// pasts::ThreadInterrupt::block_on(async_main());
 /// ```
-pub trait Select<T, A: Future<Output = T>> {
-    /// Poll multiple futures, and return the value from future that returns
+pub trait Select<T, A: Future<Output = T> + Unpin> {
+    /// Poll multiple futures, and return the value from the future that returns
     /// `Ready` first.
     fn select(&mut self) -> SelectFuture<'_, T, A>;
 }
 
-impl<T, A: Future<Output = T>> Select<T, A> for [A] {
+impl<T, A: Future<Output = T> + Unpin> Select<T, A> for [A] {
     fn select(&mut self) -> SelectFuture<'_, T, A> {
         SelectFuture::Future(self)
     }
 }
 
-impl<T, A: Future<Output = T>> Select<T, A> for [Option<A>] {
+impl<T, A: Future<Output = T> + Unpin> Select<T, A> for [Option<A>] {
     fn select(&mut self) -> SelectFuture<'_, T, A> {
         SelectFuture::OptFuture(self)
     }
