@@ -81,7 +81,9 @@ impl<T, A: Future<Output = T>> Future for SelectFuture<'_, T, A> {
 ///
 /// pasts::ThreadInterrupt::block_on(async_main());
 /// ```
-pub trait Select<T, A: Future<Output = T> + Unpin> {
+// Future needs to be unpin to prevent UB because `Future`s can move between
+// calls to select after starting (which fills future's RAM with garbage data).
+pub trait Select<T, A: Future<Output = T> + Unpin> { 
     /// Poll multiple futures, and return the value from the future that returns
     /// `Ready` first.
     fn select(&mut self) -> SelectFuture<'_, T, A>;
