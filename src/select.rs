@@ -7,14 +7,14 @@
 // or http://opensource.org/licenses/Zlib>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use core::{future::Future, pin::Pin, task::Context, task::Poll};
+use core::{future::Future, pin::Pin, task::Context, task::Poll, fmt::Debug};
 
-pub enum SelectFuture<'b, T, A: Future<Output = T>> {
+pub enum SelectFuture<'b, T, A: Future<Output = T> + Unpin> {
     Future(&'b mut [A]),
     OptFuture(&'b mut [Option<A>]),
 }
 
-impl<T, A: Future<Output = T>> core::fmt::Debug for SelectFuture<'_, T, A> {
+impl<T, A: Future<Output = T> + Unpin> Debug for SelectFuture<'_, T, A> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::Future(_) => write!(f, "Future"),
@@ -23,14 +23,9 @@ impl<T, A: Future<Output = T>> core::fmt::Debug for SelectFuture<'_, T, A> {
     }
 }
 
-impl<T, A: Future<Output = T>> Future for SelectFuture<'_, T, A> {
+impl<T, A: Future<Output = T> + Unpin> Future for SelectFuture<'_, T, A> {
     type Output = (usize, T);
 
-    // unsafe: This let's this future create `Pin`s from the slices it has a
-    // unique reference to.  This is safe because `SelectFuture` never calls
-    // `mem::swap()` and when `SelectFuture` drops it's no longer necessary
-    // that the memory remain pinned because it's not being polled anymore.
-    #[allow(unsafe_code)]
     fn poll(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -38,7 +33,7 @@ impl<T, A: Future<Output = T>> Future for SelectFuture<'_, T, A> {
         match *self {
             SelectFuture::Future(ref mut tasks) => {
                 for (task_id, task) in tasks.iter_mut().enumerate() {
-                    let pin_fut = unsafe { Pin::new_unchecked(task) };
+                    let pin_fut = Pin::new(task);
                     let task = pin_fut.poll(cx);
                     match task {
                         Poll::Ready(ret) => return Poll::Ready((task_id, ret)),
@@ -49,7 +44,7 @@ impl<T, A: Future<Output = T>> Future for SelectFuture<'_, T, A> {
             SelectFuture::OptFuture(ref mut tasks) => {
                 for (task_id, task_opt) in tasks.iter_mut().enumerate() {
                     if let Some(ref mut task) = task_opt {
-                        let pin_fut = unsafe { Pin::new_unchecked(task) };
+                        let pin_fut = Pin::new(task);
                         let task = pin_fut.poll(cx);
                         match task {
                             Poll::Ready(ret) => {
