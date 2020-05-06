@@ -149,11 +149,7 @@ mod tuple {
         B: Future<Output = U>,
         V,
         C: Future<Output = V>,
-    >(
-        (A, B, C),
-        (bool, bool, bool),
-        MaybeUninit<(T, U, V)>,
-    );
+    >((A, B, C), (bool, bool, bool), MaybeUninit<(T, U, V)>);
     impl<T, A, U, B, V, C> Future for Join3<T, A, U, B, V, C>
     where
         A: Future<Output = T>,
@@ -425,8 +421,8 @@ mod tuple {
             }
         }
     }
-    impl<T, A, U, B, V, C, W, D, X, E>
-        Join<Join5<T, A, U, B, V, C, W, D, X, E>> for (A, B, C, D, E)
+    impl<T, A, U, B, V, C, W, D, X, E> Join<Join5<T, A, U, B, V, C, W, D, X, E>>
+        for (A, B, C, D, E)
     where
         A: Future<Output = T>,
         B: Future<Output = U>,
@@ -559,8 +555,7 @@ mod tuple {
         }
     }
     impl<T, A, U, B, V, C, W, D, X, E, Y, F>
-        Join<Join6<T, A, U, B, V, C, W, D, X, E, Y, F>>
-        for (A, B, C, D, E, F)
+        Join<Join6<T, A, U, B, V, C, W, D, X, E, Y, F>> for (A, B, C, D, E, F)
     where
         A: Future<Output = T>,
         B: Future<Output = U>,

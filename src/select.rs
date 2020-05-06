@@ -7,7 +7,7 @@
 // or http://opensource.org/licenses/Zlib>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use core::{future::Future, pin::Pin, task::Context, task::Poll, fmt::Debug};
+use core::{fmt::Debug, future::Future, pin::Pin, task::Context, task::Poll};
 
 pub enum SelectFuture<'b, T, A: Future<Output = T> + Unpin> {
     Future(&'b mut [A]),
@@ -78,7 +78,7 @@ impl<T, A: Future<Output = T> + Unpin> Future for SelectFuture<'_, T, A> {
 /// ```
 // Future needs to be unpin to prevent UB because `Future`s can move between
 // calls to select after starting (which fills future's RAM with garbage data).
-pub trait Select<T, A: Future<Output = T> + Unpin> { 
+pub trait Select<T, A: Future<Output = T> + Unpin> {
     /// Poll multiple futures, and return the value from the future that returns
     /// `Ready` first.
     fn select(&mut self) -> SelectFuture<'_, T, A>;
