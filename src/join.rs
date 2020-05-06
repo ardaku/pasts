@@ -13,8 +13,7 @@ use core::task::{Context, Poll};
 use std::mem::MaybeUninit;
 
 /// Trait for joining a tuple of futures into a single future.
-#[allow(single_use_lifetimes)]
-pub trait Join<'a, Z> {
+pub trait Join<Z> {
     /// Poll multiple futures concurrently, and return a tuple of returned
     /// values from each future.
     ///
@@ -42,7 +41,7 @@ pub trait Join<'a, Z> {
     ///
     /// pasts::ThreadInterrupt::block_on(example());
     /// ```
-    fn join(&'a mut self) -> Z;
+    fn join(self) -> Z;
 }
 
 // unsafe: For pinning projections, MaybeUninit return tuple
@@ -62,14 +61,14 @@ mod tuple {
             Poll::Ready(())
         }
     }
-    impl<'a> Join<'a, Join0> for () {
-        fn join(&'a mut self) -> Join0 {
+    impl Join<Join0> for () {
+        fn join(self) -> Join0 {
             Join0()
         }
     }
     // 1-Tuple
-    pub struct Join1<'b, T, A: Future<Output = T>>(&'b mut (A,));
-    impl<T, A: Future<Output = T>> Future for Join1<'_, T, A> {
+    pub struct Join1<T, A: Future<Output = T>>((A,));
+    impl<T, A: Future<Output = T>> Future for Join1<T, A> {
         type Output = (T,);
         fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<(T,)> {
             match unsafe { self.map_unchecked_mut(|s| &mut s.0 .0) }.poll(cx) {
@@ -78,18 +77,18 @@ mod tuple {
             }
         }
     }
-    impl<'a, T, A: 'a + Future<Output = T>> Join<'a, Join1<'a, T, A>> for (A,) {
-        fn join(&'a mut self) -> Join1<'a, T, A> {
+    impl<T, A: Future<Output = T>> Join<Join1<T, A>> for (A,) {
+        fn join(self) -> Join1<T, A> {
             Join1(self)
         }
     }
     // 2-Tuple
-    pub struct Join2<'b, T, A: Future<Output = T>, U, B: Future<Output = U>>(
-        &'b mut (A, B),
+    pub struct Join2<T, A: Future<Output = T>, U, B: Future<Output = U>>(
+        (A, B),
         (bool, bool),
         MaybeUninit<(T, U)>,
     );
-    impl<T, A, U, B> Future for Join2<'_, T, A, U, B>
+    impl<T, A, U, B> Future for Join2<T, A, U, B>
     where
         A: Future<Output = T>,
         B: Future<Output = U>,
@@ -133,18 +132,17 @@ mod tuple {
             }
         }
     }
-    impl<'a, T, A, U, B> Join<'a, Join2<'a, T, A, U, B>> for (A, B)
+    impl<T, A, U, B> Join<Join2<T, A, U, B>> for (A, B)
     where
-        A: 'a + Future<Output = T>,
-        B: 'a + Future<Output = U>,
+        A: Future<Output = T>,
+        B: Future<Output = U>,
     {
-        fn join(&'a mut self) -> Join2<'a, T, A, U, B> {
+        fn join(self) -> Join2<T, A, U, B> {
             Join2(self, (true, true), MaybeUninit::uninit())
         }
     }
     // 3-Tuple
     pub struct Join3<
-        'b,
         T,
         A: Future<Output = T>,
         U,
@@ -152,11 +150,11 @@ mod tuple {
         V,
         C: Future<Output = V>,
     >(
-        &'b mut (A, B, C),
+        (A, B, C),
         (bool, bool, bool),
         MaybeUninit<(T, U, V)>,
     );
-    impl<T, A, U, B, V, C> Future for Join3<'_, T, A, U, B, V, C>
+    impl<T, A, U, B, V, C> Future for Join3<T, A, U, B, V, C>
     where
         A: Future<Output = T>,
         B: Future<Output = U>,
@@ -214,19 +212,18 @@ mod tuple {
             }
         }
     }
-    impl<'a, T, A, U, B, V, C> Join<'a, Join3<'a, T, A, U, B, V, C>> for (A, B, C)
+    impl<T, A, U, B, V, C> Join<Join3<T, A, U, B, V, C>> for (A, B, C)
     where
-        A: 'a + Future<Output = T>,
-        B: 'a + Future<Output = U>,
-        C: 'a + Future<Output = V>,
+        A: Future<Output = T>,
+        B: Future<Output = U>,
+        C: Future<Output = V>,
     {
-        fn join(&'a mut self) -> Join3<'a, T, A, U, B, V, C> {
+        fn join(self) -> Join3<T, A, U, B, V, C> {
             Join3(self, (true, true, true), MaybeUninit::uninit())
         }
     }
     // 4-Tuple
     pub struct Join4<
-        'b,
         T,
         A: Future<Output = T>,
         U,
@@ -236,11 +233,11 @@ mod tuple {
         W,
         D: Future<Output = W>,
     >(
-        &'b mut (A, B, C, D),
+        (A, B, C, D),
         (bool, bool, bool, bool),
         MaybeUninit<(T, U, V, W)>,
     );
-    impl<T, A, U, B, V, C, W, D> Future for Join4<'_, T, A, U, B, V, C, W, D>
+    impl<T, A, U, B, V, C, W, D> Future for Join4<T, A, U, B, V, C, W, D>
     where
         A: Future<Output = T>,
         B: Future<Output = U>,
@@ -312,21 +309,20 @@ mod tuple {
             }
         }
     }
-    impl<'a, T, A, U, B, V, C, W, D> Join<'a, Join4<'a, T, A, U, B, V, C, W, D>>
+    impl<T, A, U, B, V, C, W, D> Join<Join4<T, A, U, B, V, C, W, D>>
         for (A, B, C, D)
     where
-        A: 'a + Future<Output = T>,
-        B: 'a + Future<Output = U>,
-        C: 'a + Future<Output = V>,
-        D: 'a + Future<Output = W>,
+        A: Future<Output = T>,
+        B: Future<Output = U>,
+        C: Future<Output = V>,
+        D: Future<Output = W>,
     {
-        fn join(&'a mut self) -> Join4<'a, T, A, U, B, V, C, W, D> {
+        fn join(self) -> Join4<T, A, U, B, V, C, W, D> {
             Join4(self, (true, true, true, true), MaybeUninit::uninit())
         }
     }
     // 5-Tuple
     pub struct Join5<
-        'b,
         T,
         A: Future<Output = T>,
         U,
@@ -338,12 +334,12 @@ mod tuple {
         X,
         E: Future<Output = X>,
     >(
-        &'b mut (A, B, C, D, E),
+        (A, B, C, D, E),
         (bool, bool, bool, bool, bool),
         MaybeUninit<(T, U, V, W, X)>,
     );
     impl<T, A, U, B, V, C, W, D, X, E> Future
-        for Join5<'_, T, A, U, B, V, C, W, D, X, E>
+        for Join5<T, A, U, B, V, C, W, D, X, E>
     where
         A: Future<Output = T>,
         B: Future<Output = U>,
@@ -429,22 +425,21 @@ mod tuple {
             }
         }
     }
-    impl<'a, T, A, U, B, V, C, W, D, X, E>
-        Join<'a, Join5<'a, T, A, U, B, V, C, W, D, X, E>> for (A, B, C, D, E)
+    impl<T, A, U, B, V, C, W, D, X, E>
+        Join<Join5<T, A, U, B, V, C, W, D, X, E>> for (A, B, C, D, E)
     where
-        A: 'a + Future<Output = T>,
-        B: 'a + Future<Output = U>,
-        C: 'a + Future<Output = V>,
-        D: 'a + Future<Output = W>,
-        E: 'a + Future<Output = X>,
+        A: Future<Output = T>,
+        B: Future<Output = U>,
+        C: Future<Output = V>,
+        D: Future<Output = W>,
+        E: Future<Output = X>,
     {
-        fn join(&'a mut self) -> Join5<'a, T, A, U, B, V, C, W, D, X, E> {
+        fn join(self) -> Join5<T, A, U, B, V, C, W, D, X, E> {
             Join5(self, (true, true, true, true, true), MaybeUninit::uninit())
         }
     }
     // 6-Tuple
     pub struct Join6<
-        'b,
         T,
         A: Future<Output = T>,
         U,
@@ -458,12 +453,12 @@ mod tuple {
         Y,
         F: Future<Output = Y>,
     >(
-        &'b mut (A, B, C, D, E, F),
+        (A, B, C, D, E, F),
         (bool, bool, bool, bool, bool, bool),
         MaybeUninit<(T, U, V, W, X, Y)>,
     );
     impl<T, A, U, B, V, C, W, D, X, E, Y, F> Future
-        for Join6<'_, T, A, U, B, V, C, W, D, X, E, Y, F>
+        for Join6<T, A, U, B, V, C, W, D, X, E, Y, F>
     where
         A: Future<Output = T>,
         B: Future<Output = U>,
@@ -563,18 +558,18 @@ mod tuple {
             }
         }
     }
-    impl<'a, T, A, U, B, V, C, W, D, X, E, Y, F>
-        Join<'a, Join6<'a, T, A, U, B, V, C, W, D, X, E, Y, F>>
+    impl<T, A, U, B, V, C, W, D, X, E, Y, F>
+        Join<Join6<T, A, U, B, V, C, W, D, X, E, Y, F>>
         for (A, B, C, D, E, F)
     where
-        A: 'a + Future<Output = T>,
-        B: 'a + Future<Output = U>,
-        C: 'a + Future<Output = V>,
-        D: 'a + Future<Output = W>,
-        E: 'a + Future<Output = X>,
-        F: 'a + Future<Output = Y>,
+        A: Future<Output = T>,
+        B: Future<Output = U>,
+        C: Future<Output = V>,
+        D: Future<Output = W>,
+        E: Future<Output = X>,
+        F: Future<Output = Y>,
     {
-        fn join(&'a mut self) -> Join6<'a, T, A, U, B, V, C, W, D, X, E, Y, F> {
+        fn join(self) -> Join6<T, A, U, B, V, C, W, D, X, E, Y, F> {
             Join6(
                 self,
                 (true, true, true, true, true, true),
