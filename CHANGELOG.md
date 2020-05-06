@@ -4,6 +4,14 @@ All notable changes to `pasts` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
+## [0.3.0] - Unreleased
+### Changed
+- `Join` trait now takes `self` instead of `&mut self`, fixes UB
+- Internals of `Select` no longer contain unsafe code.
+
+### Fixed
+- `.join()` allowing for moving pinned futures.
+
 ## [0.2.0] - 2020-05-05
 ### Changed
 - Simplified `select!()` implementation.  This also reduces the amount of bounds
