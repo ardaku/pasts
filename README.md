@@ -31,7 +31,7 @@ Add the following to your `Cargo.toml`.
 
 ```toml
 [dependencies]
-pasts = "0.2"
+pasts = "0.3"
 ```
 
 ### Example
