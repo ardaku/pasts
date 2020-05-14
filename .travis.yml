@@ -18,4 +18,5 @@ matrix:
 
 script:
   - cargo update
+  - cargo test --all --no-default-features
   - cargo test --all --all-features
