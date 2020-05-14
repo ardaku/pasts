@@ -7,10 +7,13 @@
 // or http://opensource.org/licenses/Zlib>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use core::future::Future;
-use core::pin::Pin;
-use core::task::{Context, Poll};
-use std::mem::MaybeUninit;
+use core::{
+    ptr,
+    future::Future,
+    pin::Pin,
+    task::{Context, Poll},
+    mem::MaybeUninit,
+};
 
 /// Trait for joining a tuple of futures into a single future.
 pub trait Join<Z> {
@@ -126,7 +129,7 @@ mod tuple {
                 }
             }
             if complete {
-                Poll::Ready(unsafe { std::ptr::read(self.2.as_ptr()) })
+                Poll::Ready(unsafe { ptr::read(self.2.as_ptr()) })
             } else {
                 Poll::Pending
             }
@@ -202,7 +205,7 @@ mod tuple {
                 }
             }
             if complete {
-                Poll::Ready(unsafe { std::ptr::read(self.2.as_ptr()) })
+                Poll::Ready(unsafe { ptr::read(self.2.as_ptr()) })
             } else {
                 Poll::Pending
             }
@@ -299,7 +302,7 @@ mod tuple {
                 }
             }
             if complete {
-                Poll::Ready(unsafe { std::ptr::read(self.2.as_ptr()) })
+                Poll::Ready(unsafe { ptr::read(self.2.as_ptr()) })
             } else {
                 Poll::Pending
             }
@@ -415,7 +418,7 @@ mod tuple {
                 }
             }
             if complete {
-                Poll::Ready(unsafe { std::ptr::read(self.2.as_ptr()) })
+                Poll::Ready(unsafe { ptr::read(self.2.as_ptr()) })
             } else {
                 Poll::Pending
             }
@@ -548,7 +551,7 @@ mod tuple {
                 }
             }
             if complete {
-                Poll::Ready(unsafe { std::ptr::read(self.2.as_ptr()) })
+                Poll::Ready(unsafe { ptr::read(self.2.as_ptr()) })
             } else {
                 Poll::Pending
             }

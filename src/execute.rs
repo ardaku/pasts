@@ -14,6 +14,19 @@ use core::{
     task::{RawWaker, RawWakerVTable, Waker},
 };
 
+#[cfg(not(feature = "std"))]
+mod sync {
+    use core::sync::atomic::AtomicUsize;
+
+    pub(super) struct Arc<T: Sized> {
+        inner: T,
+        refcount: AtomicUsize,
+    }
+}
+
+#[cfg(feature = "std")]
+use std::sync;
+
 /// An interrupt handler.
 pub trait Interrupt: Send + Sync + Sized {
     /// Initialize the shared data for the interrupt.
@@ -62,6 +75,7 @@ pub trait Interrupt: Send + Sync + Sized {
 #[allow(unsafe_code)]
 fn waker<I: Interrupt>(interrupt: *const I) -> Waker {
     unsafe fn clone<I: Interrupt>(data: *const ()) -> RawWaker {
+        // println!("CLONE> {:p}", data);
         RawWaker::new(data, vtable::<I>())
     }
 
@@ -70,10 +84,13 @@ fn waker<I: Interrupt>(interrupt: *const I) -> Waker {
     }
 
     unsafe fn ref_wake<I: Interrupt>(data: *const ()) {
+        // println!("WAKEWAKE {:p}", data);
         I::interrupt(&*(data as *const I));
     }
 
-    unsafe fn drop<I: Interrupt>(_data: *const ()) {}
+    unsafe fn drop<I: Interrupt>(_data: *const ()) {
+        // println!("DROPDROP {:p}", _data);
+    }
 
     unsafe fn vtable<I: Interrupt>() -> &'static RawWakerVTable {
         &RawWakerVTable::new(clone::<I>, wake::<I>, ref_wake::<I>, drop::<I>)

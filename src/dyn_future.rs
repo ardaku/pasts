@@ -7,16 +7,24 @@
 // or http://opensource.org/licenses/Zlib>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use core::{future::Future, pin::Pin, task::Context, task::Poll};
+use core::{
+    mem,
+    ptr,
+    future::Future,
+    pin::Pin,
+    task::Context,
+    task::Poll,
+    fmt::{Debug, Formatter, Error},
+};
 
 /// A wrapper around a `Future` trait object.
 pub struct DynFuture<'a, T>(&'a mut dyn Future<Output = T>);
 
-impl<T> core::fmt::Debug for DynFuture<'_, T> {
+impl<T> Debug for DynFuture<'_, T> {
     fn fmt(
         &self,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> Result<(), core::fmt::Error> {
+        f: &mut Formatter<'_>,
+    ) -> Result<(), Error> {
         write!(f, "DynFuture")
     }
 }
@@ -27,9 +35,9 @@ impl<T> Future for DynFuture<'_, T> {
     #[allow(unsafe_code)]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // unsafe: This is safe because `DynFut` doesn't let you move it.
-        let mut fut = unsafe { Pin::new_unchecked(std::ptr::read(&self.0)) };
+        let mut fut = unsafe { Pin::new_unchecked(ptr::read(&self.0)) };
         let ret = fut.as_mut().poll(cx);
-        std::mem::forget(fut);
+        mem::forget(fut);
         ret
     }
 }
