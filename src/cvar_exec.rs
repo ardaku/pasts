@@ -81,7 +81,7 @@ impl Executor for CvarExec {
     #[inline]
     unsafe fn trigger_event(&self) {
         // Set wake flag.
-        if self.state.compare_and_swap(false, true, Ordering::SeqCst) == false {
+        if !self.state.compare_and_swap(false, true, Ordering::SeqCst) {
             // We notify the condvar that the value has changed.
             (*(*self.internal.as_ptr()).as_ptr()).cvar.notify_one();
         }
@@ -100,9 +100,7 @@ impl Executor for CvarExec {
 
         // Wait for event(s) to get triggered.
         let mut guard = (*internal).mutex.lock().unwrap();
-        while self.state.compare_and_swap(true, false, Ordering::SeqCst)
-            == false
-        {
+        while !self.state.compare_and_swap(true, false, Ordering::SeqCst) {
             guard = (*internal).cvar.wait(guard).unwrap();
         }
     }

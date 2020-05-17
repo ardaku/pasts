@@ -18,10 +18,20 @@ use core::{
 #[allow(unsafe_code)]
 pub trait Executor: 'static + Send + Sync + Sized {
     /// Cause `wait_for_event()` to return.
+    ///
+    /// # Safety
+    /// This method is marked `unsafe` because it must only be called from a
+    /// `Waker`.  This is guaranteed by the `block_on()` method.
     unsafe fn trigger_event(&self);
     /// Blocking wait until an event is triggered with `trigger_event`.  This
     /// function should put the current thread or processor to sleep to save
     /// power consumption.
+    ///
+    /// # Safety
+    /// This function should only be called by one executor.  On the first call
+    /// to this method, all following calls to `is_used()` should return `true`.
+    /// This method is marked `unsafe` because only one thread and one executor
+    /// can call it (ever!).  This is guaranteed by the `block_on()` method.
     unsafe fn wait_for_event(&self);
     /// Should return true if `wait_for_event` has been called, false otherwise.
     fn is_used(&self) -> bool;
