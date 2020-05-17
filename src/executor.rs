@@ -18,13 +18,13 @@ use core::{
 #[allow(unsafe_code)]
 pub trait Executor: 'static + Send + Sync + Sized {
     /// Cause `wait_for_event()` to return.
-    unsafe fn trigger_event(&'static self);
+    unsafe fn trigger_event(&self);
     /// Blocking wait until an event is triggered with `trigger_event`.  This
     /// function should put the current thread or processor to sleep to save
     /// power consumption.
-    unsafe fn wait_for_event(&'static self);
+    unsafe fn wait_for_event(&self);
     /// Should return true if `wait_for_event` has been called, false otherwise.
-    fn is_used(&'static self) -> bool;
+    fn is_used(&self) -> bool;
 
     /// Run a future to completion on the current thread.  This will cause the
     /// current thread to block.

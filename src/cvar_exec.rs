@@ -67,7 +67,7 @@ impl CvarExec {
 #[allow(unsafe_code)]
 impl Executor for CvarExec {
     #[inline]
-    unsafe fn trigger_event(&'static self) {
+    unsafe fn trigger_event(&self) {
         // Set wake flag.
         if self.state.compare_and_swap(false, true, Ordering::SeqCst) == false {
             // We notify the condvar that the value has changed.
@@ -76,7 +76,7 @@ impl Executor for CvarExec {
     }
 
     #[inline]
-    unsafe fn wait_for_event(&'static self) {
+    unsafe fn wait_for_event(&self) {
         self.once.call_once(|| {
             self.internal.set(MaybeUninit::new(CvarExecInternal {
                 mutex: Mutex::new(()),
@@ -94,7 +94,7 @@ impl Executor for CvarExec {
     }
 
     #[inline]
-    fn is_used(&'static self) -> bool {
+    fn is_used(&self) -> bool {
         self.once.is_completed()
     }
 }
