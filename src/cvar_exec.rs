@@ -88,7 +88,7 @@ impl Executor for CvarExec {
 
         // Wait for event(s) to get triggered.
         let mut guard = (*internal).mutex.lock().unwrap();
-        while self.state.load(Ordering::SeqCst) == false {
+        while self.state.compare_and_swap(true, false, Ordering::SeqCst) == false {
             guard = (*internal).cvar.wait(guard).unwrap();
         }
     }
