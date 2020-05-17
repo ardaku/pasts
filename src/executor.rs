@@ -47,13 +47,12 @@ pub trait Executor: 'static + Send + Sync + Sized {
         let mut f = unsafe { Pin::new_unchecked(&mut f) };
 
         // Go through the loop each time it wakes up, break when Future ready.
+        let waker = waker(self);
+        let context = &mut Context::from_waker(&waker);
         'executor: loop {
-            let waker = waker(self);
-            let context = &mut Context::from_waker(&waker);
-            match f.as_mut().poll(context) {
-                // Go back to waiting for interrupt.
-                Poll::Pending => unsafe { self.wait_for_event() },
-                Poll::Ready(ret) => break 'executor ret,
+            unsafe { self.wait_for_event() };
+            if let Poll::Ready(ret) = f.as_mut().poll(context) {
+                break 'executor ret;
             }
         }
     }
