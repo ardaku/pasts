@@ -36,28 +36,28 @@
 /// Re-exported traits
 pub mod prelude {
     pub use crate::DynFut;
-    pub use crate::Interrupt;
+    pub use crate::Executor;
     pub use crate::Join;
     pub use crate::Select;
 }
 
 mod dyn_future;
-mod execute;
+mod executor;
 mod join;
 mod select;
 
 pub use dyn_future::DynFut;
 pub use dyn_future::DynFuture;
-pub use execute::Interrupt;
+pub use executor::Executor;
 pub use join::Join;
 pub use select::Select;
 
 #[cfg(feature = "std")]
 mod spawner;
 #[cfg(feature = "std")]
-mod thread_interrupt;
+mod cvar_exec;
 
 #[cfg(feature = "std")]
 pub use spawner::spawn_blocking;
 #[cfg(feature = "std")]
-pub use thread_interrupt::ThreadInterrupt;
+pub use cvar_exec::CvarExec;

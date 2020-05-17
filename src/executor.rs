@@ -24,17 +24,15 @@ mod sync {
     }
 }
 
-#[cfg(feature = "std")]
-use std::sync;
-
 /// An interrupt handler.
-pub trait Interrupt: Send + Sync + Sized {
-    /// Initialize the shared data for the interrupt.
-    fn new() -> Self;
-    /// Interrupt blocking to wake up.
-    fn interrupt(&self);
-    /// Blocking wait until interrupt.
-    fn wait_for(&self);
+#[allow(unsafe_code)]
+pub trait Executor: 'static + Send + Sync + Sized {
+    /// Cause `wait_for_event()` to return.
+    unsafe fn trigger_event(&'static self);
+    /// Blocking wait until an event is triggered with `trigger_event`.  This
+    /// function should put the current thread or processor to sleep to save
+    /// power consumption.
+    unsafe fn wait_for_event(&'static self);
 
     /// Run a future to completion on the current thread.  This will cause the
     /// current thread to block.
@@ -51,19 +49,17 @@ pub trait Interrupt: Send + Sync + Sized {
     /// assert_eq!(ret, "Complete!");
     /// ```
     #[allow(unsafe_code)]
-    fn block_on<F: Future>(mut f: F) -> <F as Future>::Output {
-        let task: Self = Interrupt::new();
-
+    fn block_on<F: Future>(&'static self, mut f: F) -> <F as Future>::Output {
         // unsafe: f can't move after this, because it is shadowed
         let mut f = unsafe { Pin::new_unchecked(&mut f) };
 
         // Go through the loop each time it wakes up, break when Future ready.
         'executor: loop {
-            let waker = waker(&task);
+            let waker = waker(self);
             let context = &mut Context::from_waker(&waker);
             match f.as_mut().poll(context) {
                 // Go back to waiting for interrupt.
-                Poll::Pending => task.wait_for(),
+                Poll::Pending => unsafe { self.wait_for_event() },
                 Poll::Ready(ret) => break 'executor ret,
             }
         }
@@ -73,30 +69,23 @@ pub trait Interrupt: Send + Sync + Sized {
 // Safe wrapper around `Waker` API to get a `Waker` from an `Interrupt`.
 #[inline(always)]
 #[allow(unsafe_code)]
-fn waker<I: Interrupt>(interrupt: *const I) -> Waker {
-    unsafe fn clone<I: Interrupt>(data: *const ()) -> RawWaker {
-        // println!("CLONE> {:p}", data);
-        RawWaker::new(data, vtable::<I>())
+fn waker<E: Executor>(interrupt: *const E) -> Waker {
+    unsafe fn clone<E: Executor>(data: *const ()) -> RawWaker {
+        RawWaker::new(data, vtable::<E>())
     }
 
-    unsafe fn wake<I: Interrupt>(data: *const ()) {
-        ref_wake::<I>(data)
+    unsafe fn wake<E: Executor>(data: *const ()) {
+        E::trigger_event(&*(data as *const E));
     }
 
-    unsafe fn ref_wake<I: Interrupt>(data: *const ()) {
-        // println!("WAKEWAKE {:p}", data);
-        I::interrupt(&*(data as *const I));
+    unsafe fn drop<E: Executor>(_data: *const ()) {
     }
 
-    unsafe fn drop<I: Interrupt>(_data: *const ()) {
-        // println!("DROPDROP {:p}", _data);
-    }
-
-    unsafe fn vtable<I: Interrupt>() -> &'static RawWakerVTable {
-        &RawWakerVTable::new(clone::<I>, wake::<I>, ref_wake::<I>, drop::<I>)
+    unsafe fn vtable<E: Executor>() -> &'static RawWakerVTable {
+        &RawWakerVTable::new(clone::<E>, wake::<E>, wake::<E>, drop::<E>)
     }
 
     unsafe {
-        Waker::from_raw(RawWaker::new(interrupt as *const (), vtable::<I>()))
+        Waker::from_raw(RawWaker::new(interrupt as *const (), vtable::<E>()))
     }
 }
