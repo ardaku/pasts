@@ -23,6 +23,8 @@ pub trait Executor: 'static + Send + Sync + Sized {
     /// function should put the current thread or processor to sleep to save
     /// power consumption.
     unsafe fn wait_for_event(&'static self);
+    /// Should return true if `wait_for_event` has been called, false otherwise.
+    fn is_used(&'static self) -> bool;
 
     /// Run a future to completion on the current thread.  This will cause the
     /// current thread to block.
@@ -43,6 +45,10 @@ pub trait Executor: 'static + Send + Sync + Sized {
     #[allow(unsafe_code)]
     #[inline]
     fn block_on<F: Future>(&'static self, mut f: F) -> <F as Future>::Output {
+        if self.is_used() {
+            panic!("Can't reuse an executor!");
+        }
+    
         // unsafe: f can't move after this, because it is shadowed
         let mut f = unsafe { Pin::new_unchecked(&mut f) };
 

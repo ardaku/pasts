@@ -92,4 +92,9 @@ impl Executor for CvarExec {
             guard = (*internal).cvar.wait(guard).unwrap();
         }
     }
+
+    #[inline]
+    fn is_used(&'static self) -> bool {
+        self.once.is_completed()
+    }
 }

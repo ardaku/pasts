@@ -8,11 +8,11 @@ use core::sync::atomic::{AtomicBool, Ordering};
 //
 // For no_std targets, make your own `Interrupt` that waits for hardware
 // interrupts, rather than continuously checking an atomic value in a loop.
-struct AtomicExec(AtomicBool);
+struct AtomicExec(AtomicBool, AtomicBool);
 
 impl AtomicExec {
     const fn new() -> Self {
-        AtomicExec(AtomicBool::new(true))
+        AtomicExec(AtomicBool::new(true), AtomicBool::new(false))
     }
 }
 
@@ -27,8 +27,14 @@ impl Executor for AtomicExec {
 
     // Blocking wait for interrupt, if `Poll::Ready` then stop blocking.
     unsafe fn wait_for_event(&self) {
+        // Set used if not already.
+        self.1.compare_and_swap(false, true, Ordering::SeqCst);
         // Wait until not zero.
         while self.0.compare_and_swap(true, false, Ordering::SeqCst) == false {}
+    }
+
+    fn is_used(&self) -> bool {
+        self.1.load(Ordering::SeqCst)
     }
 }
 
