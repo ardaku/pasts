@@ -14,7 +14,7 @@ use core::{
     task::{RawWaker, RawWakerVTable, Waker},
 };
 
-/// An interrupt handler.
+/// An executor for `Future`s.
 #[allow(unsafe_code)]
 pub trait Executor: 'static + Send + Sync + Sized {
     /// Cause `wait_for_event()` to return.
