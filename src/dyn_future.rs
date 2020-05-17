@@ -59,7 +59,8 @@ where
 #[cfg(feature = "std")]
 pub trait DynBoxFut<'a>: Sized {
     /// **std** feature required.  Turn a boxed future trait object into a
-    /// future.  This is useful for `.select()`ing on a slice of
+    /// future.  This is useful for `.select()`ing on a slice of boxed future
+    /// trait objects.
     fn box_fut(
         this: &'a mut Pin<Box<dyn Future<Output = Self>>>,
     ) -> DynFuture<'a, Self>;
