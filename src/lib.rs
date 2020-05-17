@@ -35,6 +35,7 @@
 
 /// Re-exported traits
 pub mod prelude {
+    pub use crate::DynBoxFut;
     pub use crate::DynFut;
     pub use crate::Executor;
     pub use crate::Join;
@@ -46,6 +47,7 @@ mod executor;
 mod join;
 mod select;
 
+pub use dyn_future::DynBoxFut;
 pub use dyn_future::DynFut;
 pub use dyn_future::DynFuture;
 pub use executor::Executor;

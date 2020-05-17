@@ -64,6 +64,18 @@ impl CvarExec {
     }
 }
 
+impl Drop for CvarExec {
+    #[inline]
+    #[allow(unsafe_code)]
+    fn drop(&mut self) {
+        if self.is_used() {
+            let internal = Cell::new(MaybeUninit::uninit());
+            self.internal.swap(&internal);
+            let _ = unsafe { internal.into_inner().assume_init() };
+        }
+    }
+}
+
 #[allow(unsafe_code)]
 impl Executor for CvarExec {
     #[inline]
@@ -88,7 +100,9 @@ impl Executor for CvarExec {
 
         // Wait for event(s) to get triggered.
         let mut guard = (*internal).mutex.lock().unwrap();
-        while self.state.compare_and_swap(true, false, Ordering::SeqCst) == false {
+        while self.state.compare_and_swap(true, false, Ordering::SeqCst)
+            == false
+        {
             guard = (*internal).cvar.wait(guard).unwrap();
         }
     }

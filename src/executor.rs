@@ -48,7 +48,7 @@ pub trait Executor: 'static + Send + Sync + Sized {
         if self.is_used() {
             panic!("Can't reuse an executor!");
         }
-    
+
         // unsafe: f can't move after this, because it is shadowed
         let mut f = unsafe { Pin::new_unchecked(&mut f) };
 
