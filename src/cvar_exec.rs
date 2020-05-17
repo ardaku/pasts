@@ -11,7 +11,15 @@
 
 use crate::Executor;
 
-use std::{sync::{Once, Condvar, Mutex, atomic::{Ordering, AtomicBool}}, mem::MaybeUninit, cell::Cell};
+use std::{
+    cell::Cell,
+    fmt::{Debug, Error, Formatter},
+    mem::MaybeUninit,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Condvar, Mutex, Once,
+    },
+};
 
 #[derive(Debug)]
 struct CvarExecInternal {
@@ -19,6 +27,12 @@ struct CvarExecInternal {
     mutex: Mutex<()>,
     ///  The thread-safe waking mechanism
     cvar: Condvar,
+}
+
+impl Debug for CvarExec {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        write!(f, "CvarExec")
+    }
 }
 
 /// **std** feature required.  A thread-safe executor that uses a `Condvar` to
@@ -40,6 +54,7 @@ unsafe impl Sync for CvarExec {}
 impl CvarExec {
     /// Construct a new thread-safe executor (one that can be awoken from other
     /// threads and won't crash on wake after thread is done).
+    #[inline]
     pub const fn new() -> Self {
         CvarExec {
             once: Once::new(),
@@ -51,6 +66,7 @@ impl CvarExec {
 
 #[allow(unsafe_code)]
 impl Executor for CvarExec {
+    #[inline]
     unsafe fn trigger_event(&'static self) {
         // Set wake flag.
         if self.state.compare_and_swap(false, true, Ordering::SeqCst) == false {
@@ -59,6 +75,7 @@ impl Executor for CvarExec {
         }
     }
 
+    #[inline]
     unsafe fn wait_for_event(&'static self) {
         self.once.call_once(|| {
             self.internal.set(MaybeUninit::new(CvarExecInternal {
@@ -66,8 +83,8 @@ impl Executor for CvarExec {
                 cvar: Condvar::new(),
             }));
         });
-        
-        let internal = (*self.internal.as_ptr()).as_ptr()   ;
+
+        let internal = (*self.internal.as_ptr()).as_ptr();
 
         // Wait for event(s) to get triggered.
         let mut guard = (*internal).mutex.lock().unwrap();

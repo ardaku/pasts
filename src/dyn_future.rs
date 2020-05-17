@@ -8,23 +8,20 @@
 // copied, modified, or distributed except according to those terms.
 
 use core::{
-    mem,
-    ptr,
+    fmt::{Debug, Error, Formatter},
     future::Future,
+    mem,
     pin::Pin,
+    ptr,
     task::Context,
     task::Poll,
-    fmt::{Debug, Formatter, Error},
 };
 
 /// A wrapper around a `Future` trait object.
 pub struct DynFuture<'a, T>(&'a mut dyn Future<Output = T>);
 
 impl<T> Debug for DynFuture<'_, T> {
-    fn fmt(
-        &self,
-        f: &mut Formatter<'_>,
-    ) -> Result<(), Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         write!(f, "DynFuture")
     }
 }

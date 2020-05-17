@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 use pasts::prelude::*;
+use pasts::CvarExec;
 
 #[derive(Debug)]
 struct Length(u64);
@@ -15,7 +16,8 @@ async fn timer_future(duration: u64) -> Length {
 }
 
 fn main() {
-    let ret = pasts::ThreadInterrupt::block_on(async {
+    static EXECUTOR: CvarExec = CvarExec::new();
+    let ret = EXECUTOR.block_on(async {
         let one = timer_future(1);
         let two = timer_future(2);
 

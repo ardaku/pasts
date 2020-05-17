@@ -14,16 +14,6 @@ use core::{
     task::{RawWaker, RawWakerVTable, Waker},
 };
 
-#[cfg(not(feature = "std"))]
-mod sync {
-    use core::sync::atomic::AtomicUsize;
-
-    pub(super) struct Arc<T: Sized> {
-        inner: T,
-        refcount: AtomicUsize,
-    }
-}
-
 /// An interrupt handler.
 #[allow(unsafe_code)]
 pub trait Executor: 'static + Send + Sync + Sized {
@@ -39,8 +29,10 @@ pub trait Executor: 'static + Send + Sync + Sized {
     ///
     /// ```rust
     /// use pasts::prelude::*;
+    /// use pasts::CvarExec;
     ///
-    /// let ret = pasts::ThreadInterrupt::block_on(
+    /// static EXECUTOR: CvarExec = CvarExec::new();
+    /// let ret = EXECUTOR.block_on(
     ///     async {
     ///         /* Do some work, calling .await on futures */
     ///         "Complete!"
@@ -49,6 +41,7 @@ pub trait Executor: 'static + Send + Sync + Sized {
     /// assert_eq!(ret, "Complete!");
     /// ```
     #[allow(unsafe_code)]
+    #[inline]
     fn block_on<F: Future>(&'static self, mut f: F) -> <F as Future>::Output {
         // unsafe: f can't move after this, because it is shadowed
         let mut f = unsafe { Pin::new_unchecked(&mut f) };
@@ -67,25 +60,29 @@ pub trait Executor: 'static + Send + Sync + Sized {
 }
 
 // Safe wrapper around `Waker` API to get a `Waker` from an `Interrupt`.
-#[inline(always)]
+#[inline]
 #[allow(unsafe_code)]
 fn waker<E: Executor>(interrupt: *const E) -> Waker {
+    #[inline]
     unsafe fn clone<E: Executor>(data: *const ()) -> RawWaker {
-        RawWaker::new(data, vtable::<E>())
+        RawWaker::new(
+            data,
+            &RawWakerVTable::new(clone::<E>, wake::<E>, wake::<E>, drop::<E>),
+        )
     }
 
+    #[inline]
     unsafe fn wake<E: Executor>(data: *const ()) {
         E::trigger_event(&*(data as *const E));
     }
 
-    unsafe fn drop<E: Executor>(_data: *const ()) {
-    }
-
-    unsafe fn vtable<E: Executor>() -> &'static RawWakerVTable {
-        &RawWakerVTable::new(clone::<E>, wake::<E>, wake::<E>, drop::<E>)
-    }
+    #[inline]
+    unsafe fn drop<E: Executor>(_data: *const ()) {}
 
     unsafe {
-        Waker::from_raw(RawWaker::new(interrupt as *const (), vtable::<E>()))
+        Waker::from_raw(RawWaker::new(
+            interrupt as *const (),
+            &RawWakerVTable::new(clone::<E>, wake::<E>, wake::<E>, drop::<E>),
+        ))
     }
 }

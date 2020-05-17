@@ -66,6 +66,9 @@ impl<T, A: Future<Output = T> + Unpin> Future for SelectFuture<'_, T, A> {
 /// # Select on slice of futures.
 /// ```
 /// use pasts::prelude::*;
+/// use pasts::CvarExec;
+///
+/// static EXECUTOR: CvarExec = CvarExec::new();
 ///
 /// async fn async_main() {
 ///     let mut hello = async { "Hello" };
@@ -74,7 +77,7 @@ impl<T, A: Future<Output = T> + Unpin> Future for SelectFuture<'_, T, A> {
 ///     assert_eq!((0, "Hello"), [hello.fut(), world.fut()].select().await);
 /// }
 ///
-/// pasts::ThreadInterrupt::block_on(async_main());
+/// EXECUTOR.block_on(async_main());
 /// ```
 // Future needs to be unpin to prevent UB because `Future`s can move between
 // calls to select after starting (which fills future's RAM with garbage data).

@@ -8,11 +8,11 @@
 // copied, modified, or distributed except according to those terms.
 
 use core::{
-    ptr,
     future::Future,
-    pin::Pin,
-    task::{Context, Poll},
     mem::MaybeUninit,
+    pin::Pin,
+    ptr,
+    task::{Context, Poll},
 };
 
 /// Trait for joining a tuple of futures into a single future.
@@ -27,6 +27,9 @@ pub trait Join<Z> {
     /// #![forbid(unsafe_code)]
     ///
     /// use pasts::prelude::*;
+    /// use pasts::CvarExec;
+    ///
+    /// static EXECUTOR: CvarExec = CvarExec::new();
     ///
     /// async fn one() -> i32 {
     ///     42
@@ -42,7 +45,7 @@ pub trait Join<Z> {
     ///     assert_eq!(ret, (42, 'a'));
     /// }
     ///
-    /// pasts::ThreadInterrupt::block_on(example());
+    /// EXECUTOR.block_on(example());
     /// ```
     fn join(self) -> Z;
 }
@@ -583,6 +586,7 @@ mod test {
 
     #[test]
     fn join6() {
+        static EXECUTOR: crate::CvarExec = crate::CvarExec::new();
         let future = async {
             (
                 async { 1i32 },
@@ -597,7 +601,7 @@ mod test {
         };
 
         assert_eq!(
-            crate::ThreadInterrupt::block_on(future),
+            EXECUTOR.block_on(future),
             (1, 'a', 4.0, "boi", [4, 6], (2, 'a'))
         );
     }

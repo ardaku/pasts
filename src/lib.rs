@@ -53,11 +53,11 @@ pub use join::Join;
 pub use select::Select;
 
 #[cfg(feature = "std")]
-mod spawner;
-#[cfg(feature = "std")]
 mod cvar_exec;
+#[cfg(feature = "std")]
+mod spawner;
 
 #[cfg(feature = "std")]
-pub use spawner::spawn_blocking;
-#[cfg(feature = "std")]
 pub use cvar_exec::CvarExec;
+#[cfg(feature = "std")]
+pub use spawner::spawn_blocking;
