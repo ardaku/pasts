@@ -4,6 +4,28 @@ All notable changes to `pasts` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
+## [0.4.0] - 2020-05-17
+### Added
+- `DynBoxFut` which can be enabled with the new **alloc** feature.  Useful for
+  converting future trait objects into the `DynFuture` type.  Note that enabling
+  **std** automatically enables the **alloc** feature.
+
+### Changed
+- Rename `ThreadInterrupt` to `CvarExec`.
+- Rename `Interrupt` to `Executor`.  No longer requires `new()` to be
+  implemented, and `block_on` is now a method rather than an associated
+  function.  It is still recommended to implement `new()`, and do it as a `const
+  fn`.  `wait_for()` method is renamed to `wait_for_event()` and is now marked
+  `unsafe` in order to guarantee soundness.  `interrupt` method is now
+  `trigger_event()` and marked `unsafe` for the same reason.  An `is_used()`
+  method is now required as well.  Executors must now have a static lifetime;
+  This is in order to fix the `block_on()` bug mentioned below.
+
+### Fixed
+- After return of `block_on()`, `Waker`s from that executor containing pointers
+  to free'd memory, and dereferencing them on `.wake()`.  This is no longer
+  possible without `unsafe` code.
+
 ## [0.3.0] - 2020-05-06
 ### Changed
 - `Join` trait now takes `self` instead of `&mut self`, fixes UB
