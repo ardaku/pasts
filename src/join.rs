@@ -22,31 +22,32 @@ pub trait Join<Z> {
     ///
     /// Futures that are ready first will be executed first.  This makes
     /// `(a, b).join().await` faster than the alternative `(a.await, b.await)`.
-    ///
-    /// ```rust
-    /// #![forbid(unsafe_code)]
-    ///
-    /// use pasts::prelude::*;
-    /// use pasts::CvarExec;
-    ///
-    /// static EXECUTOR: CvarExec = CvarExec::new();
-    ///
-    /// async fn one() -> i32 {
-    ///     42
-    /// }
-    ///
-    /// async fn two() -> char {
-    ///     'a'
-    /// }
-    ///
-    /// async fn example() {
-    ///     // Joined await on the two futures.
-    ///     let ret = (one(), two()).join().await;
-    ///     assert_eq!(ret, (42, 'a'));
-    /// }
-    ///
-    /// EXECUTOR.block_on(example());
-    /// ```
+    #[cfg_attr(feature = "std", doc = r#"
+        ```rust
+        #![forbid(unsafe_code)]
+        
+        use pasts::prelude::*;
+        use pasts::CvarExec;
+        
+        static EXECUTOR: CvarExec = CvarExec::new();
+        
+        async fn one() -> i32 {
+            42
+        }
+        
+        async fn two() -> char {
+            'a'
+        }
+       
+        async fn example() {
+            // Joined await on the two futures.
+            let ret = (one(), two()).join().await;
+            assert_eq!(ret, (42, 'a'));
+        }
+        
+        EXECUTOR.block_on(example());
+        ```
+    "#)]
     fn join(self) -> Z;
 }
 
@@ -577,32 +578,5 @@ mod tuple {
                 MaybeUninit::uninit(),
             )
         }
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use crate::prelude::*;
-
-    #[test]
-    fn join6() {
-        static EXECUTOR: crate::CvarExec = crate::CvarExec::new();
-        let future = async {
-            (
-                async { 1i32 },
-                async { 'a' },
-                async { 4.0f32 },
-                async { "boi" },
-                async { [4i32, 6i32] },
-                async { (2i32, 'a') },
-            )
-                .join()
-                .await
-        };
-
-        assert_eq!(
-            EXECUTOR.block_on(future),
-            (1, 'a', 4.0, "boi", [4, 6], (2, 'a'))
-        );
     }
 }

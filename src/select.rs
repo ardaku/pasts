@@ -64,21 +64,23 @@ impl<T, A: Future<Output = T> + Unpin> Future for SelectFuture<'_, T, A> {
 /// A trait to select on a slice of `Future`s or `Option<Future>`s.
 ///
 /// # Select on slice of futures.
-/// ```
-/// use pasts::prelude::*;
-/// use pasts::CvarExec;
-///
-/// static EXECUTOR: CvarExec = CvarExec::new();
-///
-/// async fn async_main() {
-///     let mut hello = async { "Hello" };
-///     let mut world = async { "World!" };
-///     // Hello is ready, so returns with index and result.
-///     assert_eq!((0, "Hello"), [hello.fut(), world.fut()].select().await);
-/// }
-///
-/// EXECUTOR.block_on(async_main());
-/// ```
+#[cfg_attr(feature = "std", doc = r#"
+```rust
+use pasts::prelude::*;
+use pasts::CvarExec;
+
+static EXECUTOR: CvarExec = CvarExec::new();
+
+async fn async_main() {
+    let mut hello = async { "Hello" };
+    let mut world = async { "World!" };
+    // Hello is ready, so returns with index and result.
+    assert_eq!((0, "Hello"), [hello.fut(), world.fut()].select().await);
+}
+
+EXECUTOR.block_on(async_main());
+```
+"#)]
 // Future needs to be unpin to prevent UB because `Future`s can move between
 // calls to select after starting (which fills future's RAM with garbage data).
 pub trait Select<T, A: Future<Output = T> + Unpin> {

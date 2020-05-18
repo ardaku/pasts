@@ -35,11 +35,13 @@
 
 /// Re-exported traits
 pub mod prelude {
-    pub use crate::DynBoxFut;
     pub use crate::DynFut;
     pub use crate::Executor;
     pub use crate::Join;
     pub use crate::Select;
+    
+    #[cfg(feature = "std")]
+    pub use crate::DynBoxFut;
 }
 
 mod dyn_future;
@@ -47,7 +49,6 @@ mod executor;
 mod join;
 mod select;
 
-pub use dyn_future::DynBoxFut;
 pub use dyn_future::DynFut;
 pub use dyn_future::DynFuture;
 pub use executor::Executor;
@@ -63,3 +64,5 @@ mod spawner;
 pub use cvar_exec::CvarExec;
 #[cfg(feature = "std")]
 pub use spawner::spawn_blocking;
+#[cfg(feature = "std")]
+pub use dyn_future::DynBoxFut;

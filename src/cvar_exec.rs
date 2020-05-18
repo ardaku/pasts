@@ -38,7 +38,21 @@ impl Debug for CvarExec {
 /// **std** feature required.  A thread-safe executor that uses a `Condvar` to
 /// put the thread to sleep when the future is pending.
 ///
-/// If you can use std, use this `Executor`.
+/// If you can use std, use this `Executor`:
+///
+/// ```rust
+/// use pasts::prelude::*;
+/// use pasts::CvarExec;
+///
+/// static EXECUTOR: CvarExec = CvarExec::new();
+/// let ret = EXECUTOR.block_on(
+///     async {
+///         /* Do some work, calling .await on futures */
+///         "Complete!"
+///     }
+/// );
+/// assert_eq!(ret, "Complete!");
+/// ```
 pub struct CvarExec {
     // Runtime intialization check
     once: Once,

@@ -42,7 +42,7 @@ second.  After 5 prints, the program prints "One" once more, then terminates.
 #![forbid(unsafe_code)]
 
 use pasts::prelude::*;
-use pasts::ThreadInterrupt;
+use pasts::CvarExec;
 
 use std::cell::RefCell;
 
@@ -80,7 +80,9 @@ async fn example() {
 }
 
 fn main() {
-    ThreadInterrupt::block_on(example());
+    static EXECUTOR: CvarExec = CvarExec::new();
+
+    EXECUTOR.block_on(example());
 }
 ```
 

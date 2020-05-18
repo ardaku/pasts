@@ -38,20 +38,6 @@ pub trait Executor: 'static + Send + Sync + Sized {
 
     /// Run a future to completion on the current thread.  This will cause the
     /// current thread to block.
-    ///
-    /// ```rust
-    /// use pasts::prelude::*;
-    /// use pasts::CvarExec;
-    ///
-    /// static EXECUTOR: CvarExec = CvarExec::new();
-    /// let ret = EXECUTOR.block_on(
-    ///     async {
-    ///         /* Do some work, calling .await on futures */
-    ///         "Complete!"
-    ///     }
-    /// );
-    /// assert_eq!(ret, "Complete!");
-    /// ```
     #[allow(unsafe_code)]
     #[inline]
     fn block_on<F: Future>(&'static self, mut f: F) -> <F as Future>::Output {
