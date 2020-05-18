@@ -19,6 +19,7 @@ matrix:
 script:
   - cargo update
   - cargo test --all --no-default-features
+  - cargo test --all --no-default-features --feature=alloc
   - cargo test --all --all-features
 
 notifications:

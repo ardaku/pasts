@@ -33,6 +33,9 @@
     variant_size_differences
 )]
 
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
 /// Re-exported traits
 pub mod prelude {
     pub use crate::DynFut;

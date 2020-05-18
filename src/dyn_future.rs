@@ -55,21 +55,21 @@ where
     }
 }
 
-/// Trait for converting `Pin<Box<dyn Future>>`s into an abstraction of pinned trait objects.
-#[cfg(feature = "std")]
+/// **alloc** feature required.  Trait for converting `Pin<Box<dyn Future>>`s into an abstraction of pinned trait objects.
+#[cfg(feature = "alloc")]
 pub trait DynBoxFut<'a>: Sized {
     /// **std** feature required.  Turn a boxed future trait object into a
     /// future.  This is useful for `.select()`ing on a slice of boxed future
     /// trait objects.
     fn box_fut(
-        this: &'a mut Pin<Box<dyn Future<Output = Self>>>,
+        this: &'a mut Pin<alloc::boxed::Box<dyn Future<Output = Self>>>,
     ) -> DynFuture<'a, Self>;
 }
 
-#[cfg(feature = "std")]
+#[cfg(feature = "alloc")]
 impl<'a, T> DynBoxFut<'a> for T {
     fn box_fut(
-        this: &'a mut Pin<Box<dyn Future<Output = Self>>>,
+        this: &'a mut Pin<alloc::boxed::Box<dyn Future<Output = Self>>>,
     ) -> DynFuture<'a, Self> {
         DynFuture(&mut *this)
     }

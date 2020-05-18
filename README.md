@@ -7,8 +7,7 @@
 [![crates.io](https://img.shields.io/crates/v/pasts.svg)](https://crates.io/crates/pasts)
 
 ### Goals/Features
-- No required std
-- No allocations
+- No required std / alloc
 - No macros at all (no `pin_mut!()` macros inserting unsafe blocks into your code)
 - No slow compiling proc macros (fast compile times)
 - No dependencies
@@ -31,7 +30,7 @@ Add the following to your `Cargo.toml`.
 
 ```toml
 [dependencies]
-pasts = "0.3"
+pasts = "0.4"
 ```
 
 ### Example
@@ -90,8 +89,11 @@ fn main() {
 API documentation can be found on [docs.rs](https://docs.rs/pasts).
 
 ### Features
-Some APIs are only available with the **std** feature enabled.  They are labeled
-as such on [docs.rs](https://docs.rs/pasts).
+Some APIs are only available with the **std** feature enabled.  Other APIs only
+require the **alloc** feature.  APIs that require features are labeled so on
+[docs.rs](https://docs.rs/pasts).  You can use no-std with or without the alloc
+feature (which corresponds to the alloc crate, just as std corresponds to the
+std crate).
 
 ## Upgrade
 You can use the
