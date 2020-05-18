@@ -39,7 +39,7 @@ pub mod prelude {
     pub use crate::Executor;
     pub use crate::Join;
     pub use crate::Select;
-    
+
     #[cfg(feature = "std")]
     pub use crate::DynBoxFut;
 }
@@ -63,6 +63,6 @@ mod spawner;
 #[cfg(feature = "std")]
 pub use cvar_exec::CvarExec;
 #[cfg(feature = "std")]
-pub use spawner::spawn_blocking;
-#[cfg(feature = "std")]
 pub use dyn_future::DynBoxFut;
+#[cfg(feature = "std")]
+pub use spawner::spawn_blocking;

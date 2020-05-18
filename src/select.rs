@@ -64,7 +64,9 @@ impl<T, A: Future<Output = T> + Unpin> Future for SelectFuture<'_, T, A> {
 /// A trait to select on a slice of `Future`s or `Option<Future>`s.
 ///
 /// # Select on slice of futures.
-#[cfg_attr(feature = "std", doc = r#"
+#[cfg_attr(
+    feature = "std",
+    doc = r#"
 ```rust
 use pasts::prelude::*;
 use pasts::CvarExec;
@@ -80,7 +82,8 @@ async fn async_main() {
 
 EXECUTOR.block_on(async_main());
 ```
-"#)]
+"#
+)]
 // Future needs to be unpin to prevent UB because `Future`s can move between
 // calls to select after starting (which fills future's RAM with garbage data).
 pub trait Select<T, A: Future<Output = T> + Unpin> {

@@ -22,7 +22,9 @@ pub trait Join<Z> {
     ///
     /// Futures that are ready first will be executed first.  This makes
     /// `(a, b).join().await` faster than the alternative `(a.await, b.await)`.
-    #[cfg_attr(feature = "std", doc = r#"
+    #[cfg_attr(
+        feature = "std",
+        doc = r#"
         ```rust
         #![forbid(unsafe_code)]
         
@@ -47,7 +49,8 @@ pub trait Join<Z> {
         
         EXECUTOR.block_on(example());
         ```
-    "#)]
+    "#
+    )]
     fn join(self) -> Z;
 }
 
