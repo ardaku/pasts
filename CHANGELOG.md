@@ -23,8 +23,8 @@ and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
 ### Fixed
 - After return of `block_on()`, `Waker`s from that executor containing pointers
-  to free'd memory, and dereferencing them on `.wake()`.  This is no longer
-  possible without `unsafe` code.
+  to free'd memory, and dereferencing them on `.wake()`.  This unsound behavior
+  is no longer possible without `unsafe` code.
 
 ## [0.3.0] - 2020-05-06
 ### Changed
