@@ -63,9 +63,10 @@ mod cvar_exec;
 #[cfg(feature = "std")]
 mod spawner;
 
+#[cfg(feature = "alloc")]
+pub use dyn_future::DynBoxFut;
+
 #[cfg(feature = "std")]
 pub use cvar_exec::CvarExec;
-#[cfg(feature = "std")]
-pub use dyn_future::DynBoxFut;
 #[cfg(feature = "std")]
 pub use spawner::spawn_blocking;
