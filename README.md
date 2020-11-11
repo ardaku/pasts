@@ -2,113 +2,35 @@
 
 #### Minimal and simpler alternative to the futures crate.
 
-[![Build Status](https://api.travis-ci.org/AldaronLau/pasts.svg?branch=master)](https://travis-ci.org/AldaronLau/pasts)
-[![Docs](https://docs.rs/pasts/badge.svg)](https://docs.rs/pasts)
-[![crates.io](https://img.shields.io/crates/v/pasts.svg)](https://crates.io/crates/pasts)
+[![tests](https://github.com/Nezeky/pasts/workflows/tests/badge.svg)][2]
+[![docs](https://docs.rs/pasts/badge.svg)][0]
+[![crates.io](https://img.shields.io/crates/v/pasts.svg)][1]
 
-### Goals/Features
-- No required std / alloc
-- No macros at all (no `pin_mut!()` macros inserting unsafe blocks into your code)
-- No slow compiling proc macros (fast compile times)
-- No dependencies
-- No cost (True zero-cost abstractions!)
-- No pain (API super easy to learn & use!)
-- No unsafe code left for *you* to write for working with `Future`s
+[About][4] | [Source][5] | [Changelog][3] | [Tutorial][6]
 
-## Table of Contents
-- [Getting Started](#getting-started)
-   - [Example](#example)
-   - [API](#api)
-   - [Features](#features)
-- [Upgrade](#upgrade)
-- [License](#license)
-   - [Contribution](#contribution)
+# About
+ - No required std / alloc
+ - No macros at all (no `pin_mut!()` macros inserting unsafe blocks into your code)
+ - No slow compiling proc macros (fast compile times)
+ - No dependencies
+ - No cost (True zero-cost abstractions!)
+ - No pain (API super easy to learn & use!)
+ - No unsafe code left for *you* to write for working with `Future`s
 
+Check out the [documentation][0] for examples.
 
-## Getting Started
-Add the following to your `Cargo.toml`.
-
-```toml
-[dependencies]
-pasts = "0.4"
-```
-
-### Example
-This example goes in a loop and prints "One" every second, and "Two" every other
-second.  After 5 prints, the program prints "One" once more, then terminates.
-
-```rust,no_run
-#![forbid(unsafe_code)]
-
-use pasts::prelude::*;
-use pasts::CvarExec;
-
-use std::cell::RefCell;
-
-async fn timer_future(duration: std::time::Duration) {
-    pasts::spawn_blocking(move || std::thread::sleep(duration)).await
-}
-
-async fn one(state: &RefCell<usize>) {
-    println!("Starting task one");
-    while *state.borrow() < 5 {
-        timer_future(std::time::Duration::new(1, 0)).await;
-        let mut state = state.borrow_mut();
-        println!("One {}", *state);
-        *state += 1;
-    }
-    println!("Finish task one");
-}
-
-async fn two(state: &RefCell<usize>) {
-    println!("Starting task two");
-    loop {
-        timer_future(std::time::Duration::new(2, 0)).await;
-        let mut state = state.borrow_mut();
-        println!("Two {}", *state);
-        *state += 1;
-    }
-}
-
-async fn example() {
-    let state = RefCell::new(0);
-    let mut task_one = one(&state);
-    let mut task_two = two(&state);
-    let mut tasks = [task_one.fut(), task_two.fut()];
-    tasks.select().await;
-}
-
-fn main() {
-    static EXECUTOR: CvarExec = CvarExec::new();
-
-    EXECUTOR.block_on(example());
-}
-```
-
-### API
-API documentation can be found on [docs.rs](https://docs.rs/pasts).
-
-### Features
-Some APIs are only available with the **std** feature enabled.  Other APIs only
-require the **alloc** feature.  APIs that require features are labeled so on
-[docs.rs](https://docs.rs/pasts).  You can use no-std with or without the alloc
-feature (which corresponds to the alloc crate, just as std corresponds to the
-std crate).
-
-## Upgrade
-You can use the
-[changelog](https://github.com/AldaronLau/pasts/blob/master/CHANGELOG.md)
-to facilitate upgrading this crate as a dependency.
+### Supported Platforms
+Pasts targets all platforms that can run Rust.  The `block_on` executor works on
+the following platforms (needs **std**):
+ - All platforms that support threading (includes all tier 1 and some tier 2, 3)
+ - Web Assembly In Browser (Tier 2)
 
 ## License
 Licensed under either of
  - Apache License, Version 2.0,
-   ([LICENSE-APACHE](https://github.com/AldaronLau/pasts/blob/master/LICENSE-APACHE) or
-   [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0))
+   ([LICENSE-APACHE][7] or [https://www.apache.org/licenses/LICENSE-2.0][8])
  - Zlib License,
-   ([LICENSE-ZLIB](https://github.com/AldaronLau/pasts/blob/master/LICENSE-ZLIB) or
-   [https://opensource.org/licenses/Zlib](https://opensource.org/licenses/Zlib))
-
+   ([LICENSE-ZLIB][9] or [https://opensource.org/licenses/Zlib][10])
 at your option.
 
 ### Contribution
@@ -116,16 +38,14 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
 
-Contributors are always welcome (thank you for being interested!), whether it
-be a bug report, bug fix, feature request, feature implementation or whatever.
-Don't be shy about getting involved.  I always make time to fix bugs, so usually
-a patched version of the library will be out a few days after a report.
-Features requests will not complete as fast.  If you have any questions, design
-critques, or want me to find you something to work on based on your skill level,
-you can email me at [jeronlau@plopgrizzly.com](mailto:jeronlau@plopgrizzly.com).
-Otherwise,
-[here's a link to the issues on GitHub](https://github.com/AldaronLau/pasts/issues).
-Before contributing, check out the
-[contribution guidelines](https://github.com/AldaronLau/pasts/blob/master/CONTRIBUTING.md),
-and, as always, make sure to follow the
-[code of conduct](https://github.com/AldaronLau/pasts/blob/master/CODE_OF_CONDUCT.md).
+[0]: https://docs.rs/pasts
+[1]: https://crates.io/crates/pasts
+[2]: https://github.com/Nezeky/pasts/actions?query=workflow%3Atests
+[3]: https://github.com/Nezeky/pasts/blob/master/CHANGELOG.md
+[4]: https://github.com/Nezeky/pasts/blob/master/README.md
+[5]: https://github.com/Nezeky/pasts
+[6]: https://aldaronlau.com/
+[7]: https://github.com/Nezeky/pasts/blob/master/LICENSE-APACHE
+[8]: https://www.apache.org/licenses/LICENSE-2.0
+[9]: https://github.com/Nezeky/pasts/blob/master/LICENSE-ZLIB
+[10]: https://opensource.org/licenses/Zlib
