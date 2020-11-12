@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        tc: [stable, beta, nightly]
+        tc: [stable, beta] # nightly
         ar:
         - --all --no-default-features
         - --all --no-default-features --features=alloc
