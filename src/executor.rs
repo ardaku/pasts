@@ -12,7 +12,14 @@ use core::{
     pin::Pin,
     task::{Context, Poll},
     task::{RawWaker, RawWakerVTable, Waker},
+    cell::RefCell,
 };
+
+#[cfg(not(target_arch = "wasm32"))]
+use core::sync::atomic::{AtomicBool, Ordering};
+
+#[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+use std::sync::{Condvar, Mutex};
 
 /// An executor for `Future`s.
 #[allow(unsafe_code)]
@@ -35,55 +42,157 @@ pub trait Executor: 'static + Send + Sync + Sized {
     unsafe fn wait_for_event(&self);
     /// Should return true if `wait_for_event` has been called, false otherwise.
     fn is_used(&self) -> bool;
+}
 
-    /// Run a future to completion on the current thread.  This will cause the
-    /// current thread to block.
-    #[allow(unsafe_code)]
-    #[inline]
-    fn block_on<F: Future>(&'static self, mut f: F) -> <F as Future>::Output {
-        if self.is_used() {
-            panic!("Can't reuse an executor!");
+// Executor data.
+struct Exec {
+    #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+    // The thread-safe waking mechanism: part 1
+    mutex: Mutex<()>,
+
+    #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+    // The thread-safe waking mechanism: part 2
+    cvar: Condvar,
+
+    #[cfg(target_arch = "wasm32")]
+    // Pinned future.
+    future: Option<Pin<Box<dyn Future<Output = ()>>>>,
+
+    #[cfg(not(target_arch = "wasm32"))]
+    // Flag set to verify `Condvar` actually woke the executor.
+    state: AtomicBool,
+}
+
+impl Exec {
+    fn new() -> Self {
+        #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+        {
+            Self {
+                mutex: Mutex::new(()),
+                cvar: Condvar::new(),
+                state: AtomicBool::new(true),
+            }
         }
+        #[cfg(target_arch = "wasm32")]
+        {
+            Self {
+                future: None,
+            }
+        }
+        #[cfg(all(not(target_arch = "wasm32"), not(feature = "std")))]
+        {
+            Self {
+                state: AtomicBool::new(true),
+            }
+        }
+    }
+    
+    #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+    fn wake(&self) {
+        // Wake the task running on a separate thread via CondVar
+        if !self.state.compare_and_swap(false, true, Ordering::SeqCst) {
+            // We notify the condvar that the value has changed.
+            self.cvar.notify_one();
+        }
+    }
 
-        // unsafe: f can't move after this, because it is shadowed
+    #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
+    fn wake(&self) {
+        // Wake the task running on this thread and block until next .await
+        // FIXME
+    }
+
+    #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+    #[allow(unsafe_code)]
+    fn execute<F: Future<Output = ()>>(&mut self, mut f: F) {
+        // Unsafe: f can't move after this, because it is shadowed
         let mut f = unsafe { Pin::new_unchecked(&mut f) };
-
-        // Go through the loop each time it wakes up, break when Future ready.
+        // Get a waker and context for this executor.
         let waker = waker(self);
         let context = &mut Context::from_waker(&waker);
-        'executor: loop {
-            unsafe { self.wait_for_event() };
-            if let Poll::Ready(ret) = f.as_mut().poll(context) {
-                break 'executor ret;
+        // Run Future to completion.
+        while f.as_mut().poll(context).is_pending() {
+            // Put the thread to sleep until wake() is called.
+            let mut guard = self.mutex.lock().unwrap();
+            while !self.state.compare_and_swap(true, false, Ordering::SeqCst) {
+                guard = self.cvar.wait(guard).unwrap();
+            }
+        }
+    }
+        
+    #[cfg(target_arch = "wasm32")]
+    fn execute<F: Future<Output = ()>>(&mut self, f: F) {
+        // FIXME
+    }
+    
+    #[cfg(all(not(target_arch = "wasm32"), not(feature = "std")))]
+    fn execute<F: Future<Output = ()>>(&mut self, mut f: F) {
+        // Unsafe: f can't move after this, because it is shadowed
+        let mut f = unsafe { Pin::new_unchecked(&mut f) };
+        // Get a waker and context for this executor.
+        let waker = waker(self);
+        let context = &mut Context::from_waker(&waker);
+        // Run Future to completion.
+        while f.as_mut().poll(context).is_pending() {
+            // Put the thread to sleep until wake() is called.
+            
+            // Fallback implementation, where processor sleep is unavailable
+            // (wastes CPU)
+            while !self.state.compare_and_swap(true, false, Ordering::SeqCst) { 
             }
         }
     }
 }
 
-// Safe wrapper around `Waker` API to get a `Waker` from an `Interrupt`.
+// When the std library is available, use TLS so that multiple threads can
+// lazily initialize an executor.
+#[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+thread_local! {
+    static EXEC: RefCell<Exec> = RefCell::new(Exec::new());
+}
+
+// Without std, implement for a single thread.
+#[cfg(any(target_arch = "wasm32", not(feature = "std")))]
+static EXEC: RefCell<Exec> = RefCell::new(Exec::new());
+
+/// Execute a future.  Similar to the *futures* crate's `executor::block_on()`,
+/// except that doesn't necessarily block.
+///
+/// # Platform-specific behavior
+/// On some platforms, this function may block.  On others it may return
+/// immediately (this is the case on WASM and embedded systems without an OS).
+/// For consistent behavior, always call this as the last function of `main()`
+/// or the current thread.
+pub fn exec<F: Future<Output = ()>>(f: F) {
+    #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+    {
+        EXEC.with(|exec| exec.borrow_mut().execute(f));
+    }
+    #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
+    {
+        EXEC.borrow_mut().execute(f);
+    }
+}
+
+// Safe wrapper to create a `Waker`.
 #[inline]
 #[allow(unsafe_code)]
-fn waker<E: Executor>(interrupt: *const E) -> Waker {
-    #[inline]
-    unsafe fn clone<E: Executor>(data: *const ()) -> RawWaker {
-        RawWaker::new(
-            data,
-            &RawWakerVTable::new(clone::<E>, wake::<E>, wake::<E>, drop::<E>),
-        )
-    }
+fn waker(exec: *const Exec) -> Waker {
+    const RWVT: RawWakerVTable = RawWakerVTable::new(clone, wake, wake, drop);
 
     #[inline]
-    unsafe fn wake<E: Executor>(data: *const ()) {
-        E::trigger_event(&*(data as *const E));
+    unsafe fn clone(data: *const ()) -> RawWaker {
+        RawWaker::new(data, &RWVT)
     }
-
     #[inline]
-    unsafe fn drop<E: Executor>(_data: *const ()) {}
+    unsafe fn wake(data: *const ()) {
+        let exec: *const Exec = data.cast();
+        (*exec).wake();
+    }
+    #[inline]
+    unsafe fn drop(_: *const ()) {}
 
     unsafe {
-        Waker::from_raw(RawWaker::new(
-            interrupt as *const (),
-            &RawWakerVTable::new(clone::<E>, wake::<E>, wake::<E>, drop::<E>),
-        ))
+        Waker::from_raw(RawWaker::new(exec.cast(), &RWVT))
     }
 }
