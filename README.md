@@ -11,7 +11,7 @@
 # About
  - No required std / alloc
  - No macros at all (`pin_mut!()`, `select!()` and `join!()` implemented as
-   traits with safe APIs: `DynFut::fut()`, `Select::select()`[^1] and
+   traits with safe APIs: `DynFut::fut()`, `Select::select()`¹ and
    `Join::join()`)
  - No slow compiling proc macros (fast compile times)
  - No dependencies
@@ -41,8 +41,8 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
 
-[^1]: pasts' `select()` is very different from futures' `select!()`, as it is
-      not designed to handle arbitrary control flow.
+ - ¹pasts' `select()` is very different from futures' `select!()`, as it is not
+   designed to handle arbitrary control flow.
 
 [0]: https://docs.rs/pasts
 [1]: https://crates.io/crates/pasts
