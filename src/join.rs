@@ -25,32 +25,28 @@ pub trait Join<Z> {
     #[cfg_attr(
         feature = "std",
         doc = r#"
-        ```rust
-        #![forbid(unsafe_code)]
-        
-        use pasts::prelude::*;
-        use pasts::CvarExec;
-        
-        static EXECUTOR: CvarExec = CvarExec::new();
-        
-        async fn one() -> i32 {
-            42
-        }
-        
-        async fn two() -> char {
-            'a'
-        }
-       
-        async fn example() {
-            // Joined await on the two futures.
-            let ret = (one(), two()).join().await;
-            assert_eq!(ret, (42, 'a'));
-        }
-        
-        EXECUTOR.block_on(example());
-        ```
-    "#
-    )]
+```rust
+#![forbid(unsafe_code)]
+
+use pasts::prelude::*;
+
+async fn one() -> i32 {
+    42
+}
+
+async fn two() -> char {
+    'a'
+}
+
+async fn example() {
+    // Joined await on the two futures.
+    let ret = (one(), two()).join().await;
+    assert_eq!(ret, (42, 'a'));
+}
+
+pasts::spawn(example);
+```
+"#)]
     fn join(self) -> Z;
 }
 

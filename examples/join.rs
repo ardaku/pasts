@@ -1,7 +1,6 @@
 #![forbid(unsafe_code)]
 
 use pasts::prelude::*;
-use pasts::CvarExec;
 
 #[derive(Debug)]
 struct Length(u64);
@@ -16,14 +15,15 @@ async fn timer_future(duration: u64) -> Length {
 }
 
 fn main() {
-    static EXECUTOR: CvarExec = CvarExec::new();
-    let ret = EXECUTOR.block_on(async {
-        let one = timer_future(1);
-        let two = timer_future(2);
-
-        // This will only take two seconds, rather than `(one.await, two.await)`
-        // which will take three.
-        (one, two).join().await
+    pasts::spawn(|| async {
+        let task = pasts::spawn(|| async {
+            let one = timer_future(1);
+            let two = timer_future(2);
+        
+            // This will only take two seconds, rather than
+            // `(one.await, two.await)` which will take three.
+            (one, two).join().await
+        });
+        println!("Future returned: \"{:?}\"", task.await);
     });
-    println!("Future returned: \"{:?}\"", ret);
 }

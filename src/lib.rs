@@ -28,58 +28,55 @@
 #![cfg_attr(
     feature = "std",
     doc = r#"
-        ## Example
-        This example goes in a loop and prints "One" every second, and "Two" every
-        other second.  After 5 prints, the program prints "One" once more, then
-        terminates.
+## Example
+This example goes in a loop and prints "One" every second, and "Two" every
+other second.  After 5 prints, the program prints "One" once more, then
+terminates.
 
-        ```rust,no_run
-        #![forbid(unsafe_code)]
+```rust,no_run
+#![forbid(unsafe_code)]
 
-        use pasts::prelude::*;
-        use pasts::CvarExec;
+use pasts::prelude::*;
 
-        use std::cell::RefCell;
+use std::cell::RefCell;
 
-        async fn timer_future(duration: std::time::Duration) {
-            pasts::spawn_blocking(move || std::thread::sleep(duration)).await
-        }
+async fn timer_future(duration: std::time::Duration) {
+    pasts::spawn_blocking(move || std::thread::sleep(duration)).await
+}
 
-        async fn one(state: &RefCell<usize>) {
-            println!("Starting task one");
-            while *state.borrow() < 5 {
-                timer_future(std::time::Duration::new(1, 0)).await;
-                let mut state = state.borrow_mut();
-                println!("One {}", *state);
-                *state += 1;
-            }
-            println!("Finish task one");
-        }
+async fn one(state: &RefCell<usize>) {
+    println!("Starting task one");
+    while *state.borrow() < 5 {
+        timer_future(std::time::Duration::new(1, 0)).await;
+        let mut state = state.borrow_mut();
+        println!("One {}", *state);
+        *state += 1;
+    }
+    println!("Finish task one");
+}
 
-        async fn two(state: &RefCell<usize>) {
-            println!("Starting task two");
-            loop {
-                timer_future(std::time::Duration::new(2, 0)).await;
-                let mut state = state.borrow_mut();
-                println!("Two {}", *state);
-                *state += 1;
-            }
-        }
+async fn two(state: &RefCell<usize>) {
+    println!("Starting task two");
+    loop {
+        timer_future(std::time::Duration::new(2, 0)).await;
+        let mut state = state.borrow_mut();
+        println!("Two {}", *state);
+        *state += 1;
+    }
+}
 
-        async fn example() {
-            let state = RefCell::new(0);
-            let mut task_one = one(&state);
-            let mut task_two = two(&state);
-            let mut tasks = [task_one.fut(), task_two.fut()];
-            tasks.select().await;
-        }
+async fn example() {
+    let state = RefCell::new(0);
+    let mut task_one = one(&state);
+    let mut task_two = two(&state);
+    let mut tasks = [task_one.fut(), task_two.fut()];
+    tasks.select().await;
+}
 
-        fn main() {
-            static EXECUTOR: CvarExec = CvarExec::new();
-
-            EXECUTOR.block_on(example());
-        }
-        ```
+fn main() {
+    pasts::spawn(example);
+}
+```
     "#
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -111,7 +108,6 @@ extern crate alloc;
 /// Re-exported traits
 pub mod prelude {
     pub use crate::DynFut;
-    pub use crate::Executor;
     pub use crate::Join;
     pub use crate::Select;
 
@@ -126,19 +122,15 @@ mod select;
 
 pub use dyn_future::DynFut;
 pub use dyn_future::DynFuture;
-pub use executor::Executor;
+pub use executor::{spawn, JoinHandle};
 pub use join::Join;
 pub use select::Select;
 
-#[cfg(feature = "std")]
-mod cvar_exec;
 #[cfg(feature = "std")]
 mod spawner;
 
 #[cfg(feature = "alloc")]
 pub use dyn_future::DynBoxFut;
 
-#[cfg(feature = "std")]
-pub use cvar_exec::CvarExec;
 #[cfg(feature = "std")]
 pub use spawner::spawn_blocking;

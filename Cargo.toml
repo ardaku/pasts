@@ -40,13 +40,8 @@ path = "examples/join.rs"
 required-features = ["std"]
 
 [[example]]
-name = "time"
+name = "timer"
 path = "examples/timer.rs"
-required-features = ["std"]
-
-[[example]]
-name = "executor"
-path = "examples/executor.rs"
 required-features = ["std"]
 
 [[test]]

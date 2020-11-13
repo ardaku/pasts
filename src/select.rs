@@ -69,9 +69,6 @@ impl<T, A: Future<Output = T> + Unpin> Future for SelectFuture<'_, T, A> {
     doc = r#"
 ```rust
 use pasts::prelude::*;
-use pasts::CvarExec;
-
-static EXECUTOR: CvarExec = CvarExec::new();
 
 async fn async_main() {
     let mut hello = async { "Hello" };
@@ -80,7 +77,7 @@ async fn async_main() {
     assert_eq!((0, "Hello"), [hello.fut(), world.fut()].select().await);
 }
 
-EXECUTOR.block_on(async_main());
+pasts::spawn(async_main);
 ```
 "#
 )]

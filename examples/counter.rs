@@ -1,7 +1,6 @@
 #![forbid(unsafe_code)]
 
 use pasts::prelude::*;
-use pasts::CvarExec;
 
 use std::cell::RefCell;
 
@@ -39,7 +38,5 @@ async fn example() {
 }
 
 fn main() {
-    static EXECUTOR: CvarExec = CvarExec::new();
-
-    EXECUTOR.block_on(example());
+    pasts::spawn(example);
 }

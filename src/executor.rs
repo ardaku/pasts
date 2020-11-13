@@ -8,41 +8,17 @@
 // copied, modified, or distributed except according to those terms.
 
 use core::{
+    cell::RefCell,
     future::Future,
     pin::Pin,
-    task::{Context, Poll},
-    task::{RawWaker, RawWakerVTable, Waker},
-    cell::RefCell,
+    task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
 };
 
 #[cfg(not(target_arch = "wasm32"))]
 use core::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-use std::sync::{Condvar, Mutex};
-
-/// An executor for `Future`s.
-#[allow(unsafe_code)]
-pub trait Executor: 'static + Send + Sync + Sized {
-    /// Cause `wait_for_event()` to return.
-    ///
-    /// # Safety
-    /// This method is marked `unsafe` because it must only be called from a
-    /// `Waker`.  This is guaranteed by the `block_on()` method.
-    unsafe fn trigger_event(&self);
-    /// Blocking wait until an event is triggered with `trigger_event`.  This
-    /// function should put the current thread or processor to sleep to save
-    /// power consumption.
-    ///
-    /// # Safety
-    /// This function should only be called by one executor.  On the first call
-    /// to this method, all following calls to `is_used()` should return `true`.
-    /// This method is marked `unsafe` because only one thread and one executor
-    /// can call it (ever!).  This is guaranteed by the `block_on()` method.
-    unsafe fn wait_for_event(&self);
-    /// Should return true if `wait_for_event` has been called, false otherwise.
-    fn is_used(&self) -> bool;
-}
+use std::sync::{Condvar, Mutex, Arc};
 
 // Executor data.
 struct Exec {
@@ -75,9 +51,7 @@ impl Exec {
         }
         #[cfg(target_arch = "wasm32")]
         {
-            Self {
-                future: None,
-            }
+            Self { future: None }
         }
         #[cfg(all(not(target_arch = "wasm32"), not(feature = "std")))]
         {
@@ -86,7 +60,7 @@ impl Exec {
             }
         }
     }
-    
+
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
     fn wake(&self) {
         // Wake the task running on a separate thread via CondVar
@@ -104,14 +78,18 @@ impl Exec {
 
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
     #[allow(unsafe_code)]
-    fn execute<F: Future<Output = ()>>(&mut self, mut f: F) {
+    fn execute<T, F: Future<Output = T>>(&mut self, mut f: F) -> T {
         // Unsafe: f can't move after this, because it is shadowed
         let mut f = unsafe { Pin::new_unchecked(&mut f) };
         // Get a waker and context for this executor.
         let waker = waker(self);
         let context = &mut Context::from_waker(&waker);
         // Run Future to completion.
-        while f.as_mut().poll(context).is_pending() {
+        loop {
+            // 
+            if let Poll::Ready(value) = f.as_mut().poll(context) {
+                break value;
+            }
             // Put the thread to sleep until wake() is called.
             let mut guard = self.mutex.lock().unwrap();
             while !self.state.compare_and_swap(true, false, Ordering::SeqCst) {
@@ -119,14 +97,14 @@ impl Exec {
             }
         }
     }
-        
+
     #[cfg(target_arch = "wasm32")]
-    fn execute<F: Future<Output = ()>>(&mut self, f: F) {
+    fn execute<T, F: Future<Output = T>>(&mut self, mut f: F) -> T {
         // FIXME
     }
-    
+
     #[cfg(all(not(target_arch = "wasm32"), not(feature = "std")))]
-    fn execute<F: Future<Output = ()>>(&mut self, mut f: F) {
+    fn execute<T, F: Future<Output = T>>(&mut self, mut f: F) -> T {
         // Unsafe: f can't move after this, because it is shadowed
         let mut f = unsafe { Pin::new_unchecked(&mut f) };
         // Get a waker and context for this executor.
@@ -135,11 +113,10 @@ impl Exec {
         // Run Future to completion.
         while f.as_mut().poll(context).is_pending() {
             // Put the thread to sleep until wake() is called.
-            
+
             // Fallback implementation, where processor sleep is unavailable
             // (wastes CPU)
-            while !self.state.compare_and_swap(true, false, Ordering::SeqCst) { 
-            }
+            while !self.state.compare_and_swap(true, false, Ordering::SeqCst) {}
         }
     }
 }
@@ -155,22 +132,95 @@ thread_local! {
 #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
 static EXEC: RefCell<Exec> = RefCell::new(Exec::new());
 
-/// Execute a future.  Similar to the *futures* crate's `executor::block_on()`,
-/// except that doesn't necessarily block.
+/// Execute a future by spawning an asynchronous task.
 ///
-/// # Platform-specific behavior
-/// On some platforms, this function may block.  On others it may return
-/// immediately (this is the case on WASM and embedded systems without an OS).
-/// For consistent behavior, always call this as the last function of `main()`
-/// or the current thread.
-pub fn exec<F: Future<Output = ()>>(f: F) {
+/// On multi-threaded systems, this will start a new thread.  Similar to
+/// `futures::executor::block_on()`, except that doesn't block.  Similar to
+/// `std::thread::spawn()`, except that tasks don't detach, and will join on
+/// `Drop` (except on WASM, where the program continues after main() exits).
+///
+/// # Example
+/// ```rust
+/// async fn async_main() {
+///     /* your code here */
+/// }
+///
+/// fn main() {
+///     pasts::spawn(async_main);
+/// }
+/// ```
+pub fn spawn<T, F: Future<Output = T>, G: Fn() -> F>(g: G) -> JoinHandle<T>
+    where T: 'static + Send + Unpin, G: 'static + Send
+{
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
     {
-        EXEC.with(|exec| exec.borrow_mut().execute(f));
+        let waker = Arc::new(Mutex::new((None, None)));
+        JoinHandle {
+            waker: waker.clone(),
+            handle: Some(std::thread::spawn(move || {
+                let output = EXEC.with(|exec| exec.borrow_mut().execute(g()));
+                let mut waker = waker.lock().unwrap();
+                waker.0 = Some(output);
+                if let Some(waker) = waker.1.take() {
+                    waker.wake();
+                }
+            })),
+        }
     }
+
     #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
     {
         EXEC.borrow_mut().execute(f);
+    }
+}
+
+/// An owned permission to join on a task (`.await` on its termination).
+#[derive(Debug)]
+pub struct JoinHandle<T> where T: Unpin {
+    #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+    waker: Arc<Mutex<(Option<T>, Option<Waker>)>>,
+
+    #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
+    waker: (Option<T>, Option<Waker>),
+
+    #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+    handle: Option<std::thread::JoinHandle<()>>,
+
+    #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
+    handle: u32,
+}
+
+#[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+impl<T: Unpin> Drop for JoinHandle<T> {
+    fn drop(&mut self) {
+        self.handle.take().unwrap().join().unwrap();
+    }
+}
+
+impl<T: Unpin> Future for JoinHandle<T> {
+    type Output = T;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
+        #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+        {
+            let mut waker = self.waker.lock().unwrap();
+            if let Some(output) = waker.0.take() {
+                Poll::Ready(output)
+            } else {
+                waker.1 = Some(cx.waker().clone());
+                Poll::Pending
+            }
+        }
+        
+        #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
+        {
+            if let Some(output) = self.waker.0.take() {
+                Poll::Ready(output)
+            } else {
+                self.waker.1 = Some(cx.waker().clone());
+                Poll::Pending
+            }
+        }
     }
 }
 
@@ -192,7 +242,5 @@ fn waker(exec: *const Exec) -> Waker {
     #[inline]
     unsafe fn drop(_: *const ()) {}
 
-    unsafe {
-        Waker::from_raw(RawWaker::new(exec.cast(), &RWVT))
-    }
+    unsafe { Waker::from_raw(RawWaker::new(exec.cast(), &RWVT)) }
 }
