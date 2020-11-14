@@ -11,7 +11,7 @@ jobs:
         tc: [stable, beta, nightly]
         ar:
         - --all --no-default-features
-        - --all --no-default-features --features=alloc
+        # - --all --no-default-features --features=alloc (unstable)
         - --all --all-features
     steps:
     - uses: actions/checkout@v2

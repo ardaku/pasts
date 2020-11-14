@@ -16,7 +16,10 @@ use core::{
 #[cfg(feature = "std")]
 use std::cell::RefCell;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(any(
+    target_arch = "wasm32",
+    all(feature = "alloc", not(feature = "std"))
+)))]
 use core::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
@@ -34,6 +37,12 @@ use alloc::{boxed::Box, rc::Rc};
 ))]
 use core::marker::PhantomData;
 
+#[cfg(any(
+    target_arch = "wasm32",
+    all(feature = "alloc", not(feature = "std"))
+))]
+use alloc::vec::Vec;
+
 // Executor data.
 struct Exec {
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
@@ -44,11 +53,17 @@ struct Exec {
     // The thread-safe waking mechanism: part 2
     cvar: Condvar,
 
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(any(
+        target_arch = "wasm32",
+        all(feature = "alloc", not(feature = "std"))
+    ))]
     // Pinned future.
     tasks: Vec<Pin<Box<dyn Future<Output = ()>>>>,
 
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(any(
+        target_arch = "wasm32",
+        all(feature = "alloc", not(feature = "std"))
+    )))]
     // Flag set to verify `Condvar` actually woke the executor.
     state: AtomicBool,
 }
@@ -63,12 +78,18 @@ impl Exec {
         }
     }
 
-    #[cfg(target_arch = "wasm32")]
-    fn new() -> Self {
+    #[cfg(any(
+        target_arch = "wasm32",
+        all(feature = "alloc", not(feature = "std"))
+    ))]
+    const fn new() -> Self {
         Self { tasks: Vec::new() }
     }
 
-    #[cfg(all(not(target_arch = "wasm32"), not(feature = "std")))]
+    #[cfg(all(
+        not(target_arch = "wasm32"),
+        all(not(feature = "std"), not(feature = "alloc"))
+    ))]
     const fn new() -> Self {
         Self {
             state: AtomicBool::new(true),
@@ -222,10 +243,7 @@ where
     }
 
     // Can allocate task queue.
-    #[cfg(any(
-        target_arch = "wasm32",
-        all(feature = "alloc", not(feature = "std"))
-    ))]
+    #[cfg(any(target_arch = "wasm32",))]
     {
         let waker = Rc::new((None, None));
         let mut waker_b = waker.clone();
@@ -236,6 +254,26 @@ where
                     Rc::get_mut(&mut waker_b).unwrap().0 = Some(output);
                 })
             }),
+            waker,
+        }
+    }
+
+    #[cfg(all(
+        not(target_arch = "wasm32"),
+        feature = "alloc",
+        not(feature = "std")
+    ))]
+    #[allow(unsafe_code)]
+    {
+        let waker = Rc::new((None, None));
+        let mut waker_b = waker.clone();
+        JoinHandle {
+            handle: unsafe {
+                EXEC.execute(async move {
+                    let output = g().await;
+                    Rc::get_mut(&mut waker_b).unwrap().0 = Some(output);
+                })
+            },
             waker,
         }
     }
