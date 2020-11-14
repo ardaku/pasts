@@ -82,7 +82,7 @@ impl Exec {
         target_arch = "wasm32",
         all(feature = "alloc", not(feature = "std"))
     ))]
-    const fn new() -> Self {
+    fn new() -> Self {
         Self { tasks: Vec::new() }
     }
 
