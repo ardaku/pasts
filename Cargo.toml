@@ -54,6 +54,7 @@ required-features = ["std"]
 [build-dependencies]
 
 [dev-dependencies]
+async-std = "1.0"
 
 [package.metadata.docs.rs]
 all-features = true

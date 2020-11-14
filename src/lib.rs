@@ -23,31 +23,24 @@
 //! ```toml
 //! [dependencies]
 //! pasts = "0.4"
+//! aysnc-std = "1.0"
 //! ```
 //!
 #![cfg_attr(
     feature = "std",
     doc = r#"
-## Example
-This example goes in a loop and prints "One" every second, and "Two" every
-other second.  After 5 prints, the program prints "One" once more, then
-terminates.
-
 ```rust,no_run
 #![forbid(unsafe_code)]
 
 use pasts::prelude::*;
+use async_std::task;
 
-use std::cell::RefCell;
-
-async fn timer_future(duration: std::time::Duration) {
-    pasts::spawn_blocking(move || std::thread::sleep(duration)).await
-}
+use std::{cell::RefCell, time::Duration};
 
 async fn one(state: &RefCell<usize>) {
     println!("Starting task one");
     while *state.borrow() < 5 {
-        timer_future(std::time::Duration::new(1, 0)).await;
+        task::sleep(Duration::new(1, 0)).await;
         let mut state = state.borrow_mut();
         println!("One {}", *state);
         *state += 1;
@@ -58,7 +51,7 @@ async fn one(state: &RefCell<usize>) {
 async fn two(state: &RefCell<usize>) {
     println!("Starting task two");
     loop {
-        timer_future(std::time::Duration::new(2, 0)).await;
+        task::sleep(Duration::new(2, 0)).await;
         let mut state = state.borrow_mut();
         println!("Two {}", *state);
         *state += 1;
@@ -77,7 +70,7 @@ fn main() {
     pasts::spawn(example);
 }
 ```
-    "#
+"#
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![doc(
@@ -126,11 +119,5 @@ pub use executor::{spawn, JoinHandle};
 pub use join::Join;
 pub use select::Select;
 
-#[cfg(feature = "std")]
-mod spawner;
-
 #[cfg(feature = "alloc")]
 pub use dyn_future::DynBoxFut;
-
-#[cfg(feature = "std")]
-pub use spawner::spawn_blocking;

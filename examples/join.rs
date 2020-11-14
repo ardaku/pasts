@@ -1,17 +1,17 @@
 #![forbid(unsafe_code)]
 
 use pasts::prelude::*;
+use async_std::task;
+
+use std::time::Duration;
 
 #[derive(Debug)]
 struct Length(u64);
 
 async fn timer_future(duration: u64) -> Length {
-    pasts::spawn_blocking(move || {
-        std::thread::sleep(std::time::Duration::new(duration, 0));
-        println!("Slept for {}", duration);
-        Length(duration)
-    })
-    .await
+    task::sleep(Duration::new(duration, 0)).await;
+    println!("Slept for {}", duration);
+    Length(duration)
 }
 
 fn main() {
