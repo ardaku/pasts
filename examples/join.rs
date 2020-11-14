@@ -19,7 +19,7 @@ fn main() {
         let task = pasts::spawn(|| async {
             let one = timer_future(1);
             let two = timer_future(2);
-        
+
             // This will only take two seconds, rather than
             // `(one.await, two.await)` which will take three.
             (one, two).join().await
