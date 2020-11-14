@@ -30,18 +30,8 @@ is-it-maintained-open-issues = { repository = "AldaronLau/pasts" }
 maintenance = { status = "actively-developed" }
 
 [[example]]
-name = "counter"
-path = "examples/counter.rs"
-required-features = ["std"]
-
-[[example]]
 name = "join"
 path = "examples/join.rs"
-required-features = ["std"]
-
-[[example]]
-name = "timer"
-path = "examples/timer.rs"
 required-features = ["std"]
 
 [[test]]

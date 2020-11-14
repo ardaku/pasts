@@ -95,17 +95,11 @@ fn main() {
     variant_size_differences
 )]
 
-#[cfg(feature = "alloc")]
-extern crate alloc;
-
 /// Re-exported traits
 pub mod prelude {
     pub use crate::DynFut;
     pub use crate::Join;
     pub use crate::Select;
-
-    #[cfg(feature = "std")]
-    pub use crate::DynBoxFut;
 }
 
 mod dyn_future;
@@ -118,6 +112,3 @@ pub use dyn_future::DynFuture;
 pub use executor::{spawn, JoinHandle};
 pub use join::Join;
 pub use select::Select;
-
-#[cfg(feature = "alloc")]
-pub use dyn_future::DynBoxFut;
