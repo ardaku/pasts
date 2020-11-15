@@ -10,19 +10,14 @@
 //! Minimal and simpler alternative to the futures crate.
 //!
 //! # Optional Features
-//! Some APIs are only available with the **std** feature enabled.  Other APIs
-//! only require the **alloc** feature.  APIs that require features are labeled
-//! with **feature-name** in their documentation.  You can use no-std with or
-//! without the alloc feature (which corresponds to the alloc crate, just as std
-//! corresponds to the std crate).  The default is **std** and **alloc**
-//! enabled (enabling **std** also enables **alloc**).
+//! The **std** feature is enabled by default, disable it to use on `no_std`.
 //!
 //! # Getting Started
 //! Add the following to your *Cargo.toml*:
 //!
 //! ```toml
 //! [dependencies]
-//! pasts = "0.4"
+//! pasts = "0.5"
 //! aysnc-std = "1.0"
 //! ```
 //!

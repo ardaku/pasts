@@ -9,7 +9,7 @@
 
 [package]
 name = "pasts"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Jeron Aldaron Lau <jeronlau@plopgrizzly.com>"]
 license = "Apache-2.0 OR Zlib"
 
