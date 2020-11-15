@@ -7,28 +7,29 @@
 // or http://opensource.org/licenses/Zlib>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use core::{future::Future, pin::Pin, task::Context, task::Poll, marker::PhantomData};
+use core::{
+    future::Future, marker::PhantomData, pin::Pin, task::Context, task::Poll,
+};
 
 use crate::DynFut;
 
 #[allow(missing_debug_implementations)]
 pub enum SelectFuture<'b, T, I>
-    where I: DynFut<T>
+where
+    I: DynFut<T>,
 {
     Future(&'b mut [I], PhantomData<T>),
     OptFuture(&'b mut [Option<I>], PhantomData<T>),
-    // BoxFuture(&'b mut [Pin<Box<dyn Future<Output = T>>>]),
 }
 
 impl<T, I> Future for SelectFuture<'_, T, I>
-    where I: DynFut<T>, T: Unpin
+where
+    I: DynFut<T>,
+    T: Unpin,
 {
     type Output = (usize, T);
 
-    fn poll(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match self.get_mut() {
             SelectFuture::Future(ref mut tasks, _) => {
                 for (task_id, task) in tasks.iter_mut().enumerate() {
@@ -56,16 +57,15 @@ impl<T, I> Future for SelectFuture<'_, T, I>
                         }
                     }
                 }
-            }
-            /*SelectFuture::BoxFuture(ref mut tasks, _) => {
-                for (task_id, task) in tasks.iter_mut().enumerate() {
-                    let task = task.poll(cx);
-                    match task {
-                        Poll::Ready(ret) => return Poll::Ready((task_id, ret)),
-                        Poll::Pending => {}
-                    }
-                }
-            }*/
+            } /*SelectFuture::BoxFuture(ref mut tasks, _) => {
+                  for (task_id, task) in tasks.iter_mut().enumerate() {
+                      let task = task.poll(cx);
+                      match task {
+                          Poll::Ready(ret) => return Poll::Ready((task_id, ret)),
+                          Poll::Pending => {}
+                      }
+                  }
+              }*/
         };
         Poll::Pending
     }
@@ -89,19 +89,28 @@ impl<T, I> Future for SelectFuture<'_, T, I>
 /// ```
 // Future needs to be unpin to prevent UB because `Future`s can move between
 // calls to select after starting (which fills future's RAM with garbage data).
-pub trait Select<'a, T, I> where I: DynFut<T> {
+pub trait Select<'a, T, I>
+where
+    I: DynFut<T>,
+{
     /// Poll multiple futures, and return the value from the future that returns
     /// `Ready` first.
     fn select(&'a mut self) -> SelectFuture<'a, T, I>;
 }
 
-impl<'a, T, I> Select<'a, T, I> for [I] where I: DynFut<T> {
+impl<'a, T, I> Select<'a, T, I> for [I]
+where
+    I: DynFut<T>,
+{
     fn select(&'a mut self) -> SelectFuture<'a, T, I> {
         SelectFuture::Future(self, PhantomData)
     }
 }
 
-impl<'a, T, I> Select<'a, T, I> for [Option<I>] where I: DynFut<T> {
+impl<'a, T, I> Select<'a, T, I> for [Option<I>]
+where
+    I: DynFut<T>,
+{
     fn select(&'a mut self) -> SelectFuture<'a, T, I> {
         SelectFuture::OptFuture(self, PhantomData)
     }

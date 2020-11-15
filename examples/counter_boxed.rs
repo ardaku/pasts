@@ -1,9 +1,9 @@
 #![forbid(unsafe_code)]
 
-use pasts::prelude::*;
 use async_std::task;
+use pasts::prelude::*;
 
-use std::{cell::RefCell, time::Duration, future::Future};
+use std::{cell::RefCell, time::Duration};
 
 async fn one(state: &RefCell<usize>) {
     println!("Starting task one");
@@ -28,10 +28,9 @@ async fn two(state: &RefCell<usize>) {
 
 async fn example() {
     let state = RefCell::new(0);
-    let mut task_one: Box<dyn Future<Output = _>> = Box::new(one(&state));
-    let mut task_two: Box<dyn Future<Output = _>> = Box::new(two(&state));
-    let mut tasks = &mut [task_one, task_two][..];
-    tasks.select().await;
+    let mut task_one = Box::new(one(&state));
+    let mut task_two = Box::new(two(&state));
+    [task_one.fut(), task_two.fut()].select().await;
 }
 
 fn main() {

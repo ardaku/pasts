@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 
-use pasts::prelude::*;
 use async_std::task;
+use pasts::prelude::*;
 
 use std::{cell::RefCell, time::Duration};
 

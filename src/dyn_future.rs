@@ -7,50 +7,22 @@
 // or http://opensource.org/licenses/Zlib>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use core::{
-    fmt::{Debug, Error, Formatter},
-    future::Future,
-    mem,
-    pin::Pin,
-    ptr,
-    task::Context,
-    task::Poll,
-    ops::{Deref},
-};
+use core::{future::Future, mem, pin::Pin, ptr, task::Context, task::Poll};
 
 /// A wrapper around a `Future` trait object.
+#[allow(missing_debug_implementations)]
 pub struct DynFuture<'a, T>(&'a mut dyn Future<Output = T>);
 
-impl<T> DynFuture<'_, T> {
+impl<T> Future for DynFuture<'_, T> {
+    type Output = T;
+
     #[allow(unsafe_code)]
-    pub(crate) fn polli(self: &mut Self, cx: &mut Context<'_>) -> Poll<T> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
         // unsafe: This is safe because `DynFut` doesn't let you move it.
         let mut fut = unsafe { Pin::new_unchecked(ptr::read(&self.0)) };
         let ret = fut.as_mut().poll(cx);
         mem::forget(fut);
         ret
-    }
-}
-
-impl<T> Debug for DynFuture<'_, T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        write!(f, "DynFuture")
-    }
-}
-
-impl<'a, T> Deref for DynFuture<'a, T> {
-    type Target = &'a mut dyn Future<Output = T>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<T> Future for DynFuture<'_, T> {
-    type Output = T;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
-        self.polli(cx)
     }
 }
 
