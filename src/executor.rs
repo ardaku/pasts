@@ -162,13 +162,13 @@ impl Exec {
 
 // When the std library is available, use TLS so that multiple threads can
 // lazily initialize an executor.
-#[cfg(all(feature = "std"))]
+#[cfg(all(feature = "std", not(target_arch = "wasm32")))]
 thread_local! {
     static EXEC: RefCell<Exec> = RefCell::new(Exec::new());
 }
 
 // Without std, implement for a single thread.
-#[cfg(not(feature = "std"))]
+#[cfg(any(target_arch = "wasm32", not(feature = "std")))]
 static mut EXEC: Option<Exec> = None;
 
 /// Execute a future by spawning an asynchronous task.
