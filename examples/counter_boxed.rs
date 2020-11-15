@@ -3,7 +3,12 @@
 use async_std::task;
 use pasts::prelude::*;
 
-use std::{time::Duration, future::Future, pin::Pin, sync::atomic::{AtomicUsize, Ordering::SeqCst}};
+use std::{
+    future::Future,
+    pin::Pin,
+    sync::atomic::{AtomicUsize, Ordering::SeqCst},
+    time::Duration,
+};
 
 async fn one(state: &AtomicUsize) {
     println!("Starting task one");
@@ -29,8 +34,8 @@ async fn two(state: &AtomicUsize) {
 static STATE: AtomicUsize = AtomicUsize::new(0);
 
 async fn example() {
-    let task_one: Pin<Box<dyn Future<Output=()>>> = Box::<>::pin(one(&STATE));
-    let task_two: Pin<Box<dyn Future<Output=()>>> = Box::<>::pin(two(&STATE));
+    let task_one: Pin<Box<dyn Future<Output = ()>>> = Box::pin(one(&STATE));
+    let task_two: Pin<Box<dyn Future<Output = ()>>> = Box::pin(two(&STATE));
     [task_one, task_two].select_boxed().await;
 }
 

@@ -19,9 +19,12 @@ use crate::DynFut;
 #[allow(missing_debug_implementations)]
 pub struct SelectFuture<'b, T, I: DynFut<T>>(&'b mut [I], PhantomData<T>);
 #[allow(missing_debug_implementations)]
-pub struct SelectOptionalFuture<'b, T, I: DynFut<T>>(&'b mut [Option<I>], PhantomData<T>);
+pub struct SelectOptionalFuture<'b, T, I: DynFut<T>>(
+    &'b mut [Option<I>],
+    PhantomData<T>,
+);
 #[allow(missing_debug_implementations)]
-pub struct SelectBoxedFuture<'b, T>(&'b mut [Pin<Box<dyn Future<Output=T>>>]);
+pub struct SelectBoxedFuture<'b, T>(&'b mut [Pin<Box<dyn Future<Output = T>>>]);
 
 impl<T, I> Future for SelectFuture<'_, T, I>
 where
@@ -31,8 +34,8 @@ where
     type Output = (usize, T);
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let ref mut tasks = self.get_mut().0;
-    
+        let tasks = &mut self.get_mut().0;
+
         for (task_id, task) in tasks.iter_mut().enumerate() {
             let mut task = task.fut();
             let pin_fut = Pin::new(&mut task);
@@ -55,7 +58,7 @@ where
     type Output = (usize, T);
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let ref mut tasks = self.get_mut().0;
+        let tasks = &mut self.get_mut().0;
 
         for (task_id, task_opt) in tasks.iter_mut().enumerate() {
             if let Some(ref mut task) = task_opt {
@@ -76,7 +79,6 @@ where
     }
 }
 
-
 impl<T> Future for SelectBoxedFuture<'_, T>
 where
     T: Unpin,
@@ -84,8 +86,8 @@ where
     type Output = (usize, T);
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let ref mut tasks = self.get_mut().0;
-    
+        let tasks = &mut self.get_mut().0;
+
         for (task_id, task) in tasks.iter_mut().enumerate() {
             let task = Pin::new(task).poll(cx);
             match task {
@@ -160,7 +162,7 @@ where
     }
 }
 
-impl<'a, T> SelectBoxed<'a, T> for [Pin<Box<dyn Future<Output=T>>>] {
+impl<'a, T> SelectBoxed<'a, T> for [Pin<Box<dyn Future<Output = T>>>] {
     fn select_boxed(&'a mut self) -> SelectBoxedFuture<'a, T> {
         SelectBoxedFuture(self)
     }

@@ -14,34 +14,29 @@ use core::{
 };
 
 #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-use std::{sync::{Arc, Condvar, Mutex, atomic::{AtomicBool, Ordering}}, cell::RefCell, task::Poll};
+use std::{
+    cell::RefCell,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Condvar, Mutex,
+    },
+    task::Poll,
+};
 
-#[cfg(any(
-    target_arch = "wasm32",
-    not(feature = "std")
-))]
-use core::{cell::RefCell, any::Any, marker::PhantomData};
-#[cfg(any(
-    target_arch = "wasm32",
-    not(feature = "std")
-))]
+#[cfg(any(target_arch = "wasm32", not(feature = "std")))]
 use alloc::{boxed::Box, vec::Vec};
+#[cfg(any(target_arch = "wasm32", not(feature = "std")))]
+use core::{any::Any, cell::RefCell, marker::PhantomData};
 
 // Either a Future or Output or Empty
-#[cfg(any(
-    target_arch = "wasm32",
-    not(feature = "std")
-))]
+#[cfg(any(target_arch = "wasm32", not(feature = "std")))]
 enum Task {
     Future(Pin<Box<dyn Future<Output = ()>>>),
     Output(Box<dyn Any>),
     Empty,
 }
 
-#[cfg(any(
-    target_arch = "wasm32",
-    not(feature = "std")
-))]
+#[cfg(any(target_arch = "wasm32", not(feature = "std")))]
 impl Task {
     fn take(&mut self) -> Task {
         let mut output = Task::Empty;
@@ -64,10 +59,7 @@ struct Exec {
     // Flag set to verify `Condvar` actually woke the executor.
     state: AtomicBool,
 
-    #[cfg(any(
-        target_arch = "wasm32",
-        not(feature = "std")
-    ))]
+    #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
     // Pinned future.
     tasks: RefCell<Vec<Task>>,
 }
@@ -84,7 +76,9 @@ impl Exec {
 
     #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
     fn new() -> Self {
-        Self { tasks: RefCell::new(Vec::new()) }
+        Self {
+            tasks: RefCell::new(Vec::new()),
+        }
     }
 
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
@@ -140,10 +134,7 @@ impl Exec {
     }
 
     // Find an open index in the tasks array.
-    #[cfg(any(
-        target_arch = "wasm32",
-        not(feature = "std")
-    ))]
+    #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
     fn find_handle(&mut self) -> u32 {
         for (id, task) in self.tasks.borrow().iter().enumerate() {
             match task {
@@ -154,10 +145,7 @@ impl Exec {
         self.tasks.borrow().len() as u32
     }
 
-    #[cfg(any(
-        target_arch = "wasm32",
-        not(feature = "std")
-    ))]
+    #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
     fn execute<F: Future<Output = ()>>(&mut self, handle: u32, f: F)
     where
         F: 'static,
@@ -165,7 +153,7 @@ impl Exec {
         // Add to task queue
         {
             let mut tasks = self.tasks.borrow_mut();
-            tasks.resize_with(handle as usize + 1, || Task::Empty);            
+            tasks.resize_with(handle as usize + 1, || Task::Empty);
             tasks[handle as usize] = Task::Future(Box::pin(f));
         };
         // Begin Executor
@@ -261,16 +249,10 @@ where
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
     handle: Option<std::thread::JoinHandle<()>>,
 
-    #[cfg(any(
-        target_arch = "wasm32",
-        not(feature = "std")
-    ))]
+    #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
     handle: u32,
-    
-    #[cfg(any(
-        target_arch = "wasm32",
-        not(feature = "std")
-    ))]
+
+    #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
     _phantom: PhantomData<T>,
 }
 
