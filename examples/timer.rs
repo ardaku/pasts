@@ -1,19 +1,13 @@
 #![forbid(unsafe_code)]
 
-use pasts::prelude::*;
-use pasts::CvarExec;
+use async_std::task;
 
-async fn timer_future(duration: std::time::Duration) {
-    pasts::spawn_blocking(move || std::thread::sleep(duration)).await
-}
+use std::time::Duration;
 
 fn main() {
-    static EXECUTOR: CvarExec = CvarExec::new();
-    let ret = EXECUTOR.block_on(async {
+    pasts::spawn(|| async {
         println!("Waiting 2 seconds…");
-        timer_future(std::time::Duration::new(2, 0)).await;
+        task::sleep(Duration::new(2, 0)).await;
         println!("Waited 2 seconds.");
-        "Complete!"
     });
-    println!("Future returned: \"{}\"", ret);
 }

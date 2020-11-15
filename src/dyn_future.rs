@@ -7,33 +7,17 @@
 // or http://opensource.org/licenses/Zlib>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use core::{
-    fmt::{Debug, Error, Formatter},
-    future::Future,
-    mem,
-    pin::Pin,
-    ptr,
-    task::Context,
-    task::Poll,
-};
-
-#[cfg(feature = "alloc")]
-use alloc::boxed::Box;
+use core::{future::Future, mem, pin::Pin, ptr, task::Context, task::Poll};
 
 /// A wrapper around a `Future` trait object.
+#[allow(missing_debug_implementations)]
 pub struct DynFuture<'a, T>(&'a mut dyn Future<Output = T>);
-
-impl<T> Debug for DynFuture<'_, T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        write!(f, "DynFuture")
-    }
-}
 
 impl<T> Future for DynFuture<'_, T> {
     type Output = T;
 
     #[allow(unsafe_code)]
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
         // unsafe: This is safe because `DynFut` doesn't let you move it.
         let mut fut = unsafe { Pin::new_unchecked(ptr::read(&self.0)) };
         let ret = fut.as_mut().poll(cx);
@@ -43,37 +27,17 @@ impl<T> Future for DynFuture<'_, T> {
 }
 
 /// Trait for converting `Future`s into an abstraction of pinned trait objects.
-pub trait DynFut<'a, T> {
+pub trait DynFut<T> {
     /// Turn a future into a generic type.  This is useful for creating an array
     /// of `Future`s.
-    fn fut(&'a mut self) -> DynFuture<'a, T>;
+    fn fut(&mut self) -> DynFuture<'_, T>;
 }
 
-impl<'a, T, F> DynFut<'a, T> for F
+impl<T, F> DynFut<T> for F
 where
     F: Future<Output = T>,
 {
-    fn fut(&'a mut self) -> DynFuture<'a, T> {
+    fn fut(&mut self) -> DynFuture<'_, T> {
         DynFuture(self)
-    }
-}
-
-/// **alloc** feature required.  Trait for converting `Pin<Box<dyn Future>>`s into an abstraction of pinned trait objects.
-#[cfg(feature = "alloc")]
-pub trait DynBoxFut<'a>: Sized {
-    /// **std** feature required.  Turn a boxed future trait object into a
-    /// future.  This is useful for `.select()`ing on a slice of boxed future
-    /// trait objects.
-    fn box_fut(
-        this: &'a mut Pin<Box<dyn Future<Output = Self>>>,
-    ) -> DynFuture<'a, Self>;
-}
-
-#[cfg(feature = "alloc")]
-impl<'a, T> DynBoxFut<'a> for T {
-    fn box_fut(
-        this: &'a mut Pin<Box<dyn Future<Output = Self>>>,
-    ) -> DynFuture<'a, Self> {
-        DynFuture(&mut *this)
     }
 }

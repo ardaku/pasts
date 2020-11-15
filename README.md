@@ -10,18 +10,21 @@
 
 # About
  - No required std / alloc
- - No macros at all (no `pin_mut!()` macros inserting unsafe blocks into your code)
+ - No macros at all (`pin_mut!()`, `select!()` and `join!()` implemented as
+   traits with safe APIs: `DynFut::fut()`, `Select::select()`¹ and
+   `Join::join()`)
  - No slow compiling proc macros (fast compile times)
  - No dependencies
  - No cost (True zero-cost abstractions!)
  - No pain (API super easy to learn & use!)
- - No unsafe code left for *you* to write for working with `Future`s
+ - No unsafe code left for *you* to write for working with `Future`s (ability to
+   `#[forbid(unsafe_code)]`)
 
 Check out the [documentation][0] for examples.
 
 ### Supported Platforms
-Pasts targets all platforms that can run Rust.  The `block_on` executor works on
-the following platforms (needs **std**):
+Pasts targets all platforms that can run Rust.  The `execute()` executor works
+on the following platforms (needs **std**):
  - All platforms that support threading (includes all tier 1 and some tier 2, 3)
  - Web Assembly In Browser (Tier 2)
 
@@ -37,6 +40,9 @@ at your option.
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
+
+ - ¹pasts' `select()` is very different from futures' `select!()`, as it is not
+   designed to handle arbitrary control flow.
 
 [0]: https://docs.rs/pasts
 [1]: https://crates.io/crates/pasts
