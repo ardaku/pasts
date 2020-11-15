@@ -10,7 +10,7 @@
 use core::{
     future::Future,
     pin::Pin,
-    task::{Context, RawWaker, RawWakerVTable, Waker},
+    task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
 };
 
 #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
@@ -20,7 +20,6 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc, Condvar, Mutex,
     },
-    task::Poll,
 };
 
 #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
@@ -263,31 +262,37 @@ impl<T: Unpin> Drop for JoinHandle<T> {
     }
 }
 
-#[cfg(any(target_arch = "wasm32", feature = "std"))]
-impl<T: Unpin> Future for JoinHandle<T> {
+impl<T: Unpin + 'static> Future for JoinHandle<T> {
     type Output = T;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
+    fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<T> {
         #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
         {
             let mut waker = self.waker.lock().unwrap();
             if let Some(output) = waker.0.take() {
                 Poll::Ready(output)
             } else {
-                waker.1 = Some(cx.waker().clone());
+                waker.1 = Some(_cx.waker().clone());
                 Poll::Pending
             }
         }
 
         #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-        {
-            let this = self.get_mut();
-            if let Some(output) = Rc::get_mut(&mut this.waker).unwrap().0.take()
-            {
-                Poll::Ready(output)
+        #[allow(unsafe_code)]
+        unsafe {
+            let task = {
+                EXEC.as_mut().unwrap().tasks.borrow_mut()[self.handle as usize]
+                    .take()
+            };
+            if let Task::Output(output) = task {
+                let mut out = core::mem::MaybeUninit::uninit();
+                core::ptr::copy_nonoverlapping(
+                    output.downcast_ref().unwrap(),
+                    out.as_mut_ptr(),
+                    1,
+                );
+                Poll::Ready(out.assume_init())
             } else {
-                Rc::get_mut(&mut this.waker).unwrap().1 =
-                    Some(cx.waker().clone());
                 Poll::Pending
             }
         }

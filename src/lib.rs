@@ -95,7 +95,7 @@ fn main() {
     variant_size_differences
 )]
 
-#[cfg(not(feature = "std"))]
+#[cfg(any(not(feature = "std"), target_arch = "wasm32"))]
 extern crate alloc;
 
 /// Re-exported traits
