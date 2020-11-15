@@ -3,34 +3,35 @@
 use async_std::task;
 use pasts::prelude::*;
 
-use std::{cell::RefCell, time::Duration};
+use std::{time::Duration, future::Future, pin::Pin, sync::atomic::{AtomicUsize, Ordering::SeqCst}};
 
-async fn one(state: &RefCell<usize>) {
+async fn one(state: &AtomicUsize) {
     println!("Starting task one");
-    while *state.borrow() < 5 {
+    while state.load(SeqCst) < 5 {
         task::sleep(Duration::new(1, 0)).await;
-        let mut state = state.borrow_mut();
-        println!("One {}", *state);
-        *state += 1;
+        let state_val = state.load(SeqCst);
+        println!("One {}", state_val);
+        state.store(state_val + 1, SeqCst);
     }
     println!("Finish task one");
 }
 
-async fn two(state: &RefCell<usize>) {
+async fn two(state: &AtomicUsize) {
     println!("Starting task two");
     loop {
         task::sleep(Duration::new(2, 0)).await;
-        let mut state = state.borrow_mut();
-        println!("Two {}", *state);
-        *state += 1;
+        let state_val = state.load(SeqCst);
+        println!("Two {}", state_val);
+        state.store(state_val + 1, SeqCst);
     }
 }
 
+static STATE: AtomicUsize = AtomicUsize::new(0);
+
 async fn example() {
-    let state = RefCell::new(0);
-    let mut task_one = Box::new(one(&state));
-    let mut task_two = Box::new(two(&state));
-    [task_one.fut(), task_two.fut()].select().await;
+    let task_one: Pin<Box<dyn Future<Output=()>>> = Box::<>::pin(one(&STATE));
+    let task_two: Pin<Box<dyn Future<Output=()>>> = Box::<>::pin(two(&STATE));
+    [task_one, task_two].select_boxed().await;
 }
 
 fn main() {

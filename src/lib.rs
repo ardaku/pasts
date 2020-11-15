@@ -102,7 +102,7 @@ extern crate alloc;
 pub mod prelude {
     pub use crate::DynFut;
     pub use crate::Join;
-    pub use crate::{Select, SelectOptional};
+    pub use crate::{Select, SelectOptional, SelectBoxed};
 }
 
 mod dyn_future;
@@ -114,4 +114,4 @@ pub use dyn_future::DynFut;
 pub use dyn_future::DynFuture;
 pub use executor::{spawn, JoinHandle};
 pub use join::Join;
-pub use select::{Select, SelectOptional};
+pub use select::{Select, SelectOptional, SelectBoxed};

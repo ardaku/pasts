@@ -11,12 +11,17 @@ use core::{
     future::Future, marker::PhantomData, pin::Pin, task::Context, task::Poll,
 };
 
+#[cfg(not(feature = "std"))]
+use alloc::boxed::Box;
+
 use crate::DynFut;
 
 #[allow(missing_debug_implementations)]
 pub struct SelectFuture<'b, T, I: DynFut<T>>(&'b mut [I], PhantomData<T>);
 #[allow(missing_debug_implementations)]
 pub struct SelectOptionalFuture<'b, T, I: DynFut<T>>(&'b mut [Option<I>], PhantomData<T>);
+#[allow(missing_debug_implementations)]
+pub struct SelectBoxedFuture<'b, T>(&'b mut [Pin<Box<dyn Future<Output=T>>>]);
 
 impl<T, I> Future for SelectFuture<'_, T, I>
 where
@@ -71,6 +76,28 @@ where
     }
 }
 
+
+impl<T> Future for SelectBoxedFuture<'_, T>
+where
+    T: Unpin,
+{
+    type Output = (usize, T);
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let ref mut tasks = self.get_mut().0;
+    
+        for (task_id, task) in tasks.iter_mut().enumerate() {
+            let task = Pin::new(task).poll(cx);
+            match task {
+                Poll::Ready(ret) => return Poll::Ready((task_id, ret)),
+                Poll::Pending => {}
+            }
+        }
+
+        Poll::Pending
+    }
+}
+
 /// A trait to select on a slice of `Future`s.
 ///
 /// # Select on slice of futures.
@@ -108,6 +135,13 @@ where
     fn select(&'a mut self) -> SelectOptionalFuture<'a, T, I>;
 }
 
+/// A trait to select on a slice of `Pin<Box<Future>>`s.
+pub trait SelectBoxed<'a, T> {
+    /// Poll multiple futures, and return the value from the future that returns
+    /// `Ready` first.
+    fn select_boxed(&'a mut self) -> SelectBoxedFuture<'a, T>;
+}
+
 impl<'a, T, I> Select<'a, T, I> for [I]
 where
     I: DynFut<T>,
@@ -123,5 +157,11 @@ where
 {
     fn select(&'a mut self) -> SelectOptionalFuture<'a, T, I> {
         SelectOptionalFuture(self, PhantomData)
+    }
+}
+
+impl<'a, T> SelectBoxed<'a, T> for [Pin<Box<dyn Future<Output=T>>>] {
+    fn select_boxed(&'a mut self) -> SelectBoxedFuture<'a, T> {
+        SelectBoxedFuture(self)
     }
 }
