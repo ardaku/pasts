@@ -95,11 +95,14 @@ fn main() {
     variant_size_differences
 )]
 
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
 /// Re-exported traits
 pub mod prelude {
     pub use crate::DynFut;
     pub use crate::Join;
-    pub use crate::Select;
+    pub use crate::{Select, SelectOptional};
 }
 
 mod dyn_future;
@@ -111,4 +114,4 @@ pub use dyn_future::DynFut;
 pub use dyn_future::DynFuture;
 pub use executor::{spawn, JoinHandle};
 pub use join::Join;
-pub use select::Select;
+pub use select::{Select, SelectOptional};

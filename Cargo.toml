@@ -23,12 +23,6 @@ categories = ["asynchronous", "embedded", "no-std", "rust-patterns"]
 readme = "README.md"
 edition = "2018"
 
-[badges]
-travis-ci = { repository = "AldaronLau/pasts" }
-is-it-maintained-issue-resolution = { repository = "AldaronLau/pasts" }
-is-it-maintained-open-issues = { repository = "AldaronLau/pasts" }
-maintenance = { status = "actively-developed" }
-
 [[example]]
 name = "join"
 path = "examples/join.rs"
@@ -52,6 +46,4 @@ default-target = "x86_64-unknown-linux-gnu"
 
 [features]
 default = ["std"]
-std = ["alloc"]
-alloc = []
-docs-rs = []
+std = []

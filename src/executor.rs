@@ -10,38 +10,45 @@
 use core::{
     future::Future,
     pin::Pin,
-    task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
+    task::{Context, RawWaker, RawWakerVTable, Waker},
 };
 
-#[cfg(feature = "std")]
-use std::cell::RefCell;
-
-#[cfg(not(any(
-    target_arch = "wasm32",
-    all(feature = "alloc", not(feature = "std"))
-)))]
-use core::sync::atomic::{AtomicBool, Ordering};
-
 #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-use std::sync::{Arc, Condvar, Mutex};
+use std::{sync::{Arc, Condvar, Mutex, atomic::{AtomicBool, Ordering}}, cell::RefCell, task::Poll};
 
 #[cfg(any(
     target_arch = "wasm32",
-    all(feature = "alloc", not(feature = "std"))
+    not(feature = "std")
 ))]
-use alloc::{boxed::Box, rc::Rc};
+use core::{cell::RefCell, any::Any, marker::PhantomData};
+#[cfg(any(
+    target_arch = "wasm32",
+    not(feature = "std")
+))]
+use alloc::{boxed::Box, vec::Vec};
 
-#[cfg(all(
-    not(target_arch = "wasm32"),
-    all(not(feature = "std"), not(feature = "alloc"))
+// Either a Future or Output or Empty
+#[cfg(any(
+    target_arch = "wasm32",
+    not(feature = "std")
 ))]
-use core::marker::PhantomData;
+enum Task {
+    Future(Pin<Box<dyn Future<Output = ()>>>),
+    Output(Box<dyn Any>),
+    Empty,
+}
 
 #[cfg(any(
     target_arch = "wasm32",
-    all(feature = "alloc", not(feature = "std"))
+    not(feature = "std")
 ))]
-use alloc::vec::Vec;
+impl Task {
+    fn take(&mut self) -> Task {
+        let mut output = Task::Empty;
+        core::mem::swap(&mut output, self);
+        output
+    }
+}
 
 // Executor data.
 struct Exec {
@@ -53,19 +60,16 @@ struct Exec {
     // The thread-safe waking mechanism: part 2
     cvar: Condvar,
 
-    #[cfg(any(
-        target_arch = "wasm32",
-        all(feature = "alloc", not(feature = "std"))
-    ))]
-    // Pinned future.
-    tasks: Vec<Pin<Box<dyn Future<Output = ()>>>>,
-
-    #[cfg(not(any(
-        target_arch = "wasm32",
-        all(feature = "alloc", not(feature = "std"))
-    )))]
+    #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
     // Flag set to verify `Condvar` actually woke the executor.
     state: AtomicBool,
+
+    #[cfg(any(
+        target_arch = "wasm32",
+        not(feature = "std")
+    ))]
+    // Pinned future.
+    tasks: RefCell<Vec<Task>>,
 }
 
 impl Exec {
@@ -78,22 +82,9 @@ impl Exec {
         }
     }
 
-    #[cfg(any(
-        target_arch = "wasm32",
-        all(feature = "alloc", not(feature = "std"))
-    ))]
+    #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
     fn new() -> Self {
-        Self { tasks: Vec::new() }
-    }
-
-    #[cfg(all(
-        not(target_arch = "wasm32"),
-        all(not(feature = "std"), not(feature = "alloc"))
-    ))]
-    const fn new() -> Self {
-        Self {
-            state: AtomicBool::new(true),
-        }
+        Self { tasks: RefCell::new(Vec::new()) }
     }
 
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
@@ -107,8 +98,23 @@ impl Exec {
 
     #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
     fn wake(&self) {
-        // Wake the task running on this thread and block until next .await
-        // FIXME
+        // Wake the task running on this thread - one pass through executor.
+
+        // Get a waker and context for this executor.
+        let waker = waker(self);
+        let mut cx = Context::from_waker(&waker);
+
+        // Run through task queue
+        let tasks_len = self.tasks.borrow().len();
+        for task_id in 0..tasks_len {
+            let task = { self.tasks.borrow_mut()[task_id].take() };
+            if let Task::Future(f) = task {
+                let mut f = f;
+                if f.as_mut().poll(&mut cx).is_pending() {
+                    self.tasks.borrow_mut()[task_id] = Task::Future(f);
+                }
+            }
+        }
     }
 
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
@@ -133,51 +139,37 @@ impl Exec {
         }
     }
 
+    // Find an open index in the tasks array.
     #[cfg(any(
         target_arch = "wasm32",
-        all(feature = "alloc", not(feature = "std"))
+        not(feature = "std")
     ))]
-    fn execute<F: Future<Output = ()>>(&mut self, f: F) -> u32
+    fn find_handle(&mut self) -> u32 {
+        for (id, task) in self.tasks.borrow().iter().enumerate() {
+            match task {
+                Task::Empty => return id as u32,
+                _ => { /* continue */ }
+            }
+        }
+        self.tasks.borrow().len() as u32
+    }
+
+    #[cfg(any(
+        target_arch = "wasm32",
+        not(feature = "std")
+    ))]
+    fn execute<F: Future<Output = ()>>(&mut self, handle: u32, f: F)
     where
         F: 'static,
     {
-        // Get a waker and context for this executor.
-        let waker = waker(self);
-        let context = &mut Context::from_waker(&waker);
         // Add to task queue
-        let task_id = self.tasks.len();
-        self.tasks.push(Box::pin(f));
-        if let Poll::Ready(output) = self.tasks[task_id].as_mut().poll(context)
         {
-            let _ = output;
-            todo!();
-        }
-        task_id as u32
-    }
-
-    #[cfg(all(
-        not(target_arch = "wasm32"),
-        all(not(feature = "std"), not(feature = "alloc"))
-    ))]
-    #[allow(unsafe_code)]
-    fn execute<T, F: Future<Output = T>>(&mut self, mut f: F) -> T {
-        // Unsafe: f can't move after this, because it is shadowed
-        let mut f = unsafe { Pin::new_unchecked(&mut f) };
-        // Get a waker and context for this executor.
-        let waker = waker(self);
-        let context = &mut Context::from_waker(&waker);
-        // Run Future to completion.
-        loop {
-            // Exit with future output, on future completion, otherwise…
-            if let Poll::Ready(value) = f.as_mut().poll(context) {
-                break value;
-            }
-            // Put the thread to sleep until wake() is called.
-
-            // Fallback implementation, where processor sleep is unavailable
-            // (wastes CPU)
-            while !self.state.compare_and_swap(true, false, Ordering::SeqCst) {}
-        }
+            let mut tasks = self.tasks.borrow_mut();
+            tasks.resize_with(handle as usize + 1, || Task::Empty);            
+            tasks[handle as usize] = Task::Future(Box::pin(f));
+        };
+        // Begin Executor
+        self.wake();
     }
 }
 
@@ -190,14 +182,15 @@ thread_local! {
 
 // Without std, implement for a single thread.
 #[cfg(not(feature = "std"))]
-static mut EXEC: Exec = Exec::new();
+static mut EXEC: Option<Exec> = None;
 
 /// Execute a future by spawning an asynchronous task.
 ///
 /// On multi-threaded systems, this will start a new thread.  Similar to
 /// `futures::executor::block_on()`, except that doesn't block.  Similar to
 /// `std::thread::spawn()`, except that tasks don't detach, and will join on
-/// `Drop` (except on WASM, where the program continues after main() exits).
+/// `Drop` (except when the **std** feature is not enabled, where it is expected
+/// that you enter a "sleep" state).
 ///
 /// # Example
 /// ```rust
@@ -229,52 +222,29 @@ where
         }
     }
 
-    // Can spawn singular task only (block on it).
-    //
-    // FIXME: Maybe can spawn multiple without allocator?
-    #[cfg(all(
-        not(target_arch = "wasm32"),
-        all(not(feature = "std"), not(feature = "alloc"))
-    ))]
-    #[allow(unsafe_code)]
-    {
-        let _output = unsafe { EXEC.execute(g()) };
-        JoinHandle { waker: PhantomData }
-    }
-
     // Can allocate task queue.
-    #[cfg(any(target_arch = "wasm32",))]
-    {
-        let waker = Rc::new((None, None));
-        let mut waker_b = waker.clone();
-        JoinHandle {
-            handle: EXEC.with(|exec| {
-                exec.borrow_mut().execute(async move {
-                    let output = g().await;
-                    Rc::get_mut(&mut waker_b).unwrap().0 = Some(output);
-                })
-            }),
-            waker,
-        }
-    }
-
-    #[cfg(all(
-        not(target_arch = "wasm32"),
-        feature = "alloc",
-        not(feature = "std")
-    ))]
+    #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
     #[allow(unsafe_code)]
     {
-        let waker = Rc::new((None, None));
-        let mut waker_b = waker.clone();
         JoinHandle {
             handle: unsafe {
-                EXEC.execute(async move {
+                let exec = if let Some(ref mut exec) = EXEC {
+                    exec
+                } else {
+                    EXEC = Some(Exec::new());
+                    EXEC.as_mut().unwrap()
+                };
+                let handle = exec.find_handle();
+                exec.execute(handle, async move {
                     let output = g().await;
-                    Rc::get_mut(&mut waker_b).unwrap().0 = Some(output);
-                })
+                    let exec = EXEC.as_mut().unwrap();
+                    let mut tasks = exec.tasks.borrow_mut();
+                    let task = tasks.get_mut(handle as usize).unwrap();
+                    *task = Task::Output(Box::new(output));
+                });
+                handle
             },
-            waker,
+            _phantom: PhantomData,
         }
     }
 }
@@ -288,26 +258,20 @@ where
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
     waker: Arc<Mutex<(Option<T>, Option<Waker>)>>,
 
-    #[cfg(any(
-        target_arch = "wasm32",
-        all(feature = "alloc", not(feature = "std"))
-    ))]
-    waker: Rc<(Option<T>, Option<Waker>)>,
-
-    #[cfg(all(
-        not(target_arch = "wasm32"),
-        all(not(feature = "std"), not(feature = "alloc"))
-    ))]
-    waker: PhantomData<T>,
-
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
     handle: Option<std::thread::JoinHandle<()>>,
 
     #[cfg(any(
         target_arch = "wasm32",
-        all(feature = "alloc", not(feature = "std"))
+        not(feature = "std")
     ))]
     handle: u32,
+    
+    #[cfg(any(
+        target_arch = "wasm32",
+        not(feature = "std")
+    ))]
+    _phantom: PhantomData<T>,
 }
 
 #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
@@ -317,7 +281,7 @@ impl<T: Unpin> Drop for JoinHandle<T> {
     }
 }
 
-#[cfg(any(target_arch = "wasm32", feature = "alloc"))]
+#[cfg(any(target_arch = "wasm32", feature = "std"))]
 impl<T: Unpin> Future for JoinHandle<T> {
     type Output = T;
 

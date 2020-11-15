@@ -14,13 +14,9 @@ use core::{
 use crate::DynFut;
 
 #[allow(missing_debug_implementations)]
-pub enum SelectFuture<'b, T, I>
-where
-    I: DynFut<T>,
-{
-    Future(&'b mut [I], PhantomData<T>),
-    OptFuture(&'b mut [Option<I>], PhantomData<T>),
-}
+pub struct SelectFuture<'b, T, I: DynFut<T>>(&'b mut [I], PhantomData<T>);
+#[allow(missing_debug_implementations)]
+pub struct SelectOptionalFuture<'b, T, I: DynFut<T>>(&'b mut [Option<I>], PhantomData<T>);
 
 impl<T, I> Future for SelectFuture<'_, T, I>
 where
@@ -30,48 +26,52 @@ where
     type Output = (usize, T);
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        match self.get_mut() {
-            SelectFuture::Future(ref mut tasks, _) => {
-                for (task_id, task) in tasks.iter_mut().enumerate() {
-                    let mut task = task.fut();
-                    let pin_fut = Pin::new(&mut task);
-                    let task = pin_fut.poll(cx);
-                    match task {
-                        Poll::Ready(ret) => return Poll::Ready((task_id, ret)),
-                        Poll::Pending => {}
-                    }
-                }
+        let ref mut tasks = self.get_mut().0;
+    
+        for (task_id, task) in tasks.iter_mut().enumerate() {
+            let mut task = task.fut();
+            let pin_fut = Pin::new(&mut task);
+            let task = pin_fut.poll(cx);
+            match task {
+                Poll::Ready(ret) => return Poll::Ready((task_id, ret)),
+                Poll::Pending => {}
             }
-            SelectFuture::OptFuture(ref mut tasks, _) => {
-                for (task_id, task_opt) in tasks.iter_mut().enumerate() {
-                    if let Some(ref mut task) = task_opt {
-                        let mut task = task.fut();
-                        let pin_fut = Pin::new(&mut task);
-                        let task = pin_fut.poll(cx);
-                        match task {
-                            Poll::Ready(ret) => {
-                                *task_opt = None;
-                                return Poll::Ready((task_id, ret));
-                            }
-                            Poll::Pending => {}
-                        }
-                    }
-                }
-            } /*SelectFuture::BoxFuture(ref mut tasks, _) => {
-                  for (task_id, task) in tasks.iter_mut().enumerate() {
-                      let task = task.poll(cx);
-                      match task {
-                          Poll::Ready(ret) => return Poll::Ready((task_id, ret)),
-                          Poll::Pending => {}
-                      }
-                  }
-              }*/
-        };
+        }
+
         Poll::Pending
     }
 }
 
-/// A trait to select on a slice of `Future`s or `Option<Future>`s.
+impl<T, I> Future for SelectOptionalFuture<'_, T, I>
+where
+    I: DynFut<T>,
+    T: Unpin,
+{
+    type Output = (usize, T);
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let ref mut tasks = self.get_mut().0;
+
+        for (task_id, task_opt) in tasks.iter_mut().enumerate() {
+            if let Some(ref mut task) = task_opt {
+                let mut task = task.fut();
+                let pin_fut = Pin::new(&mut task);
+                let task = pin_fut.poll(cx);
+                match task {
+                    Poll::Ready(ret) => {
+                        *task_opt = None;
+                        return Poll::Ready((task_id, ret));
+                    }
+                    Poll::Pending => {}
+                }
+            }
+        }
+
+        Poll::Pending
+    }
+}
+
+/// A trait to select on a slice of `Future`s.
 ///
 /// # Select on slice of futures.
 ///
@@ -98,20 +98,30 @@ where
     fn select(&'a mut self) -> SelectFuture<'a, T, I>;
 }
 
+/// A trait to select on a slice of `Option<Future>`s.
+pub trait SelectOptional<'a, T, I>
+where
+    I: DynFut<T>,
+{
+    /// Poll multiple futures, and return the value from the future that returns
+    /// `Ready` first.
+    fn select(&'a mut self) -> SelectOptionalFuture<'a, T, I>;
+}
+
 impl<'a, T, I> Select<'a, T, I> for [I]
 where
     I: DynFut<T>,
 {
     fn select(&'a mut self) -> SelectFuture<'a, T, I> {
-        SelectFuture::Future(self, PhantomData)
+        SelectFuture(self, PhantomData)
     }
 }
 
-impl<'a, T, I> Select<'a, T, I> for [Option<I>]
+impl<'a, T, I> SelectOptional<'a, T, I> for [Option<I>]
 where
     I: DynFut<T>,
 {
-    fn select(&'a mut self) -> SelectFuture<'a, T, I> {
-        SelectFuture::OptFuture(self, PhantomData)
+    fn select(&'a mut self) -> SelectOptionalFuture<'a, T, I> {
+        SelectOptionalFuture(self, PhantomData)
     }
 }
