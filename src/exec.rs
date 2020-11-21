@@ -263,20 +263,13 @@ impl<T: Unpin + 'static> Future for JoinHandle<T> {
         }
 
         #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-        #[allow(unsafe_code)]
-        unsafe {
+        {
             let task = crate::util::exec(|exec| {
                 exec.tasks.borrow_mut()[self.handle as usize].take()
             });
 
             if let Task::Output(output) = task {
-                let mut out = core::mem::MaybeUninit::uninit();
-                core::ptr::copy_nonoverlapping(
-                    output.downcast_ref().unwrap(),
-                    out.as_mut_ptr(),
-                    1,
-                );
-                Poll::Ready(out.assume_init())
+                Poll::Ready(*output.downcast().unwrap())
             } else {
                 Poll::Pending
             }
