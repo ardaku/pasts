@@ -12,7 +12,12 @@
 
 #![allow(unsafe_code)]
 
-use std::task::{Waker, Context, RawWaker, RawWakerVTable};
+#[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+use std::cell::RefCell;
+
+use core::task::{Context, RawWaker, RawWakerVTable, Waker};
+
+use crate::exec::Exec;
 
 /// Create a future trait objects that implement `Unpin`.
 ///
@@ -49,10 +54,11 @@ macro_rules! task {
 //
 // unsafe: Safe because `Waker`/`Context` can't outlive `Exec`.
 #[inline]
-pub(super) fn waker<F, T>(exec: &crate::exec::Exec, f: F) -> T
-    where F: FnOnce(&mut Context<'_>) -> T
+pub(super) fn waker<F, T>(exec: &Exec, f: F) -> T
+where
+    F: FnOnce(&mut Context<'_>) -> T,
 {
-    let exec: *const crate::exec::Exec = exec;
+    let exec: *const Exec = exec;
     const RWVT: RawWakerVTable = RawWakerVTable::new(clone, wake, wake, drop);
 
     #[inline]
@@ -61,7 +67,7 @@ pub(super) fn waker<F, T>(exec: &crate::exec::Exec, f: F) -> T
     }
     #[inline]
     unsafe fn wake(data: *const ()) {
-        let exec: *const crate::exec::Exec = data.cast();
+        let exec: *const Exec = data.cast();
         (*exec).wake();
     }
     #[inline]
@@ -69,4 +75,39 @@ pub(super) fn waker<F, T>(exec: &crate::exec::Exec, f: F) -> T
 
     let waker = unsafe { Waker::from_raw(RawWaker::new(exec.cast(), &RWVT)) };
     f(&mut Context::from_waker(&waker))
+}
+
+// When the std library is available, use TLS so that multiple threads can
+// lazily initialize an executor.
+#[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+thread_local! {
+    static EXEC: RefCell<Exec> = RefCell::new(Exec::new());
+}
+
+// Without std, assume no threads, and use "fake" TLS.
+#[cfg(any(target_arch = "wasm32", not(feature = "std")))]
+static mut EXEC: Option<Exec> = None;
+
+// Get a reference to the thread local, or if there are no threads, the global
+// static.
+#[inline]
+pub(super) fn exec<F, T>(f: F) -> T
+where
+    F: FnOnce(&mut Exec) -> T,
+{
+    #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+    {
+        EXEC.with(|exec| f(&mut exec.borrow_mut()))
+    }
+
+    #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
+    // unsafe: safe because there are no threads.
+    unsafe {
+        if let Some(ref mut exec) = EXEC.as_mut() {
+            f(exec)
+        } else {
+            EXEC = Some(Exec::new());
+            f(EXEC.as_mut().unwrap())
+        }
+    }
 }

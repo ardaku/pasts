@@ -15,7 +15,6 @@ use core::{
 
 #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
 use std::{
-    cell::RefCell,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Condvar, Mutex,
@@ -66,7 +65,7 @@ pub(crate) struct Exec {
 
 impl Exec {
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             mutex: Mutex::new(()),
             cvar: Condvar::new(),
@@ -75,7 +74,7 @@ impl Exec {
     }
 
     #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             tasks: RefCell::new(Vec::new()),
         }
@@ -124,7 +123,11 @@ impl Exec {
                 }
                 // Put the thread to sleep until wake() is called.
                 let mut guard = self.mutex.lock().unwrap();
-                while !self.state.compare_and_swap(true, false, Ordering::SeqCst) {
+                while !self.state.compare_and_swap(
+                    true,
+                    false,
+                    Ordering::SeqCst,
+                ) {
                     guard = self.cvar.wait(guard).unwrap();
                 }
             }
@@ -159,17 +162,6 @@ impl Exec {
     }
 }
 
-// When the std library is available, use TLS so that multiple threads can
-// lazily initialize an executor.
-#[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-thread_local! {
-    static EXEC: RefCell<Exec> = RefCell::new(Exec::new());
-}
-
-// Without std, implement for a single thread.
-#[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-static mut EXEC: Option<Exec> = None;
-
 /// Execute a future by spawning an asynchronous task.
 ///
 /// On multi-threaded systems, this will start a new thread.  Similar to
@@ -198,7 +190,7 @@ where
         JoinHandle {
             waker: waker.clone(),
             handle: Some(std::thread::spawn(move || {
-                let output = EXEC.with(|exec| exec.borrow_mut().execute(g()));
+                let output = crate::util::exec(|exec| exec.execute(g()));
                 let mut waker = waker.lock().unwrap();
                 waker.0 = Some(output);
                 if let Some(waker) = waker.1.take() {
@@ -210,26 +202,20 @@ where
 
     // Can allocate task queue.
     #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-    #[allow(unsafe_code)]
     {
         JoinHandle {
-            handle: unsafe {
-                let exec = if let Some(ref mut exec) = EXEC {
-                    exec
-                } else {
-                    EXEC = Some(Exec::new());
-                    EXEC.as_mut().unwrap()
-                };
+            handle: crate::util::exec(|exec| {
                 let handle = exec.find_handle();
                 exec.execute(handle, async move {
                     let output = g().await;
-                    let exec = EXEC.as_mut().unwrap();
-                    let mut tasks = exec.tasks.borrow_mut();
-                    let task = tasks.get_mut(handle as usize).unwrap();
-                    *task = Task::Output(Box::new(output));
+                    crate::util::exec(|exec| {
+                        let mut tasks = exec.tasks.borrow_mut();
+                        let task = tasks.get_mut(handle as usize).unwrap();
+                        *task = Task::Output(Box::new(output));
+                    });
                 });
                 handle
-            },
+            }),
             _phantom: PhantomData,
         }
     }
@@ -279,10 +265,10 @@ impl<T: Unpin + 'static> Future for JoinHandle<T> {
         #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
         #[allow(unsafe_code)]
         unsafe {
-            let task = {
-                EXEC.as_mut().unwrap().tasks.borrow_mut()[self.handle as usize]
-                    .take()
-            };
+            let task = crate::util::exec(|exec| {
+                exec.tasks.borrow_mut()[self.handle as usize].take()
+            });
+
             if let Task::Output(output) = task {
                 let mut out = core::mem::MaybeUninit::uninit();
                 core::ptr::copy_nonoverlapping(

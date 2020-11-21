@@ -11,9 +11,6 @@ use core::{
     future::Future, marker::PhantomData, pin::Pin, task::Context, task::Poll,
 };
 
-#[cfg(not(feature = "std"))]
-use alloc::boxed::Box;
-
 #[allow(missing_debug_implementations)]
 pub struct SelectFuture<'b, T: Unpin + 'b, F: Future<Output = T> + Unpin>(
     &'b mut [F],
