@@ -10,7 +10,7 @@
 use core::{
     future::Future,
     pin::Pin,
-    task::{Context, Poll, Waker},
+    task::{Context, Poll},
 };
 
 #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
@@ -20,6 +20,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc, Condvar, Mutex,
     },
+    task::Waker,
 };
 
 #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
@@ -94,20 +95,19 @@ impl Exec {
         // Wake the task running on this thread - one pass through executor.
 
         // Get a waker and context for this executor.
-        let waker = waker(self);
-        let mut cx = Context::from_waker(&waker);
-
-        // Run through task queue
-        let tasks_len = self.tasks.borrow().len();
-        for task_id in 0..tasks_len {
-            let task = { self.tasks.borrow_mut()[task_id].take() };
-            if let Task::Future(f) = task {
-                let mut f = f;
-                if f.as_mut().poll(&mut cx).is_pending() {
-                    self.tasks.borrow_mut()[task_id] = Task::Future(f);
+        crate::util::waker(self, |cx| {
+            // Run through task queue
+            let tasks_len = self.tasks.borrow().len();
+            for task_id in 0..tasks_len {
+                let task = { self.tasks.borrow_mut()[task_id].take() };
+                if let Task::Future(f) = task {
+                    let mut f = f;
+                    if f.as_mut().poll(cx).is_pending() {
+                        self.tasks.borrow_mut()[task_id] = Task::Future(f);
+                    }
                 }
             }
-        }
+        });
     }
 
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
