@@ -110,12 +110,11 @@ impl Exec {
     }
 
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-    #[allow(unsafe_code)]
-    fn execute<T, F: Future<Output = T>>(&mut self, mut f: F) -> T {
-        // Unsafe: f can't move after this, because it is shadowed
-        let mut f = unsafe { Pin::new_unchecked(&mut f) };
+    #[allow(unsafe_code)] // Needed to use `task!()` macro within this crate.
+    fn execute<T, F: Future<Output = T>>(&mut self, f: F) -> T {
         // Get a waker and context for this executor.
         crate::util::waker(self, |cx| {
+            crate::task!(let f = f);
             loop {
                 // Exit with future output, on future completion, otherwise…
                 if let Poll::Ready(value) = f.as_mut().poll(cx) {

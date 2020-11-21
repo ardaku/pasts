@@ -36,14 +36,16 @@ use crate::exec::Exec;
 macro_rules! task {
     // unsafe: safe because once value is moved and then shadowed, one can't
     // directly access anymore.
-    ($(let $x:ident = $y:expr);* $(;)?) => { $(
-        let mut $x = $y;
-        #[allow(unused_mut)]
-        let mut $x = unsafe {
-            core::pin::Pin::<&mut dyn core::future::Future<Output = _>>
-                ::new_unchecked(&mut $x)
-        };
-    )* };
+    ($(let $x:ident = $y:expr);* $(;)?) => {
+        $(
+            let mut $x = $y;
+            #[allow(unused_mut, unused_qualifications)]
+            let mut $x = unsafe {
+                core::pin::Pin::<&mut dyn core::future::Future<Output = _>>
+                    ::new_unchecked(&mut $x)
+            };
+        )*
+    };
     ($x:ident) => {
         core::pin::Pin::<&mut dyn core::future::Future<Output = _>>
             ::new(&mut $x)
