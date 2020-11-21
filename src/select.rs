@@ -14,82 +14,23 @@ use core::{
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
 
-use crate::DynFut;
-
 #[allow(missing_debug_implementations)]
-pub struct SelectFuture<'b, T, I: DynFut<T>>(&'b mut [I], PhantomData<T>);
-#[allow(missing_debug_implementations)]
-pub struct SelectOptionalFuture<'b, T, I: DynFut<T>>(
-    &'b mut [Option<I>],
+pub struct SelectFuture<'b, T: Unpin + 'b, F: Future<Output = T> + Unpin>(
+    &'b mut [F],
     PhantomData<T>,
 );
-#[allow(missing_debug_implementations)]
-pub struct SelectBoxedFuture<'b, T>(&'b mut [Pin<Box<dyn Future<Output = T>>>]);
 
-impl<T, I> Future for SelectFuture<'_, T, I>
-where
-    I: DynFut<T>,
-    T: Unpin,
+impl<T: Unpin, F: Future<Output = T> + Unpin> Future
+    for SelectFuture<'_, T, F>
 {
     type Output = (usize, T);
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let tasks = &mut self.get_mut().0;
 
-        for (task_id, task) in tasks.iter_mut().enumerate() {
-            let mut task = task.fut();
+        for (task_id, mut task) in tasks.iter_mut().enumerate() {
             let pin_fut = Pin::new(&mut task);
             let task = pin_fut.poll(cx);
-            match task {
-                Poll::Ready(ret) => return Poll::Ready((task_id, ret)),
-                Poll::Pending => {}
-            }
-        }
-
-        Poll::Pending
-    }
-}
-
-impl<T, I> Future for SelectOptionalFuture<'_, T, I>
-where
-    I: DynFut<T>,
-    T: Unpin,
-{
-    type Output = (usize, T);
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let tasks = &mut self.get_mut().0;
-
-        for (task_id, task_opt) in tasks.iter_mut().enumerate() {
-            if let Some(ref mut task) = task_opt {
-                let mut task = task.fut();
-                let pin_fut = Pin::new(&mut task);
-                let task = pin_fut.poll(cx);
-                match task {
-                    Poll::Ready(ret) => {
-                        *task_opt = None;
-                        return Poll::Ready((task_id, ret));
-                    }
-                    Poll::Pending => {}
-                }
-            }
-        }
-
-        Poll::Pending
-    }
-}
-
-impl<T> Future for SelectBoxedFuture<'_, T>
-where
-    T: Unpin,
-{
-    type Output = (usize, T);
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let tasks = &mut self.get_mut().0;
-
-        for (task_id, task) in tasks.iter_mut().enumerate() {
-            let task = Pin::new(task).poll(cx);
             match task {
                 Poll::Ready(ret) => return Poll::Ready((task_id, ret)),
                 Poll::Pending => {}
@@ -108,62 +49,24 @@ where
 /// use pasts::prelude::*;
 ///
 /// async fn async_main() {
-///     let mut hello = async { "Hello" };
-///     let mut world = async { "World!" };
+///     task!(let hello = async { "Hello" });
+///     task!(let world = async { "World!"});
 ///     // Hello is ready, so returns with index and result.
-///     assert_eq!((0, "Hello"), [hello.fut(), world.fut()].select().await);
+///     assert_eq!((0, "Hello"), [hello, world].select().await);
 /// }
 ///
 /// pasts::spawn(async_main);
 /// ```
 // Future needs to be unpin to prevent UB because `Future`s can move between
 // calls to select after starting (which fills future's RAM with garbage data).
-pub trait Select<'a, T, I>
-where
-    I: DynFut<T>,
-{
+pub trait Select<'a, T: Unpin, F: Future<Output = T> + Unpin> {
     /// Poll multiple futures, and return the value from the future that returns
     /// `Ready` first.
-    fn select(&'a mut self) -> SelectFuture<'a, T, I>;
+    fn select(&'a mut self) -> SelectFuture<'a, T, F>;
 }
 
-/// A trait to select on a slice of `Option<Future>`s.
-pub trait SelectOptional<'a, T, I>
-where
-    I: DynFut<T>,
-{
-    /// Poll multiple futures, and return the value from the future that returns
-    /// `Ready` first.
-    fn select(&'a mut self) -> SelectOptionalFuture<'a, T, I>;
-}
-
-/// A trait to select on a slice of `Pin<Box<Future>>`s.
-pub trait SelectBoxed<'a, T> {
-    /// Poll multiple futures, and return the value from the future that returns
-    /// `Ready` first.
-    fn select_boxed(&'a mut self) -> SelectBoxedFuture<'a, T>;
-}
-
-impl<'a, T, I> Select<'a, T, I> for [I]
-where
-    I: DynFut<T>,
-{
-    fn select(&'a mut self) -> SelectFuture<'a, T, I> {
+impl<'a, T: Unpin, F: Future<Output = T> + Unpin> Select<'a, T, F> for [F] {
+    fn select(&'a mut self) -> SelectFuture<'a, T, F> {
         SelectFuture(self, PhantomData)
-    }
-}
-
-impl<'a, T, I> SelectOptional<'a, T, I> for [Option<I>]
-where
-    I: DynFut<T>,
-{
-    fn select(&'a mut self) -> SelectOptionalFuture<'a, T, I> {
-        SelectOptionalFuture(self, PhantomData)
-    }
-}
-
-impl<'a, T> SelectBoxed<'a, T> for [Pin<Box<dyn Future<Output = T>>>] {
-    fn select_boxed(&'a mut self) -> SelectBoxedFuture<'a, T> {
-        SelectBoxedFuture(self)
     }
 }

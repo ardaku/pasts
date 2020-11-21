@@ -55,10 +55,9 @@ async fn two(state: &RefCell<usize>) {
 
 async fn example() {
     let state = RefCell::new(0);
-    let mut task_one = one(&state);
-    let mut task_two = two(&state);
-    let mut tasks = [task_one.fut(), task_two.fut()];
-    tasks.select().await;
+    task!(let task_one = one(&state));
+    task!(let task_two = two(&state));
+    [task_one, task_two].select().await;
 }
 
 fn main() {
@@ -95,18 +94,16 @@ extern crate alloc;
 
 /// Re-exported traits
 pub mod prelude {
-    pub use crate::DynFut;
+    pub use crate::task;
     pub use crate::Join;
-    pub use crate::{Select, SelectBoxed, SelectOptional};
+    pub use crate::Select;
 }
 
-mod dyn_future;
 mod executor;
 mod join;
 mod select;
+mod task;
 
-pub use dyn_future::DynFut;
-pub use dyn_future::DynFuture;
 pub use executor::{spawn, JoinHandle};
 pub use join::Join;
-pub use select::{Select, SelectBoxed, SelectOptional};
+pub use select::Select;

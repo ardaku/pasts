@@ -28,10 +28,11 @@ async fn two(state: &RefCell<usize>) {
 
 async fn example() {
     let state = RefCell::new(0);
-    let mut task_one = one(&state);
-    let mut task_two = two(&state);
-    let mut tasks = [task_one.fut(), task_two.fut()];
-    tasks.select().await;
+    task! {
+        let task_one = one(&state);
+        let task_two = two(&state);
+    }
+    [task_one, task_two].select().await;
 }
 
 fn main() {

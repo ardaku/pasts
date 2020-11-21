@@ -36,7 +36,7 @@ static STATE: AtomicUsize = AtomicUsize::new(0);
 async fn example() {
     let task_one: Pin<Box<dyn Future<Output = ()>>> = Box::pin(one(&STATE));
     let task_two: Pin<Box<dyn Future<Output = ()>>> = Box::pin(two(&STATE));
-    [task_one, task_two].select_boxed().await;
+    [task_one, task_two].select().await;
 }
 
 fn main() {
