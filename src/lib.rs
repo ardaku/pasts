@@ -92,18 +92,18 @@ fn main() {
 #[cfg(any(not(feature = "std"), target_arch = "wasm32"))]
 extern crate alloc;
 
-/// Re-exported traits
+/// Re-exported traits and macros.
 pub mod prelude {
     pub use crate::task;
     pub use crate::Join;
     pub use crate::Select;
 }
 
-mod executor;
+mod exec;
 mod join;
 mod select;
-mod task;
+mod util;
 
-pub use executor::{spawn, JoinHandle};
+pub use exec::{spawn, JoinHandle};
 pub use join::Join;
 pub use select::Select;

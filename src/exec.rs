@@ -10,7 +10,7 @@
 use core::{
     future::Future,
     pin::Pin,
-    task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
+    task::{Context, Poll, Waker},
 };
 
 #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
@@ -45,7 +45,7 @@ impl Task {
 }
 
 // Executor data.
-struct Exec {
+pub(crate) struct Exec {
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
     // The thread-safe waking mechanism: part 1
     mutex: Mutex<()>,
@@ -81,7 +81,7 @@ impl Exec {
     }
 
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-    fn wake(&self) {
+    pub(crate) fn wake(&self) {
         // Wake the task running on a separate thread via CondVar
         if !self.state.compare_and_swap(false, true, Ordering::SeqCst) {
             // We notify the condvar that the value has changed.
@@ -90,7 +90,7 @@ impl Exec {
     }
 
     #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-    fn wake(&self) {
+    pub(crate) fn wake(&self) {
         // Wake the task running on this thread - one pass through executor.
 
         // Get a waker and context for this executor.
@@ -116,20 +116,19 @@ impl Exec {
         // Unsafe: f can't move after this, because it is shadowed
         let mut f = unsafe { Pin::new_unchecked(&mut f) };
         // Get a waker and context for this executor.
-        let waker = waker(self);
-        let context = &mut Context::from_waker(&waker);
-        // Run Future to completion.
-        loop {
-            // Exit with future output, on future completion, otherwise…
-            if let Poll::Ready(value) = f.as_mut().poll(context) {
-                break value;
+        crate::util::waker(self, |cx| {
+            loop {
+                // Exit with future output, on future completion, otherwise…
+                if let Poll::Ready(value) = f.as_mut().poll(cx) {
+                    break value;
+                }
+                // Put the thread to sleep until wake() is called.
+                let mut guard = self.mutex.lock().unwrap();
+                while !self.state.compare_and_swap(true, false, Ordering::SeqCst) {
+                    guard = self.cvar.wait(guard).unwrap();
+                }
             }
-            // Put the thread to sleep until wake() is called.
-            let mut guard = self.mutex.lock().unwrap();
-            while !self.state.compare_and_swap(true, false, Ordering::SeqCst) {
-                guard = self.cvar.wait(guard).unwrap();
-            }
-        }
+        })
     }
 
     // Find an open index in the tasks array.
@@ -297,25 +296,4 @@ impl<T: Unpin + 'static> Future for JoinHandle<T> {
             }
         }
     }
-}
-
-// Safe wrapper to create a `Waker`.
-#[inline]
-#[allow(unsafe_code)]
-fn waker(exec: *const Exec) -> Waker {
-    const RWVT: RawWakerVTable = RawWakerVTable::new(clone, wake, wake, drop);
-
-    #[inline]
-    unsafe fn clone(data: *const ()) -> RawWaker {
-        RawWaker::new(data, &RWVT)
-    }
-    #[inline]
-    unsafe fn wake(data: *const ()) {
-        let exec: *const Exec = data.cast();
-        (*exec).wake();
-    }
-    #[inline]
-    unsafe fn drop(_: *const ()) {}
-
-    unsafe { Waker::from_raw(RawWaker::new(exec.cast(), &RWVT)) }
 }
