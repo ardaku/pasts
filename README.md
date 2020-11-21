@@ -9,7 +9,7 @@
 [About][4] | [Source][5] | [Changelog][3] | [Tutorial][6]
 
 # About
- - No required std / alloc
+ - No required std
  - No macros at all (`pin_mut!()`, `select!()` and `join!()` implemented as
    traits with safe APIs: `DynFut::fut()`, `Select::select()`¹ and
    `Join::join()`)
@@ -24,7 +24,7 @@ Check out the [documentation][0] for examples.
 
 ### Supported Platforms
 Pasts targets all platforms that can run Rust.  The `execute()` executor works
-on the following platforms (needs **std**):
+on the following platforms:
  - All platforms that support threading (includes all tier 1 and some tier 2, 3)
  - Web Assembly In Browser (Tier 2)
 
