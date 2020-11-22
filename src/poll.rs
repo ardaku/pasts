@@ -51,7 +51,7 @@
 ///     }
 ///     let results = (results.0.unwrap(), results.1.unwrap());
 ///     assert_eq!(("Hello", "World!"), results);
-/// } 
+/// }
 /// ```
 #[macro_export]
 macro_rules! poll {

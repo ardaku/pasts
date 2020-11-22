@@ -32,7 +32,7 @@ async fn example() {
         let task_one = one(&state);
         let task_two = two(&state);
     }
-    [task_one, task_two].select().await;
+    poll![task_one, task_two].await;
 }
 
 fn main() {

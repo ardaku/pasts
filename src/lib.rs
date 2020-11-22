@@ -57,7 +57,7 @@ async fn example() {
     let state = RefCell::new(0);
     task!(let task_one = one(&state));
     task!(let task_two = two(&state));
-    [task_one, task_two].select().await;
+    poll![task_one, task_two].await;
 }
 
 fn main() {
@@ -94,14 +94,11 @@ extern crate alloc;
 
 /// Re-exported traits and macros.
 pub mod prelude {
-    pub use crate::{task, poll};
-    pub use crate::Select;
+    pub use crate::{poll, task};
 }
 
 mod exec;
-mod select;
-mod util;
 mod poll;
+mod util;
 
 pub use exec::{spawn, JoinHandle};
-pub use select::Select;
