@@ -15,9 +15,12 @@
 #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
 use std::cell::RefCell;
 
-use core::task::{Context, RawWaker, RawWakerVTable, Waker};
+use core::{task::{Context, RawWaker, RawWakerVTable, Waker}, pin::Pin, future::Future};
 
 use crate::exec::Exec;
+
+/// A pinned future trait object.
+pub type Task<'a, T> = Pin::<&'a mut dyn Future<Output = T>>;
 
 /// Create a future trait objects that implement `Unpin`.
 ///
