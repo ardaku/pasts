@@ -38,20 +38,21 @@
 /// use pasts::prelude::*;
 ///
 /// async fn async_main() {
-///     task!(let hello = async { "Hello" });
-///     task!(let world = async { "World!"});
-///     let mut task_queue = [hello, world];
-///     let mut results = (None, None);
-///     for _ in 0u8..2 {
-///         match poll!(task_queue).await {
-///             (0, a) => results.0 = Some(a),
-///             (1, a) => results.1 = Some(a),
+///     task!(let hello = async { (0, "Hello") });
+///     task!(let world = async { (1, "World!") });
+///     let mut task_queue = vec![hello, world];
+///     while !task_queue.is_empty() {
+///         let (index, output) = poll!(task_queue).await;
+///         task_queue.remove(index);
+///         match output {
+///             (0, a) => assert_eq!(a, "Hello"),
+///             (1, a) => assert_eq!(a, "World!"),
 ///             _ => unreachable!(),
 ///         }
 ///     }
-///     let results = (results.0.unwrap(), results.1.unwrap());
-///     assert_eq!(("Hello", "World!"), results);
 /// }
+///
+/// exec!(async_main());
 /// ```
 #[macro_export]
 macro_rules! poll {
