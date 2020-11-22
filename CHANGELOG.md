@@ -4,6 +4,38 @@ All notable changes to `pasts` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
+## [0.6.0] - 2020-11-22
+### Added
+ - `Task` type alias: `Pin<&'a mut (dyn Future<Output = T> + Unpin)>`
+ - `task!()` macro to create a `Task` from an async block or function.
+ - `exec!()` macro to execute futures from synchronous code, supporting
+   parallelization when the **std** feature is enabled, and not on WASM.
+ - `poll!()` macro to create a future that returns ready when the first of a
+   list of futures returns ready.
+ - `join!()` macro to concurrently push multiple futures to completion.
+
+### Removed
+ - `DynFuture` and `DynFut` as they were unsound; you may now use the `task!()`
+   macro for the same effect.
+ - `spawn()` as it was also unsound due to the fact it made executors that did
+   not have a `'static` lifetime nor did reference counting; you may now use the
+   `exec!()` macro instead.
+ - `JoinHandle` - though there are no replacements for this API, you can use
+   `exec!()` to create a thread pool with `num_cpus` to execute tasks.
+ - `Join` trait - use `join!()` macro, which can take any number of arguments
+   rather than being limited to six.
+ - `Select` trait - use `poll!()` macro, which automatically changes your
+   futures into `Task`s.  It was renamed to `poll!()` because it works
+   differently than `select!()` seen elsewhere in the async ecosystem.
+ - `SelectBoxed` - no longer needed, `poll!()` works on `Box`es
+ - `SelectOptional` - you may now use task queues (`Vec<Task>`), and remove
+   tasks from the vec on completion.
+ - A lot of unsafe code, and also lines of code (less than 250 instead of over
+   1000).
+
+### Fixed
+ - At least two unsoundness issues.
+
 ## [0.5.0] - 2020-11-14
 ### Added
  - `spawn()` function to start a non-blocking task that may run on a separate

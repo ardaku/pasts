@@ -123,10 +123,6 @@ macro_rules! task {
                 ::new_unchecked(&mut $x)
         };
     )* };
-    ($x:ident) => {
-        core::pin::Pin::<&mut (dyn core::future::Future<Output = _> + Unpin)>
-            ::new(&mut $x)
-    };
 }
 
 // Create a `Waker`.

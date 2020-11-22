@@ -17,7 +17,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! pasts = "0.5"
+//! pasts = "0.6"
 //! aysnc-std = "1.0"
 //! ```
 //!
