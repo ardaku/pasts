@@ -94,16 +94,14 @@ extern crate alloc;
 
 /// Re-exported traits and macros.
 pub mod prelude {
-    pub use crate::task;
-    pub use crate::Join;
+    pub use crate::{task, poll};
     pub use crate::Select;
 }
 
 mod exec;
-mod join;
 mod select;
 mod util;
+mod poll;
 
 pub use exec::{spawn, JoinHandle};
-pub use join::Join;
 pub use select::Select;

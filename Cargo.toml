@@ -23,16 +23,6 @@ categories = ["asynchronous", "embedded", "no-std", "rust-patterns"]
 readme = "README.md"
 edition = "2018"
 
-[[example]]
-name = "join"
-path = "examples/join.rs"
-required-features = ["std"]
-
-[[test]]
-name = "join"
-path = "tests/join.rs"
-required-features = ["std"]
-
 [dependencies]
 
 [build-dependencies]
