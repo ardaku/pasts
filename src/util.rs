@@ -23,6 +23,93 @@ use crate::exec::Exec;
 /// A pinned future trait object.
 pub type Task<'a, T> = Pin<&'a mut dyn Future<Output = T>>;
 
+/// Create a future that waits on multiple futures and returns their results as
+/// a tuple.
+///
+/// ```rust
+/// use pasts::prelude::*;
+///
+/// async fn async_main() {
+///     task! {
+///         let a = async { "Hello, World!" };
+///         let b = async { 15u32 };
+///         let c = async { 'c' };
+///     };
+///     assert_eq!(("Hello, World!", 15u32, 'c'), join!(a, b, c));
+/// }
+///
+/// exec!(async_main());
+/// ```
+#[macro_export]
+macro_rules! join {
+    // FIXME: Make this code simpler and easier to understand.
+    ($($future:ident),* $(,)?) => {{
+        use core::{task::{Poll, Context}, mem::MaybeUninit, pin::Pin, future::Future};
+        struct MaybeFuture<'a, T, F: Future<Output = T>>(Option<Pin<&'a mut F>>);
+        impl <T, F: Future<Output = T>> Future for MaybeFuture<'_, T, F> {
+            type Output = T;
+            fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
+                let mut this = self.as_mut();
+                if let Some(future) = this.0.as_mut() {
+                    match future.as_mut().poll(cx) {
+                        Poll::Ready(t) => {
+                            this.0 = None;
+                            Poll::Ready(t)
+                        },
+                        a => a,
+                    }
+                } else {
+                    Poll::Pending
+                }
+            }
+        }
+        let mut count = 0usize;
+        $(
+            let mut $future = MaybeFuture(Some(Pin::new(&mut $future)));
+            let mut $future = (Pin::new(&mut $future), MaybeUninit::uninit());
+            count += 1;
+        )*
+        for _ in 0..count {
+            join! {
+                $( ret = &mut $future.0 => $future.1 = MaybeUninit::new(ret) ),*
+            }
+        }
+        unsafe {
+            ($($future.1.assume_init()),*)
+        }
+    }};
+    ($($pattern:ident = $future:expr => $branch:expr $(,)?)*) => {
+        {
+            use core::{
+                future::Future,
+                pin::Pin,
+                task::{Poll, Context},
+            };
+            struct __Pasts_Selector<'a, T> {
+                closure: &'a mut dyn FnMut(&mut Context<'_>) -> Poll<T>,
+            }
+            impl<'a, T> Future for __Pasts_Selector<'a, T> {
+                type Output = T;
+                fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
+                    (self.get_mut().closure)(cx)
+                }
+            }
+            __Pasts_Selector { closure: &mut |__pasts_cx: &mut Context<'_>| {
+                $(
+                    match $future.as_mut().poll(__pasts_cx) {
+                        Poll::Ready($pattern) => {
+                            let ret = { $branch };
+                            return Poll::Ready(ret);
+                        }
+                        Poll::Pending => {}
+                    }
+                )*
+                Poll::Pending
+            } }.await
+        }
+    };
+}
+
 /// Create future trait object(s) that implement [`Unpin`](std::marker::Unpin).
 ///
 /// ```rust

@@ -89,7 +89,7 @@ extern crate alloc;
 
 /// Re-exported macros.
 pub mod prelude {
-    pub use crate::{exec, poll, task};
+    pub use crate::{exec, poll, task, join};
 }
 
 mod exec;
