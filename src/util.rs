@@ -124,7 +124,7 @@ macro_rules! task {
         };
     )* };
     ($x:ident) => {
-        core::pin::Pin::<&mut dyn core::future::Future<Output = _>>
+        core::pin::Pin::<&mut (dyn core::future::Future<Output = _> + Unpin)>
             ::new(&mut $x)
     };
 }
