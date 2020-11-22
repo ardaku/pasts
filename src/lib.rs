@@ -21,52 +21,46 @@
 //! aysnc-std = "1.0"
 //! ```
 //!
-#![cfg_attr(
-    feature = "std",
-    doc = r#"
-```rust,no_run
-#![forbid(unsafe_code)]
-
-use pasts::prelude::*;
-use async_std::task;
-
-use std::{cell::RefCell, time::Duration};
-
-async fn one(state: &RefCell<usize>) {
-    println!("Starting task one");
-    while *state.borrow() < 5 {
-        task::sleep(Duration::new(1, 0)).await;
-        let mut state = state.borrow_mut();
-        println!("One {}", *state);
-        *state += 1;
-    }
-    println!("Finish task one");
-}
-
-async fn two(state: &RefCell<usize>) {
-    println!("Starting task two");
-    loop {
-        task::sleep(Duration::new(2, 0)).await;
-        let mut state = state.borrow_mut();
-        println!("Two {}", *state);
-        *state += 1;
-    }
-}
-
-async fn example() {
-    let state = RefCell::new(0);
-    let mut task_one = one(&state);
-    let mut task_two = two(&state);
-    let mut tasks = [task_one.fut(), task_two.fut()];
-    tasks.select().await;
-}
-
-fn main() {
-    pasts::spawn(example);
-}
-```
-"#
-)]
+//! ```rust,no_run
+//! #![forbid(unsafe_code)]
+//!
+//! use pasts::prelude::*;
+//! use async_std::task;
+//!
+//! use std::{cell::RefCell, time::Duration};
+//!
+//! async fn one(state: &RefCell<usize>) {
+//!     println!("Starting task one");
+//!     while *state.borrow() < 5 {
+//!         task::sleep(Duration::new(1, 0)).await;
+//!         let mut state = state.borrow_mut();
+//!         println!("One {}", *state);
+//!         *state += 1;
+//!     }
+//!     println!("Finish task one");
+//! }
+//!
+//! async fn two(state: &RefCell<usize>) {
+//!     println!("Starting task two");
+//!     loop {
+//!         task::sleep(Duration::new(2, 0)).await;
+//!         let mut state = state.borrow_mut();
+//!         println!("Two {}", *state);
+//!         *state += 1;
+//!     }
+//! }
+//!
+//! async fn example() {
+//!     let state = RefCell::new(0);
+//!     task!(let task_one = one(&state));
+//!     task!(let task_two = two(&state));
+//!     poll![task_one, task_two].await;
+//! }
+//!
+//! fn main() {
+//!     exec!(example());
+//! }
+//! ```
 #![cfg_attr(not(feature = "std"), no_std)]
 #![doc(
     html_logo_url = "https://libcala.github.io/logo.svg",
@@ -93,20 +87,14 @@ fn main() {
 #[cfg(any(not(feature = "std"), target_arch = "wasm32"))]
 extern crate alloc;
 
-/// Re-exported traits
+/// Re-exported macros.
 pub mod prelude {
-    pub use crate::DynFut;
-    pub use crate::Join;
-    pub use crate::{Select, SelectBoxed, SelectOptional};
+    pub use crate::{exec, poll, task, join};
 }
 
-mod dyn_future;
-mod executor;
-mod join;
-mod select;
+mod exec;
+mod poll;
+mod util;
 
-pub use dyn_future::DynFut;
-pub use dyn_future::DynFuture;
-pub use executor::{spawn, JoinHandle};
-pub use join::Join;
-pub use select::{Select, SelectBoxed, SelectOptional};
+pub use exec::_block_on;
+pub use util::Task;

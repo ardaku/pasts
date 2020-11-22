@@ -7,6 +7,7 @@ use std::{cell::RefCell, time::Duration};
 
 async fn one(state: &RefCell<usize>) {
     println!("Starting task one");
+    task::sleep(Duration::from_millis(10)).await;
     while *state.borrow() < 5 {
         task::sleep(Duration::new(1, 0)).await;
         let mut state = state.borrow_mut();
@@ -28,12 +29,13 @@ async fn two(state: &RefCell<usize>) {
 
 async fn example() {
     let state = RefCell::new(0);
-    let mut task_one = one(&state);
-    let mut task_two = two(&state);
-    let mut tasks = [task_one.fut(), task_two.fut()];
-    tasks.select().await;
+    task! {
+        let task_one = one(&state);
+        let task_two = two(&state);
+    }
+    poll![task_one, task_two].await;
 }
 
 fn main() {
-    pasts::spawn(example);
+    exec!(example());
 }
