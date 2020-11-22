@@ -70,21 +70,6 @@ macro_rules! join {
             count += 1;
         )*
         for _ in 0..count {
-            join! {
-                $( ret = &mut $future.0 => $future.1 = MaybeUninit::new(ret) ),*
-            }
-        }
-        unsafe {
-            ($($future.1.assume_init()),*)
-        }
-    }};
-    ($($pattern:ident = $future:expr => $branch:expr $(,)?)*) => {
-        {
-            use core::{
-                future::Future,
-                pin::Pin,
-                task::{Poll, Context},
-            };
             struct __Pasts_Selector<'a, T> {
                 closure: &'a mut dyn FnMut(&mut Context<'_>) -> Poll<T>,
             }
@@ -96,10 +81,10 @@ macro_rules! join {
             }
             __Pasts_Selector { closure: &mut |__pasts_cx: &mut Context<'_>| {
                 $(
-                    match $future.as_mut().poll(__pasts_cx) {
-                        Poll::Ready($pattern) => {
-                            let ret = { $branch };
-                            return Poll::Ready(ret);
+                    match $future.0.as_mut().poll(__pasts_cx) {
+                        Poll::Ready(pattern) => {
+                            $future.1 = MaybeUninit::new(pattern);
+                            return Poll::Ready(());
                         }
                         Poll::Pending => {}
                     }
@@ -107,7 +92,10 @@ macro_rules! join {
                 Poll::Pending
             } }.await
         }
-    };
+        unsafe {
+            ($($future.1.assume_init()),*)
+        }
+    }};
 }
 
 /// Create future trait object(s) that implement [`Unpin`](std::marker::Unpin).
