@@ -61,6 +61,7 @@ macro_rules! poll {
         struct Fut<'a, T, F: Future<Output = T> + Unpin> {
             futures: &'a mut [F],
         }
+        impl<T, F: Future<Output = T> + Unpin> Unpin for Fut<'_, T, F> {}
         impl<T: Unpin, F: Future<Output = T> + Unpin> Future for Fut<'_, T, F> {
             type Output = (usize, T);
             fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>)
@@ -78,12 +79,10 @@ macro_rules! poll {
                 Poll::Pending
             }
         }
-        Pin::<&mut (dyn Future<Output=_> + Unpin)>::new(
-            &mut Fut { futures: &mut $f[..] }
-        )
+        $crate::Task::new(&mut Fut { futures: &mut $f[..] })
     }};
 
     ($($f:expr),* $(,)?) => {{
-        poll!([$(&mut $f),*])
+        poll!([$($crate::Task::new(&mut $f)),*])
     }};
 }

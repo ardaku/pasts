@@ -21,8 +21,8 @@
 Check out the [documentation][0] for examples.
 
 ### Supported Platforms
-Pasts targets all platforms that can run Rust.  The `execute()` executor works
-on the following platforms:
+Pasts targets all platforms that can run Rust.  The `exec!()` executor works
+on at least the following platforms (may work on others):
  - All platforms that support threading (includes all tier 1 and some tier 2, 3)
  - Web Assembly In Browser (Tier 2)
 

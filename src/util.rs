@@ -21,7 +21,7 @@ use core::{
 use crate::exec::Exec;
 
 /// A pinned future trait object.
-pub type Task<'a, T> = Pin<&'a mut dyn Future<Output = T>>;
+pub type Task<'a, T> = Pin<&'a mut (dyn Future<Output = T> + Unpin)>;
 
 /// Create a future that waits on multiple futures and returns their results as
 /// a tuple.
@@ -123,10 +123,6 @@ macro_rules! task {
                 ::new_unchecked(&mut $x)
         };
     )* };
-    ($x:ident) => {
-        core::pin::Pin::<&mut (dyn core::future::Future<Output = _> + Unpin)>
-            ::new(&mut $x)
-    };
 }
 
 // Create a `Waker`.
