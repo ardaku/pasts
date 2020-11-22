@@ -7,60 +7,33 @@
 // or http://opensource.org/licenses/Zlib>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use core::{
-    future::Future,
-    pin::Pin,
-    task::{Context, Poll},
-};
+use core::future::Future;
 
 #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, Condvar, Mutex,
+        Condvar, Mutex,
     },
-    task::Waker,
+    task::Poll,
 };
 
 #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-use alloc::{boxed::Box, vec::Vec};
+use alloc::boxed::Box;
 #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-use core::{any::Any, cell::RefCell, marker::PhantomData};
-
-// Either a Future or Output or Empty
-#[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-enum Task {
-    Future(Pin<Box<dyn Future<Output = ()>>>),
-    Output(Box<dyn Any>),
-    Empty,
-}
+use core::{cell::RefCell, pin::Pin};
 
 #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-impl Task {
-    fn take(&mut self) -> Task {
-        let mut output = Task::Empty;
-        core::mem::swap(&mut output, self);
-        output
-    }
-}
+pub(crate) struct Exec(RefCell<Option<Pin<Box<dyn Future<Output = ()>>>>>);
 
-// Executor data.
+#[cfg(all(feature = "std", not(target_arch = "wasm32")))]
 pub(crate) struct Exec {
-    #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
     // The thread-safe waking mechanism: part 1
     mutex: Mutex<()>,
-
-    #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
     // The thread-safe waking mechanism: part 2
     cvar: Condvar,
-
-    #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
     // Flag set to verify `Condvar` actually woke the executor.
     state: AtomicBool,
-
-    #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-    // Pinned future.
-    tasks: RefCell<Vec<Task>>,
 }
 
 impl Exec {
@@ -75,9 +48,7 @@ impl Exec {
 
     #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
     pub(crate) fn new() -> Self {
-        Self {
-            tasks: RefCell::new(Vec::new()),
-        }
+        Self(RefCell::new(None))
     }
 
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
@@ -92,20 +63,14 @@ impl Exec {
     #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
     pub(crate) fn wake(&self) {
         // Wake the task running on this thread - one pass through executor.
-
-        // Get a waker and context for this executor.
         crate::util::waker(self, |cx| {
-            // Run through task queue
-            let tasks_len = self.tasks.borrow().len();
-            for task_id in 0..tasks_len {
-                let task = { self.tasks.borrow_mut()[task_id].take() };
-                if let Task::Future(f) = task {
-                    let mut f = f;
-                    if f.as_mut().poll(cx).is_pending() {
-                        self.tasks.borrow_mut()[task_id] = Task::Future(f);
-                    }
-                }
-            }
+            self.0
+                .borrow_mut()
+                .as_mut()
+                .unwrap()
+                .as_mut()
+                .poll(cx)
+                .is_pending()
         });
     }
 
@@ -133,41 +98,24 @@ impl Exec {
         })
     }
 
-    // Find an open index in the tasks array.
     #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-    fn find_handle(&mut self) -> u32 {
-        for (id, task) in self.tasks.borrow().iter().enumerate() {
-            match task {
-                Task::Empty => return id as u32,
-                _ => { /* continue */ }
-            }
-        }
-        self.tasks.borrow().len() as u32
-    }
-
-    #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-    fn execute<F: Future<Output = ()>>(&mut self, handle: u32, f: F)
-    where
-        F: 'static,
-    {
-        // Add to task queue
-        {
-            let mut tasks = self.tasks.borrow_mut();
-            tasks.resize_with(handle as usize + 1, || Task::Empty);
-            tasks[handle as usize] = Task::Future(Box::pin(f));
-        };
+    fn execute<F: Future<Output = ()> + 'static>(&self, f: F) {
+        // Set the future for this executor.
+        *self.0.borrow_mut() = Some(Box::pin(f));
         // Begin Executor
         self.wake();
     }
 }
 
-/// Execute a future by spawning an asynchronous task.
+/// Execute futures concurrently; in parallel if the target supports it,
+/// otherwise asynchronously.
 ///
-/// On multi-threaded systems, this will start a new thread.  Similar to
-/// `futures::executor::block_on()`, except that doesn't block.  Similar to
-/// `std::thread::spawn()`, except that tasks don't detach, and will join on
-/// `Drop` (except when the **std** feature is not enabled, where it is expected
-/// that you enter a "sleep" state).
+/// Similar to [`poll!()`](crate::poll!), except that you can call it from
+/// synchronous code, and after calling it once, future calls will panic.
+/// The program will *exit* after the first future returns
+/// [`Poll::Ready`](std::task::Poll::Ready).  That means all threads and
+/// single-threaded executorr started by this macro will run for the remainder
+/// of the program, giving them a `'static` lifetime.
 ///
 /// # Example
 /// ```rust
@@ -175,103 +123,66 @@ impl Exec {
 ///     /* your code here */
 /// }
 ///
-/// pasts::spawn(async_main);
+/// // Note that you may add multiple concurrent async_main()s.
+/// pasts::exec!(async_main());
 /// ```
-pub fn spawn<T, F: Future<Output = T>, G: Fn() -> F>(g: G) -> JoinHandle<T>
-where
-    T: 'static + Send + Unpin,
-    G: 'static + Send,
-{
+#[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+#[macro_export]
+macro_rules! exec {
+    ($e:expr $(,)?) => {
+        $crate::_block_on($e);
+    };
+    ($e:expr, $($f:expr),* $(,)?) => {
+        $( std::thread::spawn(|| $crate::_block_on($f)); )*
+        $crate::_block_on($e);
+    };
+}
+
+/// Execute futures concurrently; in parallel if the target supports it,
+/// otherwise asynchronously.
+///
+/// Similar to [`poll!()`](crate::poll!), except that you can call it from
+/// synchronous code, and after calling it once, future calls will panic.
+/// The program will *exit* after the first future returns
+/// [`Poll::Ready`](std::task::Poll::Ready).  That means all threads and
+/// single-threaded executorr started by this macro will run for the remainder
+/// of the program, giving them a `'static` lifetime.
+///
+/// # Example
+/// ```rust
+/// async fn async_main() {
+///     /* your code here */
+/// }
+///
+/// // Note that you may add multiple concurrent async_main()s.
+/// pasts::exec!(async_main());
+/// ```
+#[cfg(any(target_arch = "wasm32", not(feature = "std")))]
+#[macro_export]
+macro_rules! exec {
+    ($e:expr $(,)?) => {
+        $crate::_block_on($e);
+    };
+    ($e:expr, $($f:expr),* $(,)?) => {
+        $crate::_block_on($e);
+        $( $crate::_block_on($f); )*
+    };
+}
+
+/// Execute a future by spawning an asynchronous task.
+#[doc(hidden)]
+pub fn _block_on<F: Future<Output = ()> + 'static>(f: F) {
     // Can start tasks on their own threads.
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
     {
-        let waker = Arc::new(Mutex::new((None, None)));
-        JoinHandle {
-            waker: waker.clone(),
-            handle: Some(std::thread::spawn(move || {
-                let output = crate::util::exec(|exec| exec.execute(g()));
-                let mut waker = waker.lock().unwrap();
-                waker.0 = Some(output);
-                if let Some(waker) = waker.1.take() {
-                    waker.wake();
-                }
-            })),
-        }
+        let mut exec = Exec::new();
+        exec.execute(f);
+        std::process::exit(0);
     }
 
     // Can allocate task queue.
     #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
     {
-        JoinHandle {
-            handle: crate::util::exec(|exec| {
-                let handle = exec.find_handle();
-                exec.execute(handle, async move {
-                    let output = g().await;
-                    crate::util::exec(|exec| {
-                        let mut tasks = exec.tasks.borrow_mut();
-                        let task = tasks.get_mut(handle as usize).unwrap();
-                        *task = Task::Output(Box::new(output));
-                    });
-                });
-                handle
-            }),
-            _phantom: PhantomData,
-        }
-    }
-}
-
-/// An owned permission to join on a task (`.await` on its termination).
-#[derive(Debug)]
-pub struct JoinHandle<T>
-where
-    T: Unpin,
-{
-    #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-    waker: Arc<Mutex<(Option<T>, Option<Waker>)>>,
-
-    #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-    handle: Option<std::thread::JoinHandle<()>>,
-
-    #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-    handle: u32,
-
-    #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-    _phantom: PhantomData<T>,
-}
-
-#[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-impl<T: Unpin> Drop for JoinHandle<T> {
-    fn drop(&mut self) {
-        self.handle.take().unwrap().join().unwrap();
-    }
-}
-
-impl<T: Unpin + 'static> Future for JoinHandle<T> {
-    type Output = T;
-
-    fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<T> {
-        #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-        {
-            let mut waker = self.waker.lock().unwrap();
-            if let Some(output) = waker.0.take() {
-                Poll::Ready(output)
-            } else {
-                waker.1 = Some(_cx.waker().clone());
-                Poll::Pending
-            }
-        }
-
-        #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-        {
-            let task = crate::util::exec(|exec| {
-                exec.tasks.borrow_mut()[self.handle as usize].take()
-            });
-
-            if let Task::Output(output) = task {
-                Poll::Ready(*output.downcast().unwrap())
-            } else {
-                Poll::Pending
-            }
-        }
+        crate::util::exec().execute(f);
     }
 }

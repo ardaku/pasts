@@ -21,51 +21,46 @@
 //! aysnc-std = "1.0"
 //! ```
 //!
-#![cfg_attr(
-    feature = "std",
-    doc = r#"
-```rust,no_run
-#![forbid(unsafe_code)]
-
-use pasts::prelude::*;
-use async_std::task;
-
-use std::{cell::RefCell, time::Duration};
-
-async fn one(state: &RefCell<usize>) {
-    println!("Starting task one");
-    while *state.borrow() < 5 {
-        task::sleep(Duration::new(1, 0)).await;
-        let mut state = state.borrow_mut();
-        println!("One {}", *state);
-        *state += 1;
-    }
-    println!("Finish task one");
-}
-
-async fn two(state: &RefCell<usize>) {
-    println!("Starting task two");
-    loop {
-        task::sleep(Duration::new(2, 0)).await;
-        let mut state = state.borrow_mut();
-        println!("Two {}", *state);
-        *state += 1;
-    }
-}
-
-async fn example() {
-    let state = RefCell::new(0);
-    task!(let task_one = one(&state));
-    task!(let task_two = two(&state));
-    poll![task_one, task_two].await;
-}
-
-fn main() {
-    pasts::spawn(example);
-}
-```
-"#
-)]
+//! ```rust,no_run
+//! #![forbid(unsafe_code)]
+//!
+//! use pasts::prelude::*;
+//! use async_std::task;
+//!
+//! use std::{cell::RefCell, time::Duration};
+//!
+//! async fn one(state: &RefCell<usize>) {
+//!     println!("Starting task one");
+//!     while *state.borrow() < 5 {
+//!         task::sleep(Duration::new(1, 0)).await;
+//!         let mut state = state.borrow_mut();
+//!         println!("One {}", *state);
+//!         *state += 1;
+//!     }
+//!     println!("Finish task one");
+//! }
+//!
+//! async fn two(state: &RefCell<usize>) {
+//!     println!("Starting task two");
+//!     loop {
+//!         task::sleep(Duration::new(2, 0)).await;
+//!         let mut state = state.borrow_mut();
+//!         println!("Two {}", *state);
+//!         *state += 1;
+//!     }
+//! }
+//!
+//! async fn example() {
+//!     let state = RefCell::new(0);
+//!     task!(let task_one = one(&state));
+//!     task!(let task_two = two(&state));
+//!     poll![task_one, task_two].await;
+//! }
+//!
+//! fn main() {
+//!     exec!(example());
+//! }
+//! ```
 #![cfg_attr(not(feature = "std"), no_std)]
 #![doc(
     html_logo_url = "https://libcala.github.io/logo.svg",
@@ -94,12 +89,12 @@ extern crate alloc;
 
 /// Re-exported macros.
 pub mod prelude {
-    pub use crate::{poll, task};
+    pub use crate::{exec, poll, task};
 }
 
 mod exec;
 mod poll;
 mod util;
 
-pub use exec::{spawn, JoinHandle};
+pub use exec::_block_on;
 pub use util::Task;

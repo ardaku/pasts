@@ -12,17 +12,18 @@
 
 #![allow(unsafe_code)]
 
-#[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-use std::cell::RefCell;
-
-use core::{task::{Context, RawWaker, RawWakerVTable, Waker}, pin::Pin, future::Future};
+use core::{
+    future::Future,
+    pin::Pin,
+    task::{Context, RawWaker, RawWakerVTable, Waker},
+};
 
 use crate::exec::Exec;
 
 /// A pinned future trait object.
-pub type Task<'a, T> = Pin::<&'a mut dyn Future<Output = T>>;
+pub type Task<'a, T> = Pin<&'a mut dyn Future<Output = T>>;
 
-/// Create a future trait objects that implement `Unpin`.
+/// Create future trait object(s) that implement [`Unpin`](std::marker::Unpin).
 ///
 /// ```rust
 /// use pasts::prelude::*;
@@ -80,37 +81,15 @@ where
     f(&mut Context::from_waker(&waker))
 }
 
-// When the std library is available, use TLS so that multiple threads can
-// lazily initialize an executor.
-#[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-thread_local! {
-    static EXEC: RefCell<Exec> = RefCell::new(Exec::new());
-}
-
-// Without std, assume no threads, and use "fake" TLS.
 #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-static mut EXEC: Option<Exec> = None;
+static mut EXEC: core::mem::MaybeUninit<Exec> =
+    core::mem::MaybeUninit::<Exec>::uninit();
 
-// Get a reference to the thread local, or if there are no threads, the global
-// static.
-#[inline]
-pub(super) fn exec<F, T>(f: F) -> T
-where
-    F: FnOnce(&mut Exec) -> T,
-{
-    #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-    {
-        EXEC.with(|exec| f(&mut exec.borrow_mut()))
-    }
-
-    #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-    // unsafe: safe because there are no threads.
+#[cfg(any(target_arch = "wasm32", not(feature = "std")))]
+// unsafe: sound because threads can't happen on targets with no threads.
+pub(crate) fn exec() -> &'static mut Exec {
     unsafe {
-        if let Some(ref mut exec) = EXEC.as_mut() {
-            f(exec)
-        } else {
-            EXEC = Some(Exec::new());
-            f(EXEC.as_mut().unwrap())
-        }
+        EXEC = core::mem::MaybeUninit::new(Exec::new());
+        &mut *EXEC.as_mut_ptr()
     }
 }

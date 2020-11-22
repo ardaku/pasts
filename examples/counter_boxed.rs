@@ -12,22 +12,23 @@ use std::{
 
 async fn one(state: &AtomicUsize) {
     println!("Starting task one");
-    while state.load(SeqCst) < 5 {
+    let mut value = state.load(SeqCst);
+    task::sleep(Duration::from_millis(10)).await;
+    while value < 5 {
         task::sleep(Duration::new(1, 0)).await;
-        let state_val = state.load(SeqCst);
-        println!("One {}", state_val);
-        state.store(state_val + 1, SeqCst);
+        value = state.fetch_add(1, SeqCst) + 1;
+        println!("One {}", value - 1);
     }
     println!("Finish task one");
 }
 
 async fn two(state: &AtomicUsize) {
     println!("Starting task two");
+    let mut value;
     loop {
         task::sleep(Duration::new(2, 0)).await;
-        let state_val = state.load(SeqCst);
-        println!("Two {}", state_val);
-        state.store(state_val + 1, SeqCst);
+        value = state.fetch_add(1, SeqCst);
+        println!("Two {}", value);
     }
 }
 
@@ -40,5 +41,5 @@ async fn example() {
 }
 
 fn main() {
-    pasts::spawn(example);
+    exec!(example());
 }

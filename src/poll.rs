@@ -7,7 +7,7 @@
 // or http://opensource.org/licenses/Zlib>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-/// Poll multiple futures concurrently.
+/// Create a future that polls multiple futures concurrently.
 ///
 /// Takes an array of types that implement [`Future`](core::future::Future) and
 /// [`Unpin`](core::marker::Unpin).  If you're dealing with futures that don't
@@ -30,7 +30,7 @@
 ///     assert_eq!((0, "Hello"), poll!(hello, world).await);
 /// }
 ///
-/// pasts::spawn(async_main);
+/// exec!(async_main());
 /// ```
 ///
 /// ## Await the Outputs of Two Futures Concurrently
