@@ -134,6 +134,7 @@ static mut EXEC: core::mem::MaybeUninit<Exec> =
     core::mem::MaybeUninit::<Exec>::uninit();
 
 #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
+#[allow(unsafe_code)]
 // unsafe: sound because threads can't happen on targets with no threads.
 pub(crate) fn exec() -> &'static mut Exec {
     unsafe {
