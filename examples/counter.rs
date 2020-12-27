@@ -1,41 +1,72 @@
 #![forbid(unsafe_code)]
 
 use async_std::task;
-use pasts::prelude::*;
+use pasts::{exec, wait};
+use std::{
+    future::Future,
+    pin::Pin,
+    task::{Context, Poll},
+    time::Duration,
+};
 
-use std::{cell::RefCell, time::Duration};
-
-async fn one(state: &RefCell<usize>) {
-    println!("Starting task one");
-    task::sleep(Duration::from_millis(10)).await;
-    while *state.borrow() < 5 {
-        task::sleep(Duration::new(1, 0)).await;
-        let mut state = state.borrow_mut();
-        println!("One {}", *state);
-        *state += 1;
-    }
-    println!("Finish task one");
+/// An event handled by the event loop.
+enum Event {
+    One(()),
+    Two(()),
 }
 
-async fn two(state: &RefCell<usize>) {
-    println!("Starting task two");
-    loop {
-        task::sleep(Duration::new(2, 0)).await;
-        let mut state = state.borrow_mut();
-        println!("Two {}", *state);
-        *state += 1;
+/// Shared state between tasks on the thread.
+struct State(usize);
+
+impl State {
+    /// Event loop.  Return false to stop program.
+    fn event(&mut self, event: Event) -> bool {
+        match event {
+            Event::One(()) => {
+                println!("One {}", self.0);
+                self.0 += 1;
+                if self.0 > 5 {
+                    return false;
+                }
+            }
+            Event::Two(()) => {
+                println!("Two {}", self.0);
+                self.0 += 1
+            }
+        }
+        true
     }
 }
 
-async fn example() {
-    let state = RefCell::new(0);
-    task! {
-        let task_one = one(&state);
-        let task_two = two(&state);
+struct Interval(Duration, Pin<Box<dyn Future<Output = ()>>>);
+
+impl Interval {
+    fn new(duration: Duration) -> Self {
+        Interval(duration, Box::pin(task::sleep(duration)))
     }
-    poll![task_one, task_two].await;
+}
+
+impl Future for &mut Interval {
+    type Output = ();
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+        match self.1.as_mut().poll(cx) {
+            Poll::Pending => Poll::Pending,
+            Poll::Ready(()) => {
+                self.1 = Box::pin(task::sleep(self.0));
+                Poll::Ready(())
+            }
+        }
+    }
 }
 
 fn main() {
-    exec!(example());
+    let mut state = State(0);
+    let mut one = Interval::new(Duration::from_secs_f64(0.999));
+    let mut two = Interval::new(Duration::from_secs_f64(2.0));
+
+    exec! { state.event( wait! [
+        Event::One((&mut one).await),
+        Event::Two((&mut two).await),
+    ] .await ) }
 }

@@ -10,41 +10,44 @@
 //! This file contains functions and macros that require unsafe code to work.
 //! The rest of the libary should be unsafe-free.
 
-#![allow(unsafe_code)]
-
-use core::{
-    future::Future,
-    pin::Pin,
-    task::{Context, RawWaker, RawWakerVTable, Waker},
-};
+use core::task::{Context, RawWaker, RawWakerVTable, Waker};
 
 use crate::exec::Exec;
 
-/// A pinned future trait object.
-pub type Task<'a, T> = Pin<&'a mut (dyn Future<Output = T> + Unpin)>;
-
-/// Create a future that waits on multiple futures and returns their results as
-/// a tuple.
+/// Create a future that waits on multiple futures concurrently and returns
+/// their results as a tuple.
 ///
 /// ```rust
-/// use pasts::prelude::*;
+/// use pasts::join;
 ///
 /// async fn async_main() {
-///     task! {
-///         let a = async { "Hello, World!" };
-///         let b = async { 15u32 };
-///         let c = async { 'c' };
-///     };
+///     let a = async { "Hello, World!" };
+///     let b = async { 15u32 };
+///     let c = async { 'c' };
 ///     assert_eq!(("Hello, World!", 15u32, 'c'), join!(a, b, c));
 /// }
 ///
-/// exec!(async_main());
+/// pasts::block_on(async_main());
 /// ```
 #[macro_export]
 macro_rules! join {
     // FIXME: Make this code simpler and easier to understand.
     ($($future:ident),* $(,)?) => {{
-        use core::{task::{Poll, Context}, mem::MaybeUninit, pin::Pin, future::Future};
+        use core::{
+            task::{Poll, Context}, mem::MaybeUninit, pin::Pin, future::Future
+        };
+
+        // Move and Pin all the futures passed in.
+        $(
+            let mut $future = $future;
+            // unsafe: safe because once value is moved and then shadowed, one
+            // can't directly access anymore.
+            let mut $future = unsafe {
+                Pin::<&mut dyn Future<Output = _>>::new_unchecked(&mut $future)
+            };
+        )*
+
+        // Join Algorithm
         struct MaybeFuture<'a, T, F: Future<Output = T>>(Option<Pin<&'a mut F>>);
         impl <T, F: Future<Output = T>> Future for MaybeFuture<'_, T, F> {
             type Output = T;
@@ -98,37 +101,11 @@ macro_rules! join {
     }};
 }
 
-/// Create future trait object(s) that implement [`Unpin`](std::marker::Unpin).
-///
-/// ```rust
-/// use pasts::prelude::*;
-///
-/// async fn bar() { }
-///
-/// task!(let task_name = async { "Hello, world" });
-/// task! {
-///     let foo = async {};
-///     let bar = bar();
-/// }
-/// ```
-#[macro_export]
-macro_rules! task {
-    // unsafe: safe because once value is moved and then shadowed, one can't
-    // directly access anymore.
-    ($(let $x:ident = $y:expr);* $(;)?) => { $(
-        let mut $x = $y;
-        #[allow(unused_mut, unused_qualifications)]
-        let mut $x = unsafe {
-            core::pin::Pin::<&mut dyn core::future::Future<Output = _>>
-                ::new_unchecked(&mut $x)
-        };
-    )* };
-}
-
 // Create a `Waker`.
 //
 // unsafe: Safe because `Waker`/`Context` can't outlive `Exec`.
 #[inline]
+#[allow(unsafe_code)]
 pub(super) fn waker<F, T>(exec: &Exec, f: F) -> T
 where
     F: FnOnce(&mut Context<'_>) -> T,

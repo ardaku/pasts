@@ -7,66 +7,47 @@
 // or http://opensource.org/licenses/Zlib>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-/// Create a future that polls multiple futures concurrently.
+/// Create a future that waits on multiple futures concurrently and returns the
+/// first result.
 ///
 /// Takes an array of types that implement [`Future`](core::future::Future) and
-/// [`Unpin`](core::marker::Unpin).  If you're dealing with futures that don't
-/// implement [`Unpin`](core::marker::Unpin), you can use the
-/// [`task!()`](crate::task) macro to make it implement
-/// [`Unpin`](core::marker::Unpin).  The resulting type will be the same as
-/// other futures created with [`task!()`](crate::task).
+/// [`Unpin`](core::marker::Unpin).
 ///
-/// # Examples
-/// ## Await on The Fastest Future
-/// `poll!()` will always poll the first future in the array first.
+/// # Example: Await on The Fastest Future
+/// `race!()` will always poll the first future in the array first.
 ///
 /// ```rust
-/// use pasts::prelude::*;
+/// use std::{future::Future, pin::Pin};
+/// use pasts::race;
 ///
 /// async fn async_main() {
-///     task!(let hello = async { "Hello" });
-///     task!(let world = async { "World!"});
+///     let hello: Pin<Box<dyn Future<Output=&str>>> = Box::pin(async { "Hello" });
+///     let world: Pin<Box<dyn Future<Output=&str>>> = Box::pin(async { "World" });
+///     let mut array = [hello, world];
 ///     // Hello is ready, so returns with index and result.
-///     assert_eq!((0, "Hello"), poll!(hello, world).await);
+///     assert_eq!((0, "Hello"), race!(array).await);
 /// }
 ///
-/// exec!(async_main());
-/// ```
-///
-/// ## Await the Outputs of Two Futures Concurrently
-/// ```rust
-/// use pasts::prelude::*;
-///
-/// async fn async_main() {
-///     task!(let hello = async { (0, "Hello") });
-///     task!(let world = async { (1, "World!") });
-///     let mut task_queue = vec![hello, world];
-///     while !task_queue.is_empty() {
-///         let (index, output) = poll!(task_queue).await;
-///         task_queue.remove(index);
-///         match output {
-///             (0, a) => assert_eq!(a, "Hello"),
-///             (1, a) => assert_eq!(a, "World!"),
-///             _ => unreachable!(),
-///         }
-///     }
-/// }
-///
-/// exec!(async_main());
+/// pasts::block_on(async_main());
 /// ```
 #[macro_export]
-macro_rules! poll {
+macro_rules! race {
     ($f:expr) => {{
-        use core::{future::Future, task::{Context, Poll}, pin::Pin};
+        use core::{
+            future::Future,
+            pin::Pin,
+            task::{Context, Poll},
+        };
         struct Fut<'a, T, F: Future<Output = T> + Unpin> {
             futures: &'a mut [F],
         }
         impl<T, F: Future<Output = T> + Unpin> Unpin for Fut<'_, T, F> {}
         impl<T: Unpin, F: Future<Output = T> + Unpin> Future for Fut<'_, T, F> {
             type Output = (usize, T);
-            fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>)
-                -> Poll<Self::Output>
-            {
+            fn poll(
+                self: Pin<&mut Self>,
+                cx: &mut Context<'_>,
+            ) -> Poll<Self::Output> {
                 let tasks = &mut self.get_mut().futures;
                 for (task_id, mut task) in tasks.iter_mut().enumerate() {
                     let pin_fut = Pin::new(&mut task);
@@ -79,10 +60,26 @@ macro_rules! poll {
                 Poll::Pending
             }
         }
-        $crate::Task::new(&mut Fut { futures: &mut $f[..] })
+        Pin::<&mut (dyn Future<Output = _> + Unpin)>::new(&mut Fut {
+            futures: &mut $f[..],
+        })
     }};
+}
 
+/// Similar to [`race!()`], except doesn't take an array, but rather a list of
+/// asynchronous tasks.
+#[macro_export]
+macro_rules! wait {
     ($($f:expr),* $(,)?) => {{
-        poll!([$($crate::Task::new(&mut $f)),*])
+        use core::{pin::Pin, future::Future};
+        async {
+            // Safe because future can't move because it can't be directly
+            // accessed
+            $crate::race!([$(unsafe {
+                Pin::<&mut dyn Future<Output = _>>::new_unchecked(
+                    &mut async { $f }
+                )
+            }),*]).await.1
+        }
     }};
 }
