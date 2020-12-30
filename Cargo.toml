@@ -9,7 +9,7 @@
 
 [package]
 name = "pasts"
-version = "0.7.0"
+version = "0.7.1"
 authors = ["Jeron Aldaron Lau <jeronlau@plopgrizzly.com>"]
 license = "Apache-2.0 OR BSL-1.0"
 
@@ -19,7 +19,7 @@ documentation = "https://docs.rs/pasts"
 homepage = "https://github.com/AldaronLau/pasts/blob/master/CHANGELOG.md"
 include = ["Cargo.toml", "README.md", "LICENSE-ZLIB", "LICENSE-APACHE", "src/*"]
 keywords = ["futures", "platform-agnostic", "cross-platform", "io", "executor"]
-categories = ["asynchronous", "embedded", "no-std", "rust-patterns", "webassembly"]
+categories = ["asynchronous", "embedded", "no-std", "rust-patterns", "wasm"]
 readme = "README.md"
 edition = "2018"
 
