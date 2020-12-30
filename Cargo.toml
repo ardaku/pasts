@@ -9,9 +9,9 @@
 
 [package]
 name = "pasts"
-version = "0.6.0"
+version = "0.7.0"
 authors = ["Jeron Aldaron Lau <jeronlau@plopgrizzly.com>"]
-license = "Apache-2.0/Zlib"
+license = "Apache-2.0 OR BSL-1.0"
 
 description = "Minimal and simpler alternative to the futures crate."
 repository = "https://github.com/AldaronLau/pasts"
@@ -19,7 +19,7 @@ documentation = "https://docs.rs/pasts"
 homepage = "https://github.com/AldaronLau/pasts/blob/master/CHANGELOG.md"
 include = ["Cargo.toml", "README.md", "LICENSE-ZLIB", "LICENSE-APACHE", "src/*"]
 keywords = ["futures", "platform-agnostic", "cross-platform", "io", "executor"]
-categories = ["asynchronous", "embedded", "no-std", "rust-patterns"]
+categories = ["asynchronous", "embedded", "no-std", "rust-patterns", "webassembly"]
 readme = "README.md"
 edition = "2018"
 

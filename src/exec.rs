@@ -11,6 +11,7 @@ use core::future::Future;
 
 #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
 use std::{
+    process,
     sync::{
         atomic::{AtomicBool, Ordering},
         Condvar, Mutex,
@@ -75,11 +76,10 @@ impl Exec {
     }
 
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-    #[allow(unsafe_code)] // Needed to use `task!()` macro within this crate.
     fn execute<T, F: Future<Output = T>>(&mut self, f: F) -> T {
+        let mut f = Box::pin(f);
         // Get a waker and context for this executor.
         crate::util::waker(self, |cx| {
-            crate::task!(let f = f);
             loop {
                 // Exit with future output, on future completion, otherwise…
                 if let Poll::Ready(value) = f.as_mut().poll(cx) {
@@ -107,77 +107,19 @@ impl Exec {
     }
 }
 
-/// Execute futures concurrently; in parallel if the target supports it,
-/// otherwise asynchronously.
+/// Execute a future on the current thread.
 ///
-/// Similar to [`poll!()`](crate::poll!), except that you can call it from
-/// synchronous code, and after calling it once, future calls will panic.
-/// The program will *exit* after the first future returns
-/// [`Poll::Ready`](std::task::Poll::Ready).  That means all threads and
-/// single-threaded executorr started by this macro will run for the remainder
-/// of the program, giving them a `'static` lifetime.
-///
-/// # Example
-/// ```rust
-/// async fn async_main() {
-///     /* your code here */
-/// }
-///
-/// // Note that you may add multiple concurrent async_main()s.
-/// pasts::exec!(async_main());
-/// ```
-#[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-#[macro_export]
-macro_rules! exec {
-    ($e:expr $(,)?) => {
-        $crate::_block_on($e);
-    };
-    ($e:expr, $($f:expr),* $(,)?) => {
-        $( std::thread::spawn(|| $crate::_block_on($f)); )*
-        $crate::_block_on($e);
-    };
-}
-
-/// Execute futures concurrently; in parallel if the target supports it,
-/// otherwise asynchronously.
-///
-/// Similar to [`poll!()`](crate::poll!), except that you can call it from
-/// synchronous code, and after calling it once, future calls will panic.
-/// The program will *exit* after the first future returns
-/// [`Poll::Ready`](std::task::Poll::Ready).  That means all threads and
-/// single-threaded executorr started by this macro will run for the remainder
-/// of the program, giving them a `'static` lifetime.
-///
-/// # Example
-/// ```rust
-/// async fn async_main() {
-///     /* your code here */
-/// }
-///
-/// // Note that you may add multiple concurrent async_main()s.
-/// pasts::exec!(async_main());
-/// ```
-#[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-#[macro_export]
-macro_rules! exec {
-    ($e:expr $(,)?) => {
-        $crate::_block_on($e);
-    };
-    ($e:expr, $($f:expr),* $(,)?) => {
-        $crate::_block_on($e);
-        $( $crate::_block_on($f); )*
-    };
-}
-
-/// Execute a future by spawning an asynchronous task.
-#[doc(hidden)]
-pub fn _block_on<F: Future<Output = ()> + 'static>(f: F) {
+/// Upon completion of the future, the program will exit.  This allows for some
+/// optimizations and simplification of code (as well as behavioral consistency
+/// on Web Assembly.  You may call `block_on()` on multiple threads to build an
+/// asynchronous thread pool.
+pub fn block_on<F: Future<Output = ()> + 'static>(f: F) {
     // Can start tasks on their own threads.
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
     {
         let mut exec = Exec::new();
         exec.execute(f);
-        std::process::exit(0);
+        process::exit(0);
     }
 
     // Can allocate task queue.
@@ -185,4 +127,18 @@ pub fn _block_on<F: Future<Output = ()> + 'static>(f: F) {
     {
         crate::util::exec().execute(f);
     }
+}
+
+/// Macro to remove boilerplate for executing an asynchronous event loop.
+///
+/// Argument is an async expression that runs continuously in a loop.
+#[macro_export]
+macro_rules! exec {
+    ($exec:expr) => {{
+        $crate::block_on(async move {
+            loop {
+                $exec
+            }
+        });
+    }};
 }

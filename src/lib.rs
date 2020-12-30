@@ -13,52 +13,81 @@
 //! The **std** feature is enabled by default, disable it to use on `no_std`.
 //!
 //! # Getting Started
+//! This example pulls in a timer future from the `async-std` crate, then
+//! executes it with the pasts executor.
+//!
 //! Add the following to your *Cargo.toml*:
 //!
 //! ```toml
 //! [dependencies]
-//! pasts = "0.6"
+//! pasts = "0.7"
 //! aysnc-std = "1.0"
 //! ```
 //!
 //! ```rust,no_run
-//! #![forbid(unsafe_code)]
-//!
-//! use pasts::prelude::*;
+//! use core::{time::Duration, future::Future, task::{Context, Poll}, pin::Pin};
 //! use async_std::task;
+//! use pasts::{exec, wait};
 //!
-//! use std::{cell::RefCell, time::Duration};
-//!
-//! async fn one(state: &RefCell<usize>) {
-//!     println!("Starting task one");
-//!     while *state.borrow() < 5 {
-//!         task::sleep(Duration::new(1, 0)).await;
-//!         let mut state = state.borrow_mut();
-//!         println!("One {}", *state);
-//!         *state += 1;
-//!     }
-//!     println!("Finish task one");
+//! /// An event handled by the event loop.
+//! enum Event {
+//!     One(()),
+//!     Two(()),
 //! }
 //!
-//! async fn two(state: &RefCell<usize>) {
-//!     println!("Starting task two");
-//!     loop {
-//!         task::sleep(Duration::new(2, 0)).await;
-//!         let mut state = state.borrow_mut();
-//!         println!("Two {}", *state);
-//!         *state += 1;
+//! /// Shared state between tasks on the thread.
+//! struct State(usize);
+//!
+//! impl State {
+//!     /// Event loop.  Return false to stop program.
+//!     fn event(&mut self, event: Event) {
+//!         match event {
+//!             Event::One(()) => {
+//!                 println!("One {}", self.0);
+//!                 self.0 += 1;
+//!                 if self.0 > 5 {
+//!                     std::process::exit(0);
+//!                 }
+//!             },
+//!             Event::Two(()) => {
+//!                 println!("Two {}", self.0);
+//!                 self.0 += 1
+//!             },
+//!         }
 //!     }
 //! }
 //!
-//! async fn example() {
-//!     let state = RefCell::new(0);
-//!     task!(let task_one = one(&state));
-//!     task!(let task_two = two(&state));
-//!     poll![task_one, task_two].await;
+//! struct Interval(Duration, Pin<Box<dyn Future<Output = ()>>>);
+//!
+//! impl Interval {
+//!     fn new(duration: Duration) -> Self {
+//!         Interval(duration, Box::pin(task::sleep(duration)))
+//!     }
+//! }
+//!
+//! impl Future for &mut Interval {
+//!     type Output = ();
+//!
+//!     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+//!         match self.1.as_mut().poll(cx) {
+//!             Poll::Pending => Poll::Pending,
+//!             Poll::Ready(()) => {
+//!                 self.1 = Box::pin(task::sleep(self.0));
+//!                 Poll::Ready(())
+//!             }
+//!         }
+//!     }
 //! }
 //!
 //! fn main() {
-//!     exec!(example());
+//!     let mut state = State(0);
+//!     let mut one = Interval::new(Duration::from_secs_f64(0.999));
+//!     let mut two = Interval::new(Duration::from_secs_f64(2.0));
+//!
+//!     exec!(state.event(wait! {
+//!         Event::One((&mut one).await),
+//!         Event::Two((&mut two).await),
+//!     }))
 //! }
 //! ```
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -87,14 +116,8 @@
 #[cfg(any(not(feature = "std"), target_arch = "wasm32"))]
 extern crate alloc;
 
-/// Re-exported macros.
-pub mod prelude {
-    pub use crate::{exec, poll, task, join};
-}
-
 mod exec;
 mod poll;
 mod util;
 
-pub use exec::_block_on;
-pub use util::Task;
+pub use exec::block_on;

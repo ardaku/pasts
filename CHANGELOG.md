@@ -4,6 +4,24 @@ All notable changes to `pasts` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
+## [0.7.0] - 2020-12-29
+### Added
+ - `block_on()` function to execute a future on a thread.
+
+### Changed
+ - Renamed `poll!()` to `race!()`
+ - Separated non-array functionality of `poll!()` into new macro: `wait!().
+ - `join!()` no longer requires the futures to be pinned, as it can pin them
+   itself.
+ - `exec!()` macro can no longer start multiple threads, but you can use it on
+   multiple threads simultaneously.  `exec!()` no longer takes a future, but
+   an asynchronous expression that gets run in an infinite loop.
+
+### Removed
+ - `prelude` module.
+ - `task!()` macro.
+ - `Task` type.
+
 ## [0.6.0] - 2020-11-22
 ### Added
  - `Task` type alias: `Pin<&'a mut (dyn Future<Output = T> + Unpin)>`
