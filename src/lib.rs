@@ -25,7 +25,7 @@
 //! ```
 //!
 //! ```rust,no_run
-//! use std::{time::Duration, future::Future, task::{Context, Poll}, pin::Pin};
+//! use core::{time::Duration, future::Future, task::{Context, Poll}, pin::Pin};
 //! use async_std::task;
 //! use pasts::{exec, wait};
 //!

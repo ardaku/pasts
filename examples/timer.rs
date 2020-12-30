@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 
 use async_std::task;
-use std::time::Duration;
+use core::time::Duration;
 
 fn main() {
     pasts::block_on(async {

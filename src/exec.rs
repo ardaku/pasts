@@ -16,6 +16,7 @@ use std::{
         Condvar, Mutex,
     },
     task::Poll,
+    process,
 };
 
 #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
@@ -118,7 +119,7 @@ pub fn block_on<F: Future<Output = ()> + 'static>(f: F) {
     {
         let mut exec = Exec::new();
         exec.execute(f);
-        std::process::exit(0);
+        process::exit(0);
     }
 
     // Can allocate task queue.
@@ -134,7 +135,7 @@ pub fn block_on<F: Future<Output = ()> + 'static>(f: F) {
 /// When it returns false the program exits, otherwise should return true.
 #[macro_export]
 macro_rules! exec {
-    ($future:expr) => {{
-        $crate::block_on(async move { while $future {} });
+    ($exec:expr) => {{
+        $crate::block_on(async move { loop { $exec } });
     }};
 }

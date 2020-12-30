@@ -2,7 +2,7 @@
 
 use async_std::task;
 use pasts::{exec, wait};
-use std::{
+use core::{
     future::Future,
     pin::Pin,
     task::{Context, Poll},

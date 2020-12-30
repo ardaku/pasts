@@ -17,7 +17,7 @@
 /// `race!()` will always poll the first future in the array first.
 ///
 /// ```rust
-/// use std::{future::Future, pin::Pin};
+/// use core::{future::Future, pin::Pin};
 /// use pasts::race;
 ///
 /// async fn async_main() {
@@ -72,14 +72,13 @@ macro_rules! race {
 macro_rules! wait {
     ($($f:expr),* $(,)?) => {{
         use core::{pin::Pin, future::Future};
-        async {
-            // Safe because future can't move because it can't be directly
-            // accessed
-            $crate::race!([$(unsafe {
-                Pin::<&mut dyn Future<Output = _>>::new_unchecked(
-                    &mut async { $f }
-                )
-            }),*]).await.1
-        }
+
+        // Safe because future can't move because it can't be directly
+        // accessed
+        $crate::race!([$(unsafe {
+            Pin::<&mut dyn Future<Output = _>>::new_unchecked(
+                &mut async { $f }
+            )
+        }),*]).await.1
     }};
 }
