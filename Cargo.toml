@@ -11,7 +11,7 @@
 name = "pasts"
 version = "0.7.0"
 authors = ["Jeron Aldaron Lau <jeronlau@plopgrizzly.com>"]
-license = "Apache-2.0/Zlib"
+license = "Apache-2.0 OR BSL-1.0"
 
 description = "Minimal and simpler alternative to the futures crate."
 repository = "https://github.com/AldaronLau/pasts"

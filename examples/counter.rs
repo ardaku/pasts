@@ -1,13 +1,13 @@
 #![forbid(unsafe_code)]
 
 use async_std::task;
-use pasts::{exec, wait};
 use core::{
     future::Future,
     pin::Pin,
     task::{Context, Poll},
     time::Duration,
 };
+use pasts::{exec, wait};
 
 /// An event handled by the event loop.
 enum Event {

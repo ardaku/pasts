@@ -62,7 +62,8 @@ macro_rules! race {
         }
         Pin::<&mut (dyn Future<Output = _> + Unpin)>::new(&mut Fut {
             futures: &mut $f[..],
-        }).await
+        })
+        .await
     }};
 }
 

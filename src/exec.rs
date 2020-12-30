@@ -11,12 +11,12 @@ use core::future::Future;
 
 #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
 use std::{
+    process,
     sync::{
         atomic::{AtomicBool, Ordering},
         Condvar, Mutex,
     },
     task::Poll,
-    process,
 };
 
 #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
@@ -135,6 +135,10 @@ pub fn block_on<F: Future<Output = ()> + 'static>(f: F) {
 #[macro_export]
 macro_rules! exec {
     ($exec:expr) => {{
-        $crate::block_on(async move { loop { $exec } });
+        $crate::block_on(async move {
+            loop {
+                $exec
+            }
+        });
     }};
 }
