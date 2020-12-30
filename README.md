@@ -2,7 +2,7 @@
 
 #### Minimal and simpler alternative to the futures crate.
 
-[![tests](https://github.com/Nezeky/pasts/workflows/tests/badge.svg)][2]
+[![tests](https://github.com/AldaronLau/pasts/workflows/tests/badge.svg)][2]
 [![docs](https://docs.rs/pasts/badge.svg)][0]
 [![crates.io](https://img.shields.io/crates/v/pasts.svg)][1]
 
@@ -17,11 +17,12 @@
  - No unsafe code left for *you* to write for working with `Future`s (ability to
    `#[forbid(unsafe_code)]`)
  - No platform-specific API differences (code works everywhere!).
+ - No worrying about pinning and fusing.
 
 Check out the [documentation][0] for examples.
 
 ### Supported Platforms
-Pasts targets all platforms that can run Rust.  The `exec!()` executor works
+Pasts targets all platforms that can run Rust.  The executor works
 on at least the following platforms (may work on others):
  - All platforms that support threading (includes all tier 1 and some tier 2, 3)
  - Web Assembly In Browser (Tier 2)
@@ -41,12 +42,12 @@ dual licensed as above, without any additional terms or conditions.
 
 [0]: https://docs.rs/pasts
 [1]: https://crates.io/crates/pasts
-[2]: https://github.com/Nezeky/pasts/actions?query=workflow%3Atests
-[3]: https://github.com/Nezeky/pasts/blob/master/CHANGELOG.md
-[4]: https://github.com/Nezeky/pasts/blob/master/README.md
-[5]: https://github.com/Nezeky/pasts
+[2]: https://github.com/AldaronLau/pasts/actions?query=workflow%3Atests
+[3]: https://github.com/AldaronLau/pasts/blob/master/CHANGELOG.md
+[4]: https://github.com/AldaronLau/pasts/blob/master/README.md
+[5]: https://github.com/AldaronLau/pasts
 [6]: https://aldaronlau.com/
-[7]: https://github.com/Nezeky/pasts/blob/master/LICENSE-APACHE
+[7]: https://github.com/AldaronLau/pasts/blob/master/LICENSE-APACHE
 [8]: https://www.apache.org/licenses/LICENSE-2.0
-[9]: https://github.com/Nezeky/pasts/blob/master/LICENSE-ZLIB
+[9]: https://github.com/AldaronLau/pasts/blob/master/LICENSE-ZLIB
 [10]: https://opensource.org/licenses/Zlib

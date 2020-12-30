@@ -20,13 +20,13 @@ struct State(usize);
 
 impl State {
     /// Event loop.  Return false to stop program.
-    fn event(&mut self, event: Event) -> bool {
+    fn event(&mut self, event: Event) {
         match event {
             Event::One(()) => {
                 println!("One {}", self.0);
                 self.0 += 1;
                 if self.0 > 5 {
-                    return false;
+                    std::process::exit(0);
                 }
             }
             Event::Two(()) => {
@@ -34,7 +34,6 @@ impl State {
                 self.0 += 1
             }
         }
-        true
     }
 }
 
@@ -65,8 +64,8 @@ fn main() {
     let mut one = Interval::new(Duration::from_secs_f64(0.999));
     let mut two = Interval::new(Duration::from_secs_f64(2.0));
 
-    exec! { state.event( wait! [
+    exec!(state.event(wait! {
         Event::One((&mut one).await),
         Event::Two((&mut two).await),
-    ] .await ) }
+    }))
 }
