@@ -131,8 +131,7 @@ pub fn block_on<F: Future<Output = ()> + 'static>(f: F) {
 
 /// Macro to remove boilerplate for executing an asynchronous event loop.
 ///
-/// Argument is an expression that is automatically put inside an async block.
-/// When it returns false the program exits, otherwise should return true.
+/// Argument is an async expression that runs continuously in a loop.
 #[macro_export]
 macro_rules! exec {
     ($exec:expr) => {{

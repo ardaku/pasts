@@ -20,7 +20,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! pasts = "0.6"
+//! pasts = "0.7"
 //! aysnc-std = "1.0"
 //! ```
 //!

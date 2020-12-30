@@ -25,7 +25,7 @@
 ///     let world: Pin<Box<dyn Future<Output=&str>>> = Box::pin(async { "World" });
 ///     let mut array = [hello, world];
 ///     // Hello is ready, so returns with index and result.
-///     assert_eq!((0, "Hello"), race!(array).await);
+///     assert_eq!((0, "Hello"), race!(array));
 /// }
 ///
 /// pasts::block_on(async_main());
@@ -62,12 +62,12 @@ macro_rules! race {
         }
         Pin::<&mut (dyn Future<Output = _> + Unpin)>::new(&mut Fut {
             futures: &mut $f[..],
-        })
+        }).await
     }};
 }
 
 /// Similar to [`race!()`], except doesn't take an array, but rather a list of
-/// asynchronous tasks.
+/// asynchronous expressions.
 #[macro_export]
 macro_rules! wait {
     ($($f:expr),* $(,)?) => {{
@@ -79,6 +79,6 @@ macro_rules! wait {
             Pin::<&mut dyn Future<Output = _>>::new_unchecked(
                 &mut async { $f }
             )
-        }),*]).await.1
+        }),*]).1
     }};
 }
