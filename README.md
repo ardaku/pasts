@@ -59,9 +59,9 @@ the library will be out a few days after a report.  Features requests will not
 complete as fast.  If you have any questions, design critques, or want me to
 find you something to work on based on your skill level, you can email me at
 [jeronlau@plopgrizzly.com](mailto:jeronlau@plopgrizzly.com).  Otherwise,
-[here's a link to the issues on GitHub](https://github.com/libcala/wavy/issues),
+[here's a link to the issues on GitHub](https://github.com/AldaronLau/pasts/issues),
 and, as always, make sure to read and follow the
-[Code of Conduct](https://github.com/libcala/wavy/blob/main/CODE_OF_CONDUCT.md).
+[Code of Conduct](https://github.com/AldaronLau/pasts/blob/main/CODE_OF_CONDUCT.md).
 
 [0]: https://docs.rs/pasts
 [1]: https://crates.io/crates/pasts
@@ -72,5 +72,5 @@ and, as always, make sure to read and follow the
 [6]: https://aldaronlau.com/
 [7]: https://github.com/AldaronLau/pasts/blob/master/LICENSE-APACHE
 [8]: https://www.apache.org/licenses/LICENSE-2.0
-[9]: https://github.com/libcala/wavy/blob/main/LICENSE_BOOST_1_0.txt
+[9]: https://github.com/AldaronLau/pasts/blob/main/LICENSE_BOOST_1_0.txt
 [10]: https://www.boost.org/LICENSE_1_0.txt
