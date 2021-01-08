@@ -1,22 +1,22 @@
-// Copyright Jeron Aldaron Lau 2019-2020.
-// Distributed under either the Apache License, Version 2.0
-//    (See accompanying file LICENSE_APACHE_2_0.txt or copy at
-//          https://apache.org/licenses/LICENSE-2.0),
-// or the Boost Software License, Version 1.0.
-//    (See accompanying file LICENSE_BOOST_1_0.txt or copy at
-//          https://www.boost.org/LICENSE_1_0.txt)
-// at your option. This file may not be copied, modified, or distributed except
-// according to those terms.
+// Pasts
+// Copyright © 2019-2021 Jeron Aldaron Lau.
+//
+// Licensed under any of:
+// - Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+// - MIT License (https://mit-license.org/)
+// - Boost Software License, Version 1.0 (https://www.boost.org/LICENSE_1_0.txt)
+// At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
+// LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
+
+// This is how you use `Condvar`s, it's in the std library docs
+#![allow(clippy::mutex_atomic)]
 
 use core::future::Future;
 
 #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
 use std::{
     process,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Condvar, Mutex,
-    },
+    sync::{Condvar, Mutex},
     task::Poll,
 };
 
@@ -31,20 +31,17 @@ pub(crate) struct Exec(RefCell<Option<Pin<Box<dyn Future<Output = ()>>>>>);
 #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
 pub(crate) struct Exec {
     // The thread-safe waking mechanism: part 1
-    mutex: Mutex<()>,
+    mutex: Mutex<bool>,
     // The thread-safe waking mechanism: part 2
     cvar: Condvar,
-    // Flag set to verify `Condvar` actually woke the executor.
-    state: AtomicBool,
 }
 
 impl Exec {
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
     pub(crate) fn new() -> Self {
         Self {
-            mutex: Mutex::new(()),
+            mutex: Mutex::new(true),
             cvar: Condvar::new(),
-            state: AtomicBool::new(true),
         }
     }
 
@@ -55,11 +52,12 @@ impl Exec {
 
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
     pub(crate) fn wake(&self) {
+        // Keep mutex locked for the remainder of this function call.
+        let mut sleeping = self.mutex.lock().unwrap();
         // Wake the task running on a separate thread via CondVar
-        if !self.state.compare_and_swap(false, true, Ordering::SeqCst) {
-            // We notify the condvar that the value has changed.
-            self.cvar.notify_one();
-        }
+        *sleeping = false;
+        // We notify the condvar that the value has changed.
+        self.cvar.notify_one();
     }
 
     #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
@@ -87,14 +85,8 @@ impl Exec {
                     break value;
                 }
                 // Put the thread to sleep until wake() is called.
-                let mut guard = self.mutex.lock().unwrap();
-                while !self.state.compare_and_swap(
-                    true,
-                    false,
-                    Ordering::SeqCst,
-                ) {
-                    guard = self.cvar.wait(guard).unwrap();
-                }
+                let sleeping = self.mutex.lock().unwrap();
+                let _guard = self.cvar.wait_while(sleeping, |p| *p).unwrap();
             }
         })
     }
