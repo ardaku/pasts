@@ -4,6 +4,10 @@ All notable changes to `pasts` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
+## [0.7.4] - 2021-01-08
+### Fixed
+ - Executor never going to sleep, wasting CPU cycles.
+
 ## [0.7.3] - 2021-01-07
 ### Fixed
  - Executor freezing up and not being recoverable (happenned sometimes when two
