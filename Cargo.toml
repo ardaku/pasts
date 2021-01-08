@@ -10,15 +10,14 @@
 
 [package]
 name = "pasts"
-version = "0.7.2"
+version = "0.7.3"
 authors = ["Jeron Aldaron Lau <jeronlau@plopgrizzly.com>"]
-license = "Apache-2.0 OR BSL-1.0"
-
+license = "Apache-2.0 OR MIT OR BSL-1.0"
 description = "Minimal and simpler alternative to the futures crate."
 repository = "https://github.com/AldaronLau/pasts"
 documentation = "https://docs.rs/pasts"
-homepage = "https://github.com/AldaronLau/pasts/blob/master/CHANGELOG.md"
-include = ["Cargo.toml", "README.md", "src/*"]
+homepage = "https://github.com/AldaronLau/pasts/blob/main/CHANGELOG.md"
+include = ["Cargo.toml", "src/*"]
 keywords = ["futures", "platform-agnostic", "cross-platform", "io", "executor"]
 categories = ["asynchronous", "embedded", "no-std", "rust-patterns", "wasm"]
 readme = "README.md"
@@ -30,10 +29,6 @@ edition = "2018"
 
 [dev-dependencies]
 async-std = "1.0"
-
-[package.metadata.docs.rs]
-all-features = true
-default-target = "x86_64-unknown-linux-gnu"
 
 [features]
 default = ["std"]
