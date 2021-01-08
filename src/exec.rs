@@ -8,15 +8,15 @@
 // at your option. This file may not be copied, modified, or distributed except
 // according to those terms.
 
+// This is how you use `Condvar`s, it's in the std library docs
+#![allow(clippy::mutex_atomic)]
+
 use core::future::Future;
 
 #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
 use std::{
     process,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Condvar, Mutex,
-    },
+    sync::{Condvar, Mutex},
     task::Poll,
 };
 
@@ -31,20 +31,17 @@ pub(crate) struct Exec(RefCell<Option<Pin<Box<dyn Future<Output = ()>>>>>);
 #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
 pub(crate) struct Exec {
     // The thread-safe waking mechanism: part 1
-    mutex: Mutex<()>,
+    mutex: Mutex<bool>,
     // The thread-safe waking mechanism: part 2
     cvar: Condvar,
-    // Flag set to verify `Condvar` actually woke the executor.
-    state: AtomicBool,
 }
 
 impl Exec {
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
     pub(crate) fn new() -> Self {
         Self {
-            mutex: Mutex::new(()),
+            mutex: Mutex::new(true),
             cvar: Condvar::new(),
-            state: AtomicBool::new(true),
         }
     }
 
@@ -55,11 +52,12 @@ impl Exec {
 
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
     pub(crate) fn wake(&self) {
+        // Keep mutex locked for the remainder of this function call.
+        let mut sleeping = self.mutex.lock().unwrap();
         // Wake the task running on a separate thread via CondVar
-        if !self.state.compare_and_swap(false, true, Ordering::SeqCst) {
-            // We notify the condvar that the value has changed.
-            self.cvar.notify_one();
-        }
+        *sleeping = false;
+        // We notify the condvar that the value has changed.
+        self.cvar.notify_one();
     }
 
     #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
@@ -87,14 +85,8 @@ impl Exec {
                     break value;
                 }
                 // Put the thread to sleep until wake() is called.
-                let mut guard = self.mutex.lock().unwrap();
-                while !self.state.compare_and_swap(
-                    true,
-                    false,
-                    Ordering::SeqCst,
-                ) {
-                    guard = self.cvar.wait(guard).unwrap();
-                }
+                let sleeping = self.mutex.lock().unwrap();
+                let _guard = self.cvar.wait_while(sleeping, |p| *p).unwrap();
             }
         })
     }
