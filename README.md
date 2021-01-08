@@ -50,8 +50,8 @@ email at [aldaronlau@gmail.com][13].
 [1]: https://crates.io/crates/pasts
 [2]: https://github.com/AldaronLau/pasts/actions?query=workflow%3Atests
 [3]: https://github.com/AldaronLau/pasts/blob/main/CHANGELOG.md
-[4]: https://github.com/AldaronLau/pasts/blob/main/README.md
-[5]: https://github.com/AldaronLau/pasts
+[4]: https://github.com/AldaronLau/pasts
+[5]: https://docs.rs/pasts#getting-started
 [6]: https://aldaronlau.com/
 [7]: https://github.com/AldaronLau/pasts/blob/main/LICENSE_APACHE_2_0.txt
 [8]: https://www.apache.org/licenses/LICENSE-2.0
