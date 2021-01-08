@@ -16,7 +16,7 @@ too.  I mark feature requests as "enhancements" on GitHub issues.
 
 Happy coding!
 
-[open an issue]: https://github.com/libcala/human/issues
+[open an issue]: https://github.com/AldaronLau/pasts/issues
 [send me an email]: mailto:aldaronlau@gmail.com
-[open a PR]: https://github.com/libcala/human/pulls
-[Post to GitHub Discussions]: https://github.com/libcala/human/discussions
+[open a PR]: https://github.com/AldaronLau/pasts/pulls
+[Post to GitHub Discussions]: https://github.com/AldaronLau/pasts/discussions
