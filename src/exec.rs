@@ -86,7 +86,7 @@ impl Exec {
                 }
                 // Put the thread to sleep until wake() is called.
                 let sleeping = self.mutex.lock().unwrap();
-                let _guard = self.cvar.wait_while(sleeping, |p| *p).unwrap();
+                *self.cvar.wait_while(sleeping, |p| *p).unwrap() = true;
             }
         })
     }
