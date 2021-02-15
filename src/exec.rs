@@ -75,7 +75,7 @@ impl Exec {
     }
 
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-    fn execute<T, F: Future<Output = T>>(&mut self, f: F) -> T {
+    fn execute<F: Future<Output = ()>>(&mut self, f: F) {
         let mut f = Box::pin(f);
         // Get a waker and context for this executor.
         crate::util::waker(self, |cx| {
