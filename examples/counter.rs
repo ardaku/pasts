@@ -7,33 +7,29 @@ use core::{
     task::{Context, Poll},
     time::Duration,
 };
-use pasts::{exec, wait};
+use pasts::Loop;
 
-/// An event handled by the event loop.
-enum Event {
-    One(()),
-    Two(()),
-}
+// Platform-specific glue code.
+pasts::glue!();
 
 /// Shared state between tasks on the thread.
 struct State(usize);
 
 impl State {
-    /// Event loop.  Return false to stop program.
-    fn event(&mut self, event: Event) {
-        match event {
-            Event::One(()) => {
-                println!("One {}", self.0);
-                self.0 += 1;
-                if self.0 > 5 {
-                    std::process::exit(0);
-                }
-            }
-            Event::Two(()) => {
-                println!("Two {}", self.0);
-                self.0 += 1
-            }
+    fn one(&mut self, _: ()) -> Poll<()> {
+        println!("One {}", self.0);
+        self.0 += 1;
+        if self.0 > 5 {
+            Poll::Ready(())
+        } else {
+            Poll::Pending
         }
+    }
+    
+    fn two(&mut self, _: ()) -> Poll<()> {
+        println!("Two {}", self.0);
+        self.0 += 1;
+        Poll::Pending
     }
 }
 
@@ -45,7 +41,7 @@ impl Interval {
     }
 }
 
-impl Future for &mut Interval {
+impl Future for Interval {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
@@ -59,13 +55,14 @@ impl Future for &mut Interval {
     }
 }
 
-fn main() {
-    let mut state = State(0);
-    let mut one = Interval::new(Duration::from_secs_f64(0.999));
-    let mut two = Interval::new(Duration::from_secs_f64(2.0));
+async fn run() {
+    let state = State(0);
+    let one = Interval::new(Duration::from_secs_f64(0.999));
+    let two = Interval::new(Duration::from_secs_f64(2.0));
 
-    exec!(state.event(wait! {
-        Event::One((&mut one).await),
-        Event::Two((&mut two).await),
-    }))
+    Loop::new()
+        .when(one, State::one)
+        .when(two, State::two)
+        .attach(state)
+        .await;
 }
