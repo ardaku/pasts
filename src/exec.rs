@@ -121,17 +121,3 @@ pub fn block_on<F: Future<Output = ()> + 'static>(f: F) {
         crate::util::exec().execute(f);
     }
 }
-
-/// Macro to remove boilerplate for executing an asynchronous event loop.
-///
-/// Argument is an async expression that runs continuously in a loop.
-#[macro_export]
-macro_rules! exec {
-    ($exec:expr) => {{
-        $crate::block_on(async move {
-            loop {
-                $exec
-            }
-        });
-    }};
-}

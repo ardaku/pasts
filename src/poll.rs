@@ -8,79 +8,84 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-/// Create a future that waits on multiple futures concurrently and returns the
-/// first result.
-///
-/// Takes an array of types that implement [`Future`](core::future::Future) and
-/// [`Unpin`](core::marker::Unpin).
+use core::task::{Poll as Pending, Context};
+use core::pin::Pin;
+use core::future::Future;
+
+#[derive(Debug)]
+pub struct PollFuture<'a, T, F: Future<Output = T> + Unpin>(&'a mut [F]);
+
+pub trait Sealed<T> {}
+
+/// A trait that turns a slice, vec or array of futures into a future.
 ///
 /// # Example: Await on The Fastest Future
-/// `race!()` will always poll the first future in the array first.
+/// This is the pasts way of doing the futures crate's `select!()`.  Note
+/// however that works completely differently.  Also, if you're writing an
+/// asynchronous loop, use [`Loop`](crate::Loop) instead.
 ///
-/// ```rust
-/// use core::{future::Future, pin::Pin};
-/// use pasts::race;
+/// ```
+/// use pasts::{Task, Poll};
 ///
-/// async fn async_main() {
-///     let hello: Pin<Box<dyn Future<Output=&str>>> = Box::pin(async { "Hello" });
-///     let world: Pin<Box<dyn Future<Output=&str>>> = Box::pin(async { "World" });
+/// pasts::glue!();
+///
+/// async fn run() {
+///     let hello: Task<&str> = Box::pin(async { "Hello" });
+///     let world: Task<&str> = Box::pin(async { "World" });
 ///     let mut array = [hello, world];
 ///     // Hello is ready, so returns with index and result.
-///     assert_eq!((0, "Hello"), race!(array));
+///     assert_eq!((0, "Hello"), array.poll().await);
 /// }
-///
-/// pasts::block_on(async_main());
 /// ```
-#[macro_export]
-macro_rules! race {
-    ($f:expr) => {{
-        use core::{
-            future::Future,
-            pin::Pin,
-            task::{Context, Poll},
-        };
-        struct Fut<'a, T, F: Future<Output = T> + Unpin> {
-            futures: &'a mut [F],
-        }
-        impl<T, F: Future<Output = T> + Unpin> Unpin for Fut<'_, T, F> {}
-        impl<T: Unpin, F: Future<Output = T> + Unpin> Future for Fut<'_, T, F> {
-            type Output = (usize, T);
-            fn poll(
-                self: Pin<&mut Self>,
-                cx: &mut Context<'_>,
-            ) -> Poll<Self::Output> {
-                let tasks = &mut self.get_mut().futures;
-                for (task_id, mut task) in tasks.iter_mut().enumerate() {
-                    let pin_fut = Pin::new(&mut task);
-                    let task = pin_fut.poll(cx);
-                    match task {
-                        Poll::Ready(ret) => return Poll::Ready((task_id, ret)),
-                        Poll::Pending => {}
-                    }
-                }
-                Poll::Pending
-            }
-        }
-        Pin::<&mut (dyn Future<Output = _> + Unpin)>::new(&mut Fut {
-            futures: &mut $f[..],
-        })
-        .await
-    }};
+///
+/// # Another Example: Dynamic Join
+/// This is the pasts way of doing the futures crate's `join!()`, given that you
+/// can accept a bit of allocation.  This is not usually the case, and is more
+/// useful for concurrently executing a dynamic number of tasks.
+///
+/// ```
+/// use pasts::{Task, Poll};
+/// 
+/// pasts::glue!();
+/// 
+/// async fn run() {
+///     let hello: Task<&str> = Box::pin(async { "Hello" });
+///     let world: Task<&str> = Box::pin(async { "World" });
+///     let mut tasks = vec![hello, world];
+/// 
+///     while !tasks.is_empty() {
+///         let (idx, val) = tasks.poll().await;
+///         tasks.remove(idx);
+///         println!("Received message from completed task: {}", val);
+///     }
+/// }
+/// ```
+pub trait Poll<T, F: Future<Output = T> + Unpin>: Sealed<T> + Unpin {
+    /// Create a future that polls all contained futures in the slice.
+    fn poll(&mut self) -> PollFuture<'_, T, F>;
 }
 
-/// Similar to [`race!()`], except doesn't take an array, but rather a list of
-/// asynchronous expressions.
-#[macro_export]
-macro_rules! wait {
-    ($($f:expr),* $(,)?) => {{
-        use core::{pin::Pin, future::Future};
+impl<T, F: Future<Output = T> + Unpin> Poll<T, F> for [F] {
+    fn poll(&mut self) -> PollFuture<'_, T, F> {
+        PollFuture(self)
+    }
+}
 
-        // Safe because future can't move because it can't be directly
-        // accessed
-        $crate::race!([$(unsafe {
-            Pin::<&mut dyn Future<Output = _>>::new_unchecked(
-                &mut async { $f }
-            )
-        }),*]).1
-    }};
+impl<T, F: Future<Output = T> + Unpin> Sealed<T> for [F] { }
+
+impl<T, F: Future<Output = T> + Unpin> Future for PollFuture<'_, T, F> {
+    type Output = (usize, T);
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Pending<(usize, T)> {
+        let this = self.get_mut();
+        for (task_id, mut task) in this.0.iter_mut().enumerate() {
+            let pin_fut = Pin::new(&mut task);
+            let task = pin_fut.poll(cx);
+            match task {
+                Pending::Ready(ret) => return Pending::Ready((task_id, ret)),
+                Pending::Pending => {}
+            }
+        }
+        Pending::Pending
+    }
 }

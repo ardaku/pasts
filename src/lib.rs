@@ -34,13 +34,13 @@
 //! use core::task::{Context, Poll};
 //! use core::time::Duration;
 //! use pasts::Loop;
-//! 
+//!
 //! // Platform-specific asynchronous glue code.
 //! pasts::glue!();
-//! 
+//!
 //! /// Shared state between tasks on the thread.
 //! struct State(usize);
-//! 
+//!
 //! impl State {
 //!     fn one(&mut self, _: ()) -> Poll<()> {
 //!         println!("One {}", self.0);
@@ -51,25 +51,25 @@
 //!             Poll::Pending
 //!         }
 //!     }
-//! 
+//!
 //!     fn two(&mut self, _: ()) -> Poll<()> {
 //!         println!("Two {}", self.0);
 //!         self.0 += 1;
 //!         Poll::Pending
 //!     }
 //! }
-//! 
+//!
 //! struct Interval(Duration, Pin<Box<dyn Future<Output = ()>>>);
-//! 
+//!
 //! impl Interval {
 //!     fn new(duration: Duration) -> Self {
 //!         Interval(duration, Box::pin(sleep(duration)))
 //!     }
 //! }
-//! 
+//!
 //! impl Future for Interval {
 //!     type Output = ();
-//! 
+//!
 //!     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
 //!         match self.1.as_mut().poll(cx) {
 //!             Poll::Pending => Poll::Pending,
@@ -80,12 +80,12 @@
 //!         }
 //!     }
 //! }
-//! 
+//!
 //! async fn run() {
 //!     let state = State(0);
 //!     let one = Interval::new(Duration::from_secs_f64(1.0));
 //!     let two = Interval::new(Duration::from_secs_f64(2.0));
-//! 
+//!
 //!     Loop::new(state)
 //!         .when(one, State::one)
 //!         .when(two, State::two)
@@ -119,10 +119,17 @@
 extern crate alloc;
 
 mod exec;
-mod glue;
-mod poll;
-mod race;
 mod util;
 
 pub use exec::block_on;
-pub use race::Loop;
+
+//
+
+mod r#glue;
+mod r#loop;
+mod r#poll;
+mod r#task;
+
+pub use r#loop::Loop;
+pub use r#poll::Poll;
+pub use r#task::Task;

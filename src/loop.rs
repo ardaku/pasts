@@ -42,7 +42,7 @@ where
                             Poll::Ready(x) => break Poll::Ready(x),
                             Poll::Pending => { /* continue */ }
                         }
-                    },
+                    }
                 }
             },
             x => x,
@@ -59,7 +59,7 @@ impl<S, L> StatefulFuture<S, L> for Never<S, L> {
     }
 }
 
-/// A loop that listens for events asynchronously.
+/// A future that listens for events asynchronously in a loop.
 #[derive(Debug)]
 pub struct Loop<T: Unpin, F: StatefulFuture<S, T>, S: Unpin>(
     F,
@@ -80,8 +80,7 @@ impl<T: Unpin, F: StatefulFuture<S, T>, S: Unpin> Loop<T, F, S> {
         self,
         future: G,
         event: fn(&mut S, U) -> Poll<T>,
-    ) -> Loop<T, impl StatefulFuture<S, T>, S>
-    {
+    ) -> Loop<T, impl StatefulFuture<S, T>, S> {
         let multifuture = MultiFuture {
             future,
             translator: event,
