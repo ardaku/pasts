@@ -9,144 +9,96 @@
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
 use core::future::Future;
+use core::marker::PhantomData;
 use core::pin::Pin;
 use core::task::{Context, Poll};
-use core::marker::PhantomData;
 
-#[derive(Debug)]
-pub struct Translator<
-    T,
-    U,
-    N: Fn(U) -> T + Unpin,
-    F: Future<Output = U> + Unpin,
->(N, F);
-
-impl<T, U, N: Fn(U) -> T + Unpin, F: Future<Output = U> + Unpin> Future
-    for Translator<T, U, N, F>
-{
-    type Output = T;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
-        let a = Pin::new(&mut self.1);
-        match a.poll(cx) {
-            Poll::Pending => Poll::Pending,
-            Poll::Ready(x) => Poll::Ready(self.0(x)),
-        }
-    }
+pub trait StatefulFuture<S, T> {
+    fn poll(&mut self, state: &mut S, cx: &mut Context<'_>) -> Poll<T>;
 }
 
-#[derive(Debug)]
-pub struct Future2<
-    'a,
-    T,
-    A: Future<Output = T> + ?Sized + Unpin,
-    B: Future<Output = T> + Unpin,
->(&'a mut A, B);
-
-/// A method on [`Future`](std::future::Future)s that runs futures in
-/// parallel and returns the result of the first future to complete.
-///
-/// The futures must implement [`Unpin`](std::marker::Unpin).
-pub trait Race<T>: Future<Output = T> + Unpin {
-    /// Race with another future.  Returns a [`Future`](std::future::Future).
-    fn race<F: Future<Output = T> + Unpin>(
-        &mut self,
-        other: F,
-    ) -> Future2<'_, T, Self, F> {
-        Future2(self, other)
-    }
-
-    /// Listen for events from a future.
-    /// Returns a [`Future`](std::future::Future).
-    fn when<U, F: Future<Output = U> + Unpin, N: Fn(U) -> T + Unpin>(
-        &mut self,
-        event: N,
-        other: F,
-    ) -> Future2<'_, T, Self, Translator<T, U, N, F>> {
-        Future2(self, Translator(event, other))
-    }
+struct MultiFuture<S, F, O, L, E>
+where
+    F: Future<Output = O> + Unpin,
+    E: StatefulFuture<S, L>,
+{
+    future: F,
+    translator: fn(&mut S, O) -> Poll<L>,
+    other: E,
 }
 
-impl<T, X> Race<T> for X where X: Future<Output = T> + Unpin {}
-
-impl<
-        T,
-        A: Future<Output = T> + ?Sized + Unpin,
-        B: Future<Output = T> + Unpin,
-    > Future for Future2<'_, T, A, B>
+impl<S, F, O, L, E> StatefulFuture<S, L> for MultiFuture<S, F, O, L, E>
+where
+    F: Future<Output = O> + Unpin,
+    E: StatefulFuture<S, L>,
 {
-    type Output = T;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
-        let a = Pin::new(&mut self.0);
-
-        match a.poll(cx) {
-            Poll::Pending => {
-                let b = Pin::new(&mut self.1);
-                b.poll(cx)
-            }
+    fn poll(&mut self, state: &mut S, cx: &mut Context<'_>) -> Poll<L> {
+        match self.other.poll(state, cx) {
+            Poll::Pending => loop {
+                match Pin::new(&mut self.future).poll(cx) {
+                    Poll::Pending => break Poll::Pending,
+                    Poll::Ready(x) => {
+                        match (self.translator)(state, x) {
+                            Poll::Ready(x) => break Poll::Ready(x),
+                            Poll::Pending => { /* continue */ }
+                        }
+                    },
+                }
+            },
             x => x,
         }
     }
 }
 
 #[derive(Debug)]
-pub struct Never<T: Unpin>(PhantomData<T>);
+pub struct Never<S, L>(PhantomData<(S, L)>);
 
-impl<T: Unpin> Future for Never<T> {
-    type Output = T;
-
-    fn poll(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<T> {
+impl<S, L> StatefulFuture<S, L> for Never<S, L> {
+    fn poll(&mut self, _: &mut S, _: &mut Context<'_>) -> Poll<L> {
         Poll::Pending
     }
 }
 
 /// A loop that listens for events asynchronously.
 #[derive(Debug)]
-pub struct Loop<F: Future<Output = T> + Unpin, T, S: Unpin>(F, PhantomData<S>);
+pub struct Loop<T: Unpin, F: StatefulFuture<S, T>, S: Unpin>(
+    F,
+    S,
+    PhantomData<T>,
+);
 
-impl<T: Unpin, S: Unpin> Default for Loop<Never<T>, T, S> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<T: Unpin, S: Unpin> Loop<Never<T>, T, S> {
+impl<T: Unpin, S: Unpin> Loop<T, Never<S, T>, S> {
     /// Create an empty loop.
-    pub fn new() -> Self {
-        Loop(Never(PhantomData), PhantomData)
+    pub fn new(state: S) -> Self {
+        Loop(Never(PhantomData), state, PhantomData)
     }
 }
 
-impl<F: Future<Output = T> + Unpin, T: Unpin, S: Unpin> Loop<F, T, S> {
+impl<T: Unpin, F: StatefulFuture<S, T>, S: Unpin> Loop<T, F, S> {
     /// Add an asynchronous event.
-    #[allow(clippy::type_complexity)]
-    pub fn when<
-        U: Unpin,
-        G: Future<Output = U> + Unpin,
-        N: Fn(U) -> T + Unpin,
-    >(
-        &mut self,
+    pub fn when<U, G: Future<Output = U> + Unpin>(
+        self,
         future: G,
-        event: N,
-    ) -> Loop<Future2<'_, T, F, Translator<T, U, N, G>>, T, S> {
-        Loop(self.0.when(event, future), PhantomData)
-    }
+        event: fn(&mut S, U) -> Poll<T>,
+    ) -> Loop<T, impl StatefulFuture<S, T>, S>
+    {
+        let multifuture = MultiFuture {
+            future,
+            translator: event,
+            other: self.0,
+        };
 
-    /// Attach a state to the `Loop`.
-    pub fn attach(&mut self, state: S) -> Attach<'_, F, T, S> {
-        Attach(self, state)
+        Loop(multifuture, self.1, PhantomData)
     }
 }
 
-#[derive(Debug)]
-pub struct Attach<'a, F: Future<Output = T> + Unpin, T: Unpin, S: Unpin>(&'a mut Loop<F, T, S>, S);
-
-impl<F: Future<Output = T> + Unpin, T: Unpin, S: Unpin> Future for Attach<'_, F, T, S> {
+impl<T: Unpin, F: StatefulFuture<S, T> + Unpin, S: Unpin> Future
+    for Loop<T, F, S>
+{
     type Output = T;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
         let this = self.get_mut();
-        Pin::new(&mut this.0.0).poll(cx)
+        this.0.poll(&mut this.1, cx)
     }
 }

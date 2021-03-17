@@ -1,15 +1,13 @@
 #![forbid(unsafe_code)]
 
-use async_std::task;
-use core::{
-    future::Future,
-    pin::Pin,
-    task::{Context, Poll},
-    time::Duration,
-};
+use async_std::task::sleep;
+use core::future::Future;
+use core::pin::Pin;
+use core::task::{Context, Poll};
+use core::time::Duration;
 use pasts::Loop;
 
-// Platform-specific glue code.
+// Platform-specific asynchronous glue code.
 pasts::glue!();
 
 /// Shared state between tasks on the thread.
@@ -19,13 +17,13 @@ impl State {
     fn one(&mut self, _: ()) -> Poll<()> {
         println!("One {}", self.0);
         self.0 += 1;
-        if self.0 > 5 {
+        if self.0 > 6 {
             Poll::Ready(())
         } else {
             Poll::Pending
         }
     }
-    
+
     fn two(&mut self, _: ()) -> Poll<()> {
         println!("Two {}", self.0);
         self.0 += 1;
@@ -37,7 +35,7 @@ struct Interval(Duration, Pin<Box<dyn Future<Output = ()>>>);
 
 impl Interval {
     fn new(duration: Duration) -> Self {
-        Interval(duration, Box::pin(task::sleep(duration)))
+        Interval(duration, Box::pin(sleep(duration)))
     }
 }
 
@@ -48,7 +46,7 @@ impl Future for Interval {
         match self.1.as_mut().poll(cx) {
             Poll::Pending => Poll::Pending,
             Poll::Ready(()) => {
-                self.1 = Box::pin(task::sleep(self.0));
+                self.1 = Box::pin(sleep(self.0));
                 Poll::Ready(())
             }
         }
@@ -57,12 +55,11 @@ impl Future for Interval {
 
 async fn run() {
     let state = State(0);
-    let one = Interval::new(Duration::from_secs_f64(0.999));
+    let one = Interval::new(Duration::from_secs_f64(1.0));
     let two = Interval::new(Duration::from_secs_f64(2.0));
 
-    Loop::new()
+    Loop::new(state)
         .when(one, State::one)
         .when(two, State::two)
-        .attach(state)
         .await;
 }
