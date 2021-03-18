@@ -7,9 +7,6 @@ use core::task::{Context, Poll};
 use core::time::Duration;
 use pasts::Loop;
 
-// Platform-specific asynchronous glue code.
-pasts::glue!();
-
 /// Shared state between tasks on the thread.
 struct State(usize);
 
@@ -62,4 +59,8 @@ async fn run() {
         .when(one, State::one)
         .when(two, State::two)
         .await;
+}
+
+fn main() {
+    pasts::block_on(run())
 }

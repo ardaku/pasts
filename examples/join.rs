@@ -1,6 +1,4 @@
-use pasts::{Task, Poll};
-
-pasts::glue!();
+use pasts::{Poll, Task};
 
 async fn run() {
     let hello: Task<&str> = Box::pin(async { "Hello" });
@@ -12,4 +10,8 @@ async fn run() {
         tasks.remove(idx);
         println!("Received message from completed task: {}", val);
     }
+}
+
+fn main() {
+    pasts::block_on(run())
 }

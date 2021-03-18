@@ -35,9 +35,6 @@
 //! use core::time::Duration;
 //! use pasts::Loop;
 //!
-//! // Platform-specific asynchronous glue code.
-//! pasts::glue!();
-//!
 //! /// Shared state between tasks on the thread.
 //! struct State(usize);
 //!
@@ -91,6 +88,10 @@
 //!         .when(two, State::two)
 //!         .await;
 //! }
+//!
+//! fn main() {
+//!     pasts::block_on(run())
+//! }
 //! ```
 #![cfg_attr(not(feature = "std"), no_std)]
 #![doc(
@@ -118,18 +119,13 @@
 #[cfg(any(not(feature = "std"), target_arch = "wasm32"))]
 extern crate alloc;
 
-mod exec;
-mod util;
-
-pub use exec::block_on;
-
-//
-
-mod r#glue;
+mod r#exec;
 mod r#loop;
 mod r#poll;
 mod r#task;
+mod r#util;
 
+pub use r#exec::block_on;
 pub use r#loop::Loop;
 pub use r#poll::Poll;
 pub use r#task::Task;

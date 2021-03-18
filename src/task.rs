@@ -8,8 +8,8 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use core::pin::Pin;
 use core::future::Future;
+use core::pin::Pin;
 
 #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
 use alloc::boxed::Box;

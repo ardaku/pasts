@@ -1,6 +1,4 @@
-use pasts::{Task, Poll};
-
-pasts::glue!();
+use pasts::{Poll, Task};
 
 async fn run() {
     let hello: Task<&str> = Box::pin(async { "Hello" });
@@ -8,4 +6,8 @@ async fn run() {
     let mut array = [hello, world];
     // Hello is ready, so returns with index and result.
     assert_eq!((0, "Hello"), array.poll().await);
+}
+
+fn main() {
+    pasts::block_on(run())
 }

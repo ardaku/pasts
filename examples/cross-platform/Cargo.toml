@@ -1,0 +1,23 @@
+[package]
+name = "cross-platform"
+version = "0.1.0"
+authors = ["Jeron Aldaron Lau <jeronlau@plopgrizzly.com>"]
+edition = "2018"
+
+[dependencies]
+pasts = { path = "../.." }
+devout = "0.2"
+
+################################################################################
+#                         Platform-specific glue code                          #
+################################################################################
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+[lib]
+name = "app"
+path = "glue/app.rs"
+[[bin]]
+name = "prg"
+path = "glue/prg.rs"
+[profile.release]
+opt-level = "s"

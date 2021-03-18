@@ -8,9 +8,9 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use core::task::{Poll as Pending, Context};
-use core::pin::Pin;
 use core::future::Future;
+use core::pin::Pin;
+use core::task::{Context, Poll as Pending};
 
 #[derive(Debug)]
 pub struct PollFuture<'a, T, F: Future<Output = T> + Unpin>(&'a mut [F]);
@@ -27,14 +27,16 @@ pub trait Sealed<T> {}
 /// ```
 /// use pasts::{Task, Poll};
 ///
-/// pasts::glue!();
-///
 /// async fn run() {
 ///     let hello: Task<&str> = Box::pin(async { "Hello" });
 ///     let world: Task<&str> = Box::pin(async { "World" });
 ///     let mut array = [hello, world];
 ///     // Hello is ready, so returns with index and result.
 ///     assert_eq!((0, "Hello"), array.poll().await);
+/// }
+///
+/// fn main() {
+///     pasts::block_on(run())
 /// }
 /// ```
 ///
@@ -45,19 +47,21 @@ pub trait Sealed<T> {}
 ///
 /// ```
 /// use pasts::{Task, Poll};
-/// 
-/// pasts::glue!();
-/// 
+///
 /// async fn run() {
 ///     let hello: Task<&str> = Box::pin(async { "Hello" });
 ///     let world: Task<&str> = Box::pin(async { "World" });
 ///     let mut tasks = vec![hello, world];
-/// 
+///
 ///     while !tasks.is_empty() {
 ///         let (idx, val) = tasks.poll().await;
 ///         tasks.remove(idx);
 ///         println!("Received message from completed task: {}", val);
 ///     }
+/// }
+///
+/// fn main() {
+///     pasts::block_on(run())
 /// }
 /// ```
 pub trait Poll<T, F: Future<Output = T> + Unpin>: Sealed<T> + Unpin {
@@ -71,7 +75,7 @@ impl<T, F: Future<Output = T> + Unpin> Poll<T, F> for [F] {
     }
 }
 
-impl<T, F: Future<Output = T> + Unpin> Sealed<T> for [F] { }
+impl<T, F: Future<Output = T> + Unpin> Sealed<T> for [F] {}
 
 impl<T, F: Future<Output = T> + Unpin> Future for PollFuture<'_, T, F> {
     type Output = (usize, T);
