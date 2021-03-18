@@ -1,4 +1,4 @@
-use pasts::{Poll, Task};
+use pasts::{Polling, Task};
 
 async fn run() {
     let hello: Task<&str> = Box::pin(async { "Hello" });

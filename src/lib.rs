@@ -127,5 +127,5 @@ mod r#util;
 
 pub use r#exec::block_on;
 pub use r#loop::Loop;
-pub use r#poll::Poll;
+pub use r#poll::Polling;
 pub use r#task::Task;

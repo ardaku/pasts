@@ -10,12 +10,10 @@
 
 use core::future::Future;
 use core::pin::Pin;
-use core::task::{Context, Poll as Pending};
+use core::task::{Context, Poll};
 
 #[derive(Debug)]
 pub struct PollFuture<'a, T, F: Future<Output = T> + Unpin>(&'a mut [F]);
-
-pub trait Sealed<T> {}
 
 /// A trait that turns a slice, vec or array of futures into a future.
 ///
@@ -25,7 +23,7 @@ pub trait Sealed<T> {}
 /// asynchronous loop, use [`Loop`](crate::Loop) instead.
 ///
 /// ```
-/// use pasts::{Task, Poll};
+/// use pasts::{Task, Polling};
 ///
 /// async fn run() {
 ///     let hello: Task<&str> = Box::pin(async { "Hello" });
@@ -46,7 +44,7 @@ pub trait Sealed<T> {}
 /// useful for concurrently executing a dynamic number of tasks.
 ///
 /// ```
-/// use pasts::{Task, Poll};
+/// use pasts::{Task, Polling};
 ///
 /// async fn run() {
 ///     let hello: Task<&str> = Box::pin(async { "Hello" });
@@ -64,32 +62,30 @@ pub trait Sealed<T> {}
 ///     pasts::block_on(run())
 /// }
 /// ```
-pub trait Poll<T, F: Future<Output = T> + Unpin>: Sealed<T> + Unpin {
+pub trait Polling<T, F: Future<Output = T> + Unpin>: Unpin {
     /// Create a future that polls all contained futures in the slice.
     fn poll(&mut self) -> PollFuture<'_, T, F>;
 }
 
-impl<T, F: Future<Output = T> + Unpin> Poll<T, F> for [F] {
+impl<T, F: Future<Output = T> + Unpin> Polling<T, F> for [F] {
     fn poll(&mut self) -> PollFuture<'_, T, F> {
         PollFuture(self)
     }
 }
 
-impl<T, F: Future<Output = T> + Unpin> Sealed<T> for [F] {}
-
 impl<T, F: Future<Output = T> + Unpin> Future for PollFuture<'_, T, F> {
     type Output = (usize, T);
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Pending<(usize, T)> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<(usize, T)> {
         let this = self.get_mut();
         for (task_id, mut task) in this.0.iter_mut().enumerate() {
             let pin_fut = Pin::new(&mut task);
             let task = pin_fut.poll(cx);
             match task {
-                Pending::Ready(ret) => return Pending::Ready((task_id, ret)),
-                Pending::Pending => {}
+                Poll::Ready(ret) => return Poll::Ready((task_id, ret)),
+                Poll::Pending => {}
             }
         }
-        Pending::Pending
+        Poll::Pending
     }
 }
