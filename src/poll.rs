@@ -20,7 +20,7 @@ pub struct PollFuture<'a, T, F: Future<Output = T> + Unpin>(&'a mut [F]);
 /// # Example: Await on The Fastest Future
 /// This is the pasts way of doing the futures crate's `select!()`.  Note
 /// however that works completely differently.  Also, if you're writing an
-/// asynchronous loop, use [`Loop`](crate::Loop) instead.
+/// asynchronous loop, use [`Race`](crate::Race) instead.
 ///
 /// ```
 /// use pasts::{Task, Polling};

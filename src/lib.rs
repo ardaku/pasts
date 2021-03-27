@@ -33,26 +33,30 @@
 //! use core::pin::Pin;
 //! use core::task::{Context, Poll};
 //! use core::time::Duration;
-//! use pasts::Loop;
+//! use pasts::Race;
 //!
 //! /// Shared state between tasks on the thread.
-//! struct State(usize);
+//! struct State {
+//!     counter: usize,
+//!     one: Interval,
+//!     two: Interval,
+//! }
 //!
 //! impl State {
-//!     fn one(&mut self, _: ()) -> Poll<()> {
-//!         println!("One {}", self.0);
-//!         self.0 += 1;
-//!         if self.0 > 6 {
-//!             Poll::Ready(())
+//!     fn one(&mut self) -> bool {
+//!         println!("One {}", self.counter);
+//!         self.counter += 1;
+//!         if self.counter > 6 {
+//!             false
 //!         } else {
-//!             Poll::Pending
+//!             true
 //!         }
 //!     }
 //!
-//!     fn two(&mut self, _: ()) -> Poll<()> {
-//!         println!("Two {}", self.0);
-//!         self.0 += 1;
-//!         Poll::Pending
+//!     fn two(&mut self) -> bool {
+//!         println!("Two {}", self.counter);
+//!         self.counter += 1;
+//!         true
 //!     }
 //! }
 //!
@@ -79,14 +83,17 @@
 //! }
 //!
 //! async fn run() {
-//!     let state = State(0);
-//!     let one = Interval::new(Duration::from_secs_f64(1.0));
-//!     let two = Interval::new(Duration::from_secs_f64(2.0));
+//!     let mut state = State {
+//!         counter: 0,
+//!         one: Interval::new(Duration::from_secs_f64(1.0)),
+//!         two: Interval::new(Duration::from_secs_f64(2.0)),
+//!     };
 //!
-//!     Loop::new(state)
-//!         .when(one, State::one)
-//!         .when(two, State::two)
-//!         .await;
+//!     while Race::new()
+//!         .when(&mut state.one, State::one)
+//!         .when(&mut state.two, State::two)
+//!         .await(&mut state)
+//!     {}
 //! }
 //!
 //! fn main() {
@@ -119,13 +126,13 @@
 #[cfg(any(not(feature = "std"), target_arch = "wasm32"))]
 extern crate alloc;
 
-mod r#exec;
-mod r#loop;
-mod r#poll;
-mod r#task;
-mod r#util;
+mod exec;
+mod poll;
+mod race;
+mod task;
+mod util;
 
-pub use r#exec::block_on;
-pub use r#loop::Loop;
-pub use r#poll::Polling;
-pub use r#task::Task;
+pub use exec::block_on;
+pub use poll::Polling;
+pub use race::Race;
+pub use task::Task;
