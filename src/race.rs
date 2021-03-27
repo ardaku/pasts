@@ -13,9 +13,9 @@ use core::marker::PhantomData;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
-struct MultiFuture<S, F, L, G>
+struct MultiFuture<S, F, L, G, U>
 where
-    F: Future<Output = ()> + Unpin,
+    F: Future<Output = U> + Unpin,
     G: Future<Output = fn(&mut S) -> L> + Unpin,
 {
     future: F,
@@ -23,9 +23,9 @@ where
     translator: fn(&mut S) -> L,
 }
 
-impl<S, F, L, G> Future for MultiFuture<S, F, L, G>
+impl<S, F, L, G, U> Future for MultiFuture<S, F, L, G, U>
 where
-    F: Future<Output = ()> + Unpin,
+    F: Future<Output = U> + Unpin,
     G: Future<Output = fn(&mut S) -> L> + Unpin,
 {
     type Output = fn(&mut S) -> L;
@@ -37,7 +37,7 @@ where
         match Pin::new(&mut self.other).poll(cx) {
             Poll::Pending => match Pin::new(&mut self.future).poll(cx) {
                 Poll::Pending => Poll::Pending,
-                Poll::Ready(()) => Poll::Ready(self.translator),
+                Poll::Ready(_) => Poll::Ready(self.translator),
             },
             x => x,
         }
@@ -85,13 +85,13 @@ where
     F: Future<Output = fn(&mut S) -> T> + Unpin,
 {
     /// Add an asynchronous event.
-    pub fn when<E>(
+    pub fn when<E, U>(
         self,
         future: E,
         event: fn(&mut S) -> T,
     ) -> Race<S, impl Future<Output = fn(&mut S) -> T> + Unpin, T>
     where
-        E: Future<Output = ()> + Unpin,
+        E: Future<Output = U> + Unpin,
     {
         Race {
             future: MultiFuture {
