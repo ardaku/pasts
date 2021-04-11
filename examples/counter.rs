@@ -15,7 +15,7 @@ struct State {
 }
 
 impl State {
-    fn one(&mut self) -> bool {
+    fn one(&mut self, _: ()) -> bool {
         println!("One {}", self.counter);
         self.counter += 1;
         if self.counter > 6 {
@@ -25,7 +25,7 @@ impl State {
         }
     }
 
-    fn two(&mut self) -> bool {
+    fn two(&mut self, _: ()) -> bool {
         println!("Two {}", self.counter);
         self.counter += 1;
         true
@@ -61,10 +61,10 @@ async fn run() {
         two: Interval::new(Duration::from_secs_f64(2.0)),
     };
 
-    while Race::new()
-        .when(&mut state.one, State::one)
-        .when(&mut state.two, State::two)
-        .await(&mut state)
+    while Race::new(&mut state, |state, race| {
+        race.when(&mut state.one, State::one)
+            .when(&mut state.two, State::two)
+    }).await
     {}
 }
 
