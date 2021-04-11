@@ -15,7 +15,10 @@ use core::marker::PhantomData;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
-struct MultiFuture<S, F, L, G, U>
+use crate::Past;
+
+#[allow(missing_debug_implementations)]
+pub struct MultiFuture<S, F, L, G, U>
 where
     F: Future<Output = U> + Unpin,
     G: Future<Output = L> + Stateful<S> + Unpin,
@@ -25,7 +28,7 @@ where
     translator: fn(&mut S, U) -> L,
 }
 
-impl<S, F, L, G, U> Stateful<S> for MultiFuture<S, F, L, G, U> 
+impl<S, F, L, G, U> Stateful<S> for MultiFuture<S, F, L, G, U>
 where
     F: Future<Output = U> + Unpin,
     G: Future<Output = L> + Stateful<S> + Unpin,
@@ -47,12 +50,15 @@ where
         cx: &mut Context<'_>,
     ) -> Poll<Self::Output> {
         match Pin::new(&mut self.other).poll(cx) {
-            Poll::Pending => match Pin::new(unsafe { &mut *self.future }).poll(cx) {
-                Poll::Pending => Poll::Pending,
-                Poll::Ready(output) => Poll::Ready((self.translator)(
-                    unsafe { &mut *self.state() }, output
-                )),
-            },
+            Poll::Pending => {
+                match Pin::new(unsafe { &mut *self.future }).poll(cx) {
+                    Poll::Pending => Poll::Pending,
+                    Poll::Ready(output) => Poll::Ready((self.translator)(
+                        unsafe { &mut *self.state() },
+                        output,
+                    )),
+                }
+            }
             x => x,
         }
     }
@@ -81,38 +87,26 @@ pub trait Stateful<S> {
 
 /// A future that returns a closure for the first completed future.
 #[derive(Debug)]
-pub struct Race<'a, S, F, T>
+pub struct Race<S, F, T>
 where
-    F: Future<Output = T> + Stateful<S> + Unpin, T: Unpin
+    F: Future<Output = T> + Stateful<S> + Unpin,
+    T: Unpin,
 {
     future: F,
-    _phantom: PhantomData<&'a mut S>,
+    _phantom: PhantomData<*mut S>,
 }
 
-impl<'a, S, T: Unpin> Race<'a, S, Never<T, S>, T> {
-    /// Create an empty Race.
-    pub fn new<F, X>(state: &'a mut S, builder: F) -> Race<'a, S, X, T>
-        where F: Fn(&'a mut S, Self) -> Race<'a, S, X, T>,
-              X: Future<Output = T> + Stateful<S> + Unpin
-    {
-        let race = Self {
-            future: Never(state, PhantomData),
-            _phantom: PhantomData,
-        };
-        builder(state, race)
-    }
-}
-
-impl<'a, S, F, T> Race<'a, S, F, T>
+impl<S, F, T> Race<S, F, T>
 where
-    F: Future<Output = T> + Stateful<S> + Unpin, T: Unpin
+    F: Future<Output = T> + Stateful<S> + Unpin,
+    T: Unpin,
 {
     /// Add an asynchronous event.
     pub fn when<E, U>(
         self,
         future: &mut E,
         event: fn(&mut S, U) -> T,
-    ) -> Race<'a, S, impl Future<Output = T> + Stateful<S> + Unpin, T>
+    ) -> Race<S, MultiFuture<S, E, T, F, U>, T>
     where
         E: Future<Output = U> + Unpin,
     {
@@ -127,9 +121,10 @@ where
     }
 }
 
-impl<S, F, T> Future for Race<'_, S, F, T>
+impl<S, F, T> Future for Race<S, F, T>
 where
-    F: Future<Output = T> + Stateful<S> + Unpin, T: Unpin
+    F: Future<Output = T> + Stateful<S> + Unpin,
+    T: Unpin,
 {
     type Output = T;
 
@@ -140,3 +135,24 @@ where
         Pin::new(&mut self.future).poll(cx)
     }
 }
+
+/// Execute multiple asynchronous tasks at once in an event loop.
+pub async fn event_loop<S, F, O, X>(state: &mut S, looper: F) -> O
+where
+    F: Fn(&mut S, Race<S, Never<Poll<O>, S>, Poll<O>>) -> X,
+    X: Future<Output = Poll<O>> + Unpin,
+    O: Unpin,
+{
+    loop {
+        let race = Race {
+            future: Never(state, PhantomData),
+            _phantom: PhantomData,
+        };
+        if let Poll::Ready(output) = looper(state, race).await {
+            break output;
+        }
+    }
+}
+
+/// Asynchonous event loop builder.
+pub type Loop<S, O> = Race<S, Never<Poll<O>, S>, Poll<O>>;
