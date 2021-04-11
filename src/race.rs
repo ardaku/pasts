@@ -8,61 +8,13 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-#![allow(unsafe_code)] // FIXME: Move to util
-
 use core::future::Future;
 use core::marker::PhantomData;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
 use crate::past::Past;
-
-#[allow(missing_debug_implementations)]
-pub struct MultiFuture<S, F, L, G, U>
-where
-    F: Future<Output = U> + Unpin,
-    G: Future<Output = L> + Stateful<S> + Unpin,
-{
-    future: *mut F,
-    other: G,
-    translator: fn(&mut S, U) -> L,
-}
-
-impl<S, F, L, G, U> Stateful<S> for MultiFuture<S, F, L, G, U>
-where
-    F: Future<Output = U> + Unpin,
-    G: Future<Output = L> + Stateful<S> + Unpin,
-{
-    fn state(&mut self) -> *mut S {
-        self.other.state()
-    }
-}
-
-impl<S, F, L, G, U> Future for MultiFuture<S, F, L, G, U>
-where
-    F: Future<Output = U> + Unpin,
-    G: Future<Output = L> + Stateful<S> + Unpin,
-{
-    type Output = L;
-
-    fn poll(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Self::Output> {
-        match Pin::new(&mut self.other).poll(cx) {
-            Poll::Pending => {
-                match Pin::new(unsafe { &mut *self.future }).poll(cx) {
-                    Poll::Pending => Poll::Pending,
-                    Poll::Ready(output) => Poll::Ready((self.translator)(
-                        unsafe { &mut *self.state() },
-                        output,
-                    )),
-                }
-            }
-            x => x,
-        }
-    }
-}
+use crate::util::{MultiFuture, PastFuture};
 
 #[derive(Debug)]
 pub struct Never<T, S>(*mut S, PhantomData<T>);
@@ -120,7 +72,8 @@ where
         }
     }
 
-    /// Add an asynchronous event polling from a list of futures.
+    /// Add an asynchronous event polling from a list (either a Vec or array) of
+    /// futures.
     #[allow(clippy::type_complexity)]
     pub fn poll<E, U>(
         self,
@@ -139,28 +92,6 @@ where
             },
             _phantom: PhantomData,
         }
-    }
-}
-
-#[repr(transparent)]
-#[allow(missing_debug_implementations)]
-pub struct PastFuture<U, P: Past<U>>(P, PhantomData<*mut U>);
-
-impl<U, P: Past<U>> PastFuture<U, P> {
-    #[allow(trivial_casts)] // Not sure why it thinks it's trivial, is needed.
-    fn with(from: &mut P) -> &mut Self {
-        unsafe { &mut *(from as *mut _ as *mut Self) }
-    }
-}
-
-impl<U, P: Past<U>> Future for PastFuture<U, P> {
-    type Output = U;
-
-    fn poll(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Self::Output> {
-        Pin::new(&mut self.0).poll(cx)
     }
 }
 

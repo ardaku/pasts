@@ -16,6 +16,10 @@ use alloc::boxed::Box;
 
 /// A boxed, pinned future.
 ///
+/// You should use this in conjunction with
+/// [`LoopBuilder::poll`](crate::LoopBuilder::poll) if you need a dynamic number
+/// of tasks (for instance, a web server).
+///
 /// # Example
 /// This example spawns two tasks on the same thread, and then terminates when
 /// they both complete.
