@@ -5,7 +5,7 @@ use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 use core::time::Duration;
-use pasts::{Exec, Loop};
+use pasts::{EventLoop, Loop};
 
 ///////////////////////////////////
 //// Implement Interval Future ////
@@ -64,8 +64,8 @@ impl State {
         Poll::Pending
     }
 
-    fn event_loop(&mut self, exec: Exec<Self, Exit>) -> impl Loop<Exit> {
-        exec.when(&mut self.one, State::one)
+    fn event_loop(&mut self, elts: EventLoop<Self, Exit>) -> impl Loop<Exit> {
+        elts.when(&mut self.one, State::one)
             .when(&mut self.two, State::two)
     }
 }
@@ -77,7 +77,7 @@ async fn run() {
         two: Interval::new(Duration::from_secs_f64(2.0)),
     };
 
-    pasts::event_loop(&mut state, State::event_loop).await;
+    EventLoop::run(&mut state, State::event_loop).await;
 }
 
 fn main() {

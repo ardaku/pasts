@@ -1,5 +1,5 @@
 use core::task::Poll;
-use pasts::{Exec, Loop, Task};
+use pasts::{EventLoop, Loop, Task};
 
 type Exit = ();
 
@@ -18,8 +18,8 @@ impl State {
         }
     }
 
-    fn event_loop(&mut self, exec: Exec<Self, Exit>) -> impl Loop<Exit> {
-        exec.poll(&mut self.tasks, Self::completion)
+    fn event_loop(&mut self, elts: EventLoop<Self, Exit>) -> impl Loop<Exit> {
+        elts.poll(&mut self.tasks, Self::completion)
     }
 }
 
@@ -28,7 +28,7 @@ async fn run() {
         tasks: vec![Box::pin(async { "Hello" }), Box::pin(async { "World" })],
     };
 
-    pasts::event_loop(&mut tasks, State::event_loop).await;
+    EventLoop::run(&mut tasks, State::event_loop).await;
 }
 
 fn main() {

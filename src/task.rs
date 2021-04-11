@@ -22,7 +22,7 @@ use alloc::boxed::Box;
 ///
 /// ```
 /// use core::task::Poll;
-/// use pasts::{Task, Exec, Loop};
+/// use pasts::{Task, EventLoop, Loop};
 ///
 /// type Exit = ();
 ///
@@ -41,8 +41,8 @@ use alloc::boxed::Box;
 ///         }
 ///     }
 ///
-///     fn event_loop(&mut self, exec: Exec<Self, Exit>) -> impl Loop<Exit> {
-///         exec.poll(&mut self.tasks, Self::completion)
+///     fn event_loop(&mut self, elts: EventLoop<Self, Exit>) -> impl Loop<Exit> {
+///         elts.poll(&mut self.tasks, Self::completion)
 ///     }
 /// }
 ///
@@ -54,7 +54,7 @@ use alloc::boxed::Box;
 ///         ]
 ///     };
 ///
-///     pasts::event_loop(&mut tasks, State::event_loop).await;
+///     EventLoop::run(&mut tasks, State::event_loop).await;
 /// }
 ///
 /// fn main() {

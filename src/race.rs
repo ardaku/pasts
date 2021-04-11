@@ -174,30 +174,10 @@ impl<T: Unpin, L: Loop<T>> Future for RaceFuture<T, L> {
     }
 }
 
-/// Execute multiple asynchronous tasks at once in an event loop.
-pub async fn event_loop<S, F, O, X>(state: &mut S, looper: F) -> O
-where
-    F: Fn(&mut S, LoopBuilder<S, Never<Poll<O>, S>, Poll<O>>) -> X,
-    X: Loop<O>,
-    O: Unpin,
-{
-    loop {
-        let race = LoopBuilder {
-            future: Never(state, PhantomData),
-            _phantom: PhantomData,
-        };
-        if let Poll::Ready(output) =
-            RaceFuture(looper(state, race), PhantomData).await
-        {
-            break output;
-        }
-    }
-}
-
 pub trait Seal {}
 
-/// Empty asynchonous event loop executor.
-pub type Exec<S, O> = LoopBuilder<S, Never<Poll<O>, S>, Poll<O>>;
+/// Asynchonous event loop executor.
+pub type EventLoop<S, O> = LoopBuilder<S, Never<Poll<O>, S>, Poll<O>>;
 
 /// An asynchonous event loop.
 pub trait Loop<T>: Unpin + Seal {
@@ -219,5 +199,27 @@ where
 {
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<Poll<T>> {
         Pin::new(&mut self.future).poll(cx)
+    }
+}
+
+impl<S, O: Unpin> EventLoop<S, O> {
+    /// Execute multiple asynchronous tasks at once in an event loop.
+    pub async fn run<F, X>(state: &mut S, looper: F) -> O
+    where
+        F: Fn(&mut S, LoopBuilder<S, Never<Poll<O>, S>, Poll<O>>) -> X,
+        X: Loop<O>,
+        O: Unpin,
+    {
+        loop {
+            let race = LoopBuilder {
+                future: Never(state, PhantomData),
+                _phantom: PhantomData,
+            };
+            if let Poll::Ready(output) =
+                RaceFuture(looper(state, race), PhantomData).await
+            {
+                break output;
+            }
+        }
     }
 }
