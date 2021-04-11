@@ -13,18 +13,24 @@ use core::future::Future;
 use core::pin::Pin;
 
 /// Trait for abstracting over unpin futures and slices of unpin futures.
-pub trait Past<T> {
+pub trait Past<T>: Unpin {
     /// The poll method for polling one or multiple futures.
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<T>;
 }
 
-impl<T, F: Future<Output = T> + Unpin> Past<T> for F {
-    fn poll(&mut self, cx: &mut Context<'_>) -> Poll<T> {
-        Pin::new(self).poll(cx)
+impl<T, F: Future<Output = T> + Unpin> Past<(usize, T)> for Vec<F> {
+    fn poll(&mut self, cx: &mut Context<'_>) -> Poll<(usize, T)> {
+        for (i, future) in self.iter_mut().enumerate() {
+            if let Poll::Ready(output) = Pin::new(future).poll(cx) {
+                return Poll::Ready((i, output));
+            }
+        }
+
+        Poll::Pending
     }
 }
 
-impl<T, F: Future<Output = T> + Unpin> Past<(usize, T)> for [F] {
+impl<T, F: Future<Output = T> + Unpin, const G: usize> Past<(usize, T)> for [F; G] {
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<(usize, T)> {
         for (i, future) in self.iter_mut().enumerate() {
             if let Poll::Ready(output) = Pin::new(future).poll(cx) {

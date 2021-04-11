@@ -79,7 +79,7 @@ impl State {
     fn event_loop(&mut self, exec: Loop<Self, Exit>) -> impl Future<Output = Poll<Exit>> {
         exec.when(&mut self.one, State::one)
             .when(&mut self.two, State::two)
-            // .when(&mut self.list, State::dalist)
+            .poll(&mut self.list, State::dalist)
     }
 }
 
@@ -91,7 +91,7 @@ async fn run() {
         two: Interval::new(Duration::from_secs_f64(2.0)),
         list: [
             Interval::new(Duration::from_secs_f64(0.1)),
-            Interval::new(Duration::from_secs_f64(0.5)),
+            Interval::new(Duration::from_secs_f64(0.55)),
         ],
     };
 

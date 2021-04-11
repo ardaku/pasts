@@ -15,7 +15,7 @@ use core::marker::PhantomData;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
-use crate::Past;
+use crate::past::Past;
 
 #[allow(missing_debug_implementations)]
 pub struct MultiFuture<S, F, L, G, U>
@@ -118,6 +118,49 @@ where
             },
             _phantom: PhantomData,
         }
+    }
+    
+    /// Add an asynchronous event polling from a list of futures.
+    pub fn poll<E, U>(
+        self,
+        future: &mut E,
+        event: fn(&mut S, U) -> T,
+    ) -> Race<S, MultiFuture<S, PastFuture<U, E>, T, F, U>, T>
+    where
+        E: Past<U>,
+    {
+        let future = PastFuture::with(future);
+        Race {
+            future: MultiFuture {
+                future,
+                translator: event,
+                other: self.future,
+            },
+            _phantom: PhantomData,
+        }
+    }
+}
+
+#[repr(transparent)]
+#[allow(missing_debug_implementations)]
+pub struct PastFuture<U, P: Past<U>>(P, PhantomData<*mut U>);
+
+impl<U, P: Past<U>> PastFuture<U, P> {
+    fn with(from: &mut P) -> &mut Self {
+        unsafe {
+            std::mem::transmute(from)
+        }
+    }
+}
+
+impl<U, P: Past<U>> Future for PastFuture<U, P> {
+    type Output = U;
+
+    fn poll(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Self::Output> {
+        Pin::new(&mut self.0).poll(cx)
     }
 }
 
