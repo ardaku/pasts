@@ -21,6 +21,17 @@ pub trait Past<T>: Unpin {
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<T>;
 }
 
+impl<T, F: Future<Output = T> + Unpin> Past<T> for Option<F> {
+    fn poll(&mut self, cx: &mut Context<'_>) -> Poll<T> {
+        if let Some(future) = self {
+            if let Poll::Ready(output) = Pin::new(future).poll(cx) {
+                return Poll::Ready(output);
+            }
+        }
+        Poll::Pending
+    }
+}
+
 impl<T, F: Future<Output = T> + Unpin> Past<(usize, T)> for Vec<F> {
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<(usize, T)> {
         for (i, future) in self.iter_mut().enumerate() {
@@ -28,7 +39,6 @@ impl<T, F: Future<Output = T> + Unpin> Past<(usize, T)> for Vec<F> {
                 return Poll::Ready((i, output));
             }
         }
-
         Poll::Pending
     }
 }
@@ -42,7 +52,6 @@ impl<T, F: Future<Output = T> + Unpin, const G: usize> Past<(usize, T)>
                 return Poll::Ready((i, output));
             }
         }
-
         Poll::Pending
     }
 }

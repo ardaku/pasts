@@ -140,12 +140,10 @@ extern crate alloc;
 
 mod exec;
 mod past;
-mod poll;
 mod race;
 mod task;
 mod util;
 
 pub use exec::block_on;
-pub use poll::Polling;
 pub use race::{event_loop, Exec, Loop, LoopBuilder};
 pub use task::Task;
