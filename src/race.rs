@@ -119,7 +119,7 @@ where
             _phantom: PhantomData,
         }
     }
-    
+
     /// Add an asynchronous event polling from a list of futures.
     pub fn poll<E, U>(
         self,
@@ -146,10 +146,9 @@ where
 pub struct PastFuture<U, P: Past<U>>(P, PhantomData<*mut U>);
 
 impl<U, P: Past<U>> PastFuture<U, P> {
+    #[allow(trivial_casts)] // Not sure why it thinks it's trivial, is needed.
     fn with(from: &mut P) -> &mut Self {
-        unsafe {
-            std::mem::transmute(from)
-        }
+        unsafe { &mut *(from as *mut _ as *mut Self) }
     }
 }
 

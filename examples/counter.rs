@@ -5,7 +5,7 @@ use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 use core::time::Duration;
-use pasts::{Polling, Loop};
+use pasts::Loop;
 
 ///////////////////////////////////
 //// Implement Interval Future ////
@@ -42,11 +42,9 @@ type Exit = ();
 
 // Shared state between tasks on the thread.
 struct State {
-    begin: bool,
     counter: usize,
     one: Interval,
     two: Interval,
-    list: [Interval; 2],
 }
 
 impl State {
@@ -65,34 +63,21 @@ impl State {
         self.counter += 1;
         Poll::Pending
     }
-    
-    fn dalist(&mut self, (id, ()): (usize, ())) -> Poll<Exit> {
-        if self.begin {
-            println!("Hi from {}!", id);
-            if id == 1 {
-                self.begin = false;
-            }
-        }
-        Poll::Pending
-    }
 
-    fn event_loop(&mut self, exec: Loop<Self, Exit>) -> impl Future<Output = Poll<Exit>> {
+    fn event_loop(
+        &mut self,
+        exec: Loop<Self, Exit>,
+    ) -> impl Future<Output = Poll<Exit>> {
         exec.when(&mut self.one, State::one)
             .when(&mut self.two, State::two)
-            .poll(&mut self.list, State::dalist)
     }
 }
 
 async fn run() {
     let mut state = State {
-        begin: true,
         counter: 0,
         one: Interval::new(Duration::from_secs_f64(1.0)),
         two: Interval::new(Duration::from_secs_f64(2.0)),
-        list: [
-            Interval::new(Duration::from_secs_f64(0.1)),
-            Interval::new(Duration::from_secs_f64(0.55)),
-        ],
     };
 
     pasts::event_loop(&mut state, State::event_loop).await;

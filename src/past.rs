@@ -8,9 +8,9 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use core::task::{Context, Poll};
 use core::future::Future;
 use core::pin::Pin;
+use core::task::{Context, Poll};
 
 /// Trait for abstracting over unpin futures and slices of unpin futures.
 pub trait Past<T>: Unpin {
@@ -30,7 +30,9 @@ impl<T, F: Future<Output = T> + Unpin> Past<(usize, T)> for Vec<F> {
     }
 }
 
-impl<T, F: Future<Output = T> + Unpin, const G: usize> Past<(usize, T)> for [F; G] {
+impl<T, F: Future<Output = T> + Unpin, const G: usize> Past<(usize, T)>
+    for [F; G]
+{
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<(usize, T)> {
         for (i, future) in self.iter_mut().enumerate() {
             if let Poll::Ready(output) = Pin::new(future).poll(cx) {
