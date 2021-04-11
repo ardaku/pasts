@@ -33,23 +33,23 @@
 //! use core::pin::Pin;
 //! use core::task::{Context, Poll};
 //! use core::time::Duration;
-//! use pasts::Loop;
-//! 
+//! use pasts::{Loop, Exec};
+//!
 //! ///////////////////////////////////
 //! //// Implement Interval Future ////
 //! ///////////////////////////////////
-//! 
+//!
 //! struct Interval(Duration, Pin<Box<dyn Future<Output = ()>>>);
-//! 
+//!
 //! impl Interval {
 //!     fn new(duration: Duration) -> Self {
 //!         Interval(duration, Box::pin(sleep(duration)))
 //!     }
 //! }
-//! 
+//!
 //! impl Future for Interval {
 //!     type Output = ();
-//! 
+//!
 //!     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
 //!         match self.1.as_mut().poll(cx) {
 //!             Poll::Pending => Poll::Pending,
@@ -60,21 +60,21 @@
 //!         }
 //!     }
 //! }
-//! 
+//!
 //! ///////////////////////
 //! //// Pasts Example ////
 //! ///////////////////////
-//! 
+//!
 //! // Exit type for State.
 //! type Exit = ();
-//! 
+//!
 //! // Shared state between tasks on the thread.
 //! struct State {
 //!     counter: usize,
 //!     one: Interval,
 //!     two: Interval,
 //! }
-//! 
+//!
 //! impl State {
 //!     fn one(&mut self, _: ()) -> Poll<Exit> {
 //!         println!("One {}", self.counter);
@@ -85,32 +85,29 @@
 //!             Poll::Pending
 //!         }
 //!     }
-//! 
+//!
 //!     fn two(&mut self, _: ()) -> Poll<Exit> {
 //!         println!("Two {}", self.counter);
 //!         self.counter += 1;
 //!         Poll::Pending
 //!     }
-//! 
-//!     fn event_loop(
-//!         &mut self,
-//!         exec: Loop<Self, Exit>,
-//!     ) -> impl Future<Output = Poll<Exit>> {
+//!
+//!     fn event_loop(&mut self, exec: Exec<Self, Exit>) -> impl Loop<Exit> {
 //!         exec.when(&mut self.one, State::one)
 //!             .when(&mut self.two, State::two)
 //!     }
 //! }
-//! 
+//!
 //! async fn run() {
 //!     let mut state = State {
 //!         counter: 0,
 //!         one: Interval::new(Duration::from_secs_f64(1.0)),
 //!         two: Interval::new(Duration::from_secs_f64(2.0)),
 //!     };
-//! 
+//!
 //!     pasts::event_loop(&mut state, State::event_loop).await;
 //! }
-//! 
+//!
 //! fn main() {
 //!     pasts::block_on(run())
 //! }
@@ -150,5 +147,5 @@ mod util;
 
 pub use exec::block_on;
 pub use poll::Polling;
-pub use race::{Race, event_loop, Loop, LoopBuilder};
+pub use race::{event_loop, Exec, Loop, LoopBuilder};
 pub use task::Task;

@@ -85,9 +85,9 @@ pub trait Stateful<S> {
     fn state(&mut self) -> *mut S;
 }
 
-/// A future that returns a closure for the first completed future.
+/// Asynchonous event loop builder.
 #[derive(Debug)]
-pub struct Race<S, F, T>
+pub struct LoopBuilder<S, F, T>
 where
     F: Future<Output = T> + Stateful<S> + Unpin,
     T: Unpin,
@@ -96,7 +96,7 @@ where
     _phantom: PhantomData<*mut S>,
 }
 
-impl<S, F, T> Race<S, F, T>
+impl<S, F, T> LoopBuilder<S, F, T>
 where
     F: Future<Output = T> + Stateful<S> + Unpin,
     T: Unpin,
@@ -106,11 +106,11 @@ where
         self,
         future: &mut E,
         event: fn(&mut S, U) -> T,
-    ) -> Race<S, MultiFuture<S, E, T, F, U>, T>
+    ) -> LoopBuilder<S, MultiFuture<S, E, T, F, U>, T>
     where
         E: Future<Output = U> + Unpin,
     {
-        Race {
+        LoopBuilder {
             future: MultiFuture {
                 future,
                 translator: event,
@@ -121,16 +121,17 @@ where
     }
 
     /// Add an asynchronous event polling from a list of futures.
+    #[allow(clippy::type_complexity)]
     pub fn poll<E, U>(
         self,
         future: &mut E,
         event: fn(&mut S, U) -> T,
-    ) -> Race<S, MultiFuture<S, PastFuture<U, E>, T, F, U>, T>
+    ) -> LoopBuilder<S, MultiFuture<S, PastFuture<U, E>, T, F, U>, T>
     where
         E: Past<U>,
     {
         let future = PastFuture::with(future);
-        Race {
+        LoopBuilder {
             future: MultiFuture {
                 future,
                 translator: event,
@@ -176,29 +177,42 @@ impl<T: Unpin, L: Loop<T>> Future for RaceFuture<T, L> {
 /// Execute multiple asynchronous tasks at once in an event loop.
 pub async fn event_loop<S, F, O, X>(state: &mut S, looper: F) -> O
 where
-    F: Fn(&mut S, Race<S, Never<Poll<O>, S>, Poll<O>>) -> X,
+    F: Fn(&mut S, LoopBuilder<S, Never<Poll<O>, S>, Poll<O>>) -> X,
     X: Loop<O>,
     O: Unpin,
 {
     loop {
-        let race = Race {
+        let race = LoopBuilder {
             future: Never(state, PhantomData),
             _phantom: PhantomData,
         };
-        if let Poll::Ready(output) = RaceFuture(looper(state, race), PhantomData).await {
+        if let Poll::Ready(output) =
+            RaceFuture(looper(state, race), PhantomData).await
+        {
             break output;
         }
     }
 }
 
-/// Asynchonous event loop builder.
-pub type LoopBuilder<S, O> = Race<S, Never<Poll<O>, S>, Poll<O>>;
+pub trait Seal {}
 
-pub trait Loop<T>: Unpin {
+/// Empty asynchonous event loop executor.
+pub type Exec<S, O> = LoopBuilder<S, Never<Poll<O>, S>, Poll<O>>;
+
+/// An asynchonous event loop.
+pub trait Loop<T>: Unpin + Seal {
+    #[doc(hidden)]
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<Poll<T>>;
 }
 
-impl<S, F, T> Loop<T> for Race<S, F, Poll<T>>
+impl<S, F, T> Seal for LoopBuilder<S, F, Poll<T>>
+where
+    F: Future<Output = Poll<T>> + Stateful<S> + Unpin,
+    T: Unpin,
+{
+}
+
+impl<S, F, T> Loop<T> for LoopBuilder<S, F, Poll<T>>
 where
     F: Future<Output = Poll<T>> + Stateful<S> + Unpin,
     T: Unpin,
