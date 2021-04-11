@@ -4,6 +4,18 @@ All notable changes to `pasts` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
+## [0.8.0] - Unreleased
+### Added
+ - `LoopBuilder` struct to replace `wait!()`.
+ - `Loop` trait to help with abstracting away complex generics.
+ - `EventLoop` type definition to replace `exec!()`.
+
+### Removed
+ - `exec!()` macro - use `EventLoop` instead.
+ - `join!()` macro - use `LoopBuilder::poll()` instead.
+ - `race!()` macro - use `LoopBuilder::poll()` instead.
+ - `wait!()` macro - use `LoopBuilder` with `EventLoop` instead.
+
 ## [0.7.4] - 2021-01-08
 ### Fixed
  - Executor never going to sleep, wasting CPU cycles.
