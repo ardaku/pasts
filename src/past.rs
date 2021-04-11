@@ -12,6 +12,9 @@ use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
+#[cfg(any(target_arch = "wasm32", not(feature = "std")))]
+use alloc::vec::Vec;
+
 /// Trait for abstracting over unpin futures and slices of unpin futures.
 pub trait Past<T>: Unpin {
     /// The poll method for polling one or multiple futures.

@@ -163,18 +163,13 @@ impl<U, P: Past<U>> Future for PastFuture<U, P> {
     }
 }
 
-impl<S, F, T> Future for Race<S, F, T>
-where
-    F: Future<Output = T> + Stateful<S> + Unpin,
-    T: Unpin,
-{
-    type Output = T;
+struct RaceFuture<T: Unpin, L: Loop<T>>(L, PhantomData<*mut T>);
 
-    fn poll(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Self::Output> {
-        Pin::new(&mut self.future).poll(cx)
+impl<T: Unpin, L: Loop<T>> Future for RaceFuture<T, L> {
+    type Output = Poll<T>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Poll<T>> {
+        self.0.poll(cx)
     }
 }
 
@@ -182,7 +177,7 @@ where
 pub async fn event_loop<S, F, O, X>(state: &mut S, looper: F) -> O
 where
     F: Fn(&mut S, Race<S, Never<Poll<O>, S>, Poll<O>>) -> X,
-    X: Future<Output = Poll<O>> + Unpin,
+    X: Loop<O>,
     O: Unpin,
 {
     loop {
@@ -190,11 +185,25 @@ where
             future: Never(state, PhantomData),
             _phantom: PhantomData,
         };
-        if let Poll::Ready(output) = looper(state, race).await {
+        if let Poll::Ready(output) = RaceFuture(looper(state, race), PhantomData).await {
             break output;
         }
     }
 }
 
 /// Asynchonous event loop builder.
-pub type Loop<S, O> = Race<S, Never<Poll<O>, S>, Poll<O>>;
+pub type LoopBuilder<S, O> = Race<S, Never<Poll<O>, S>, Poll<O>>;
+
+pub trait Loop<T>: Unpin {
+    fn poll(&mut self, cx: &mut Context<'_>) -> Poll<Poll<T>>;
+}
+
+impl<S, F, T> Loop<T> for Race<S, F, Poll<T>>
+where
+    F: Future<Output = Poll<T>> + Stateful<S> + Unpin,
+    T: Unpin,
+{
+    fn poll(&mut self, cx: &mut Context<'_>) -> Poll<Poll<T>> {
+        Pin::new(&mut self.future).poll(cx)
+    }
+}

@@ -150,5 +150,5 @@ mod util;
 
 pub use exec::block_on;
 pub use poll::Polling;
-pub use race::{event_loop, Loop};
+pub use race::{Race, event_loop, Loop, LoopBuilder};
 pub use task::Task;

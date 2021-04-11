@@ -5,7 +5,7 @@ use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 use core::time::Duration;
-use pasts::Loop;
+use pasts::{Loop, LoopBuilder};
 
 ///////////////////////////////////
 //// Implement Interval Future ////
@@ -64,10 +64,7 @@ impl State {
         Poll::Pending
     }
 
-    fn event_loop(
-        &mut self,
-        exec: Loop<Self, Exit>,
-    ) -> impl Future<Output = Poll<Exit>> {
+    fn event_loop(&mut self, exec: LoopBuilder<Self, Exit>) -> impl Loop<Exit> {
         exec.when(&mut self.one, State::one)
             .when(&mut self.two, State::two)
     }
