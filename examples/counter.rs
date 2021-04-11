@@ -15,20 +15,20 @@ struct State {
 }
 
 impl State {
-    fn one(&mut self, _: ()) -> bool {
+    fn one(&mut self, _: ()) -> Poll<()> {
         println!("One {}", self.counter);
         self.counter += 1;
         if self.counter > 6 {
-            false
+            Poll::Ready(())
         } else {
-            true
+            Poll::Pending
         }
     }
 
-    fn two(&mut self, _: ()) -> bool {
+    fn two(&mut self, _: ()) -> Poll<()> {
         println!("Two {}", self.counter);
         self.counter += 1;
-        true
+        Poll::Pending
     }
 }
 
@@ -61,11 +61,14 @@ async fn run() {
         two: Interval::new(Duration::from_secs_f64(2.0)),
     };
 
-    while Race::new(&mut state, |state, race| {
-        race.when(&mut state.one, State::one)
-            .when(&mut state.two, State::two)
-    }).await
-    {}
+    loop {
+        if let Poll::Ready(output) = Race::new(&mut state, |state, race| {
+            race.when(&mut state.one, State::one)
+                .when(&mut state.two, State::two)
+        }).await {
+            break output;
+        }
+    }
 }
 
 fn main() {

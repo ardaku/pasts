@@ -18,18 +18,27 @@ use core::task::{Context, Poll};
 struct MultiFuture<S, F, L, G, U>
 where
     F: Future<Output = U> + Unpin,
-    G: Future<Output = L> + Unpin,
+    G: Future<Output = L> + Stateful<S> + Unpin,
 {
-    state: *mut S,
     future: *mut F,
     other: G,
     translator: fn(&mut S, U) -> L,
 }
 
+impl<S, F, L, G, U> Stateful<S> for MultiFuture<S, F, L, G, U> 
+where
+    F: Future<Output = U> + Unpin,
+    G: Future<Output = L> + Stateful<S> + Unpin,
+{
+    fn state(&mut self) -> *mut S {
+        self.other.state()
+    }
+}
+
 impl<S, F, L, G, U> Future for MultiFuture<S, F, L, G, U>
 where
     F: Future<Output = U> + Unpin,
-    G: Future<Output = L> + Unpin,
+    G: Future<Output = L> + Stateful<S> + Unpin,
 {
     type Output = L;
 
@@ -41,7 +50,7 @@ where
             Poll::Pending => match Pin::new(unsafe { &mut *self.future }).poll(cx) {
                 Poll::Pending => Poll::Pending,
                 Poll::Ready(output) => Poll::Ready((self.translator)(
-                    unsafe { &mut *self.state }, output
+                    unsafe { &mut *self.state() }, output
                 )),
             },
             x => x,
@@ -50,9 +59,9 @@ where
 }
 
 #[derive(Debug)]
-pub struct Never<T>(PhantomData<T>);
+pub struct Never<T, S>(*mut S, PhantomData<T>);
 
-impl<T> Future for Never<T> {
+impl<T, S> Future for Never<T, S> {
     type Output = T;
 
     fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<T> {
@@ -60,25 +69,34 @@ impl<T> Future for Never<T> {
     }
 }
 
+impl<T, S> Stateful<S> for Never<T, S> {
+    fn state(&mut self) -> *mut S {
+        self.0
+    }
+}
+
+pub trait Stateful<S> {
+    fn state(&mut self) -> *mut S;
+}
+
 /// A future that returns a closure for the first completed future.
 #[derive(Debug)]
 pub struct Race<'a, S, F, T>
 where
-    F: Future<Output = T> + Unpin, T: Unpin
+    F: Future<Output = T> + Stateful<S> + Unpin, T: Unpin
 {
-    state: *mut S,
     future: F,
     _phantom: PhantomData<&'a mut S>,
 }
 
-impl<'a, S, T: Unpin> Race<'a, S, Never<T>, T> {
+impl<'a, S, T: Unpin> Race<'a, S, Never<T, S>, T> {
     /// Create an empty Race.
     pub fn new<F, X>(state: &'a mut S, builder: F) -> Race<'a, S, X, T>
-        where F: Fn(&'a mut S, Self) -> Race<'a, S, X, T>, X: Future<Output = T> + Unpin
+        where F: Fn(&'a mut S, Self) -> Race<'a, S, X, T>,
+              X: Future<Output = T> + Stateful<S> + Unpin
     {
         let race = Self {
-            state: state,
-            future: Never(PhantomData),
+            future: Never(state, PhantomData),
             _phantom: PhantomData,
         };
         builder(state, race)
@@ -87,21 +105,19 @@ impl<'a, S, T: Unpin> Race<'a, S, Never<T>, T> {
 
 impl<'a, S, F, T> Race<'a, S, F, T>
 where
-    F: Future<Output = T> + Unpin, T: Unpin
+    F: Future<Output = T> + Stateful<S> + Unpin, T: Unpin
 {
     /// Add an asynchronous event.
     pub fn when<E, U>(
         self,
         future: &mut E,
         event: fn(&mut S, U) -> T,
-    ) -> Race<'a, S, impl Future<Output = T> + Unpin, T>
+    ) -> Race<'a, S, impl Future<Output = T> + Stateful<S> + Unpin, T>
     where
         E: Future<Output = U> + Unpin,
     {
         Race {
-            state: self.state,
             future: MultiFuture {
-                state: self.state,
                 future,
                 translator: event,
                 other: self.future,
@@ -113,7 +129,7 @@ where
 
 impl<S, F, T> Future for Race<'_, S, F, T>
 where
-    F: Future<Output = T> + Unpin, T: Unpin
+    F: Future<Output = T> + Stateful<S> + Unpin, T: Unpin
 {
     type Output = T;
 
