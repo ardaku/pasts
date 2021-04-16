@@ -17,8 +17,8 @@ use alloc::boxed::Box;
 /// A boxed, pinned future.
 ///
 /// You should use this in conjunction with
-/// [`LoopBuilder::poll`](crate::LoopBuilder::poll) if you need a dynamic number
-/// of tasks (for instance, a web server).
+/// [`Loop::poll`](crate::Loop::poll) if you need a dynamic number of tasks (for
+/// instance, a web server).
 ///
 /// # Example
 /// This example spawns two tasks on the same thread, and then terminates when
@@ -26,7 +26,7 @@ use alloc::boxed::Box;
 ///
 /// ```
 /// use core::task::Poll;
-/// use pasts::{Task, EventLoop, Loop};
+/// use pasts::{Task, Loop};
 ///
 /// type Exit = ();
 ///
@@ -44,21 +44,19 @@ use alloc::boxed::Box;
 ///             Poll::Pending
 ///         }
 ///     }
-///
-///     fn event_loop(&mut self, elts: EventLoop<Self, Exit>) -> impl Loop<Exit> {
-///         elts.poll(&mut self.tasks, Self::completion)
-///     }
 /// }
 ///
 /// async fn run() {
-///     let mut tasks = State {
+///     let mut state = State {
 ///         tasks: vec![
 ///             Box::pin(async { "Hello" }),
 ///             Box::pin(async { "World" }),
 ///         ]
 ///     };
 ///
-///     EventLoop::run(&mut tasks, State::event_loop).await;
+///     Loop::new(&mut state)
+///         .poll(|s| &mut s.tasks, State::completion)
+///         .await;
 /// }
 ///
 /// fn main() {

@@ -6,9 +6,8 @@ and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
 ## [0.8.0] - Unreleased
 ### Added
- - `LoopBuilder` struct to replace `wait!()`.
- - `Loop` trait to help with abstracting away complex generics.
- - `EventLoop` type definition to replace `exec!()`.
+ - `Loop` struct to replace `wait!()` and `exec!()`.
+ - `Task` type definition for dynamically spawning tasks.
 
 ### Removed
  - `exec!()` macro - use `EventLoop` instead.

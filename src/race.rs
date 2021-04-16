@@ -13,13 +13,18 @@ use core::marker::PhantomData;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
-use crate::past::Past;
-use crate::util::{MultiFuture, PastFuture};
+/// Trait for attaching state to a future type (allows type nesting).
+pub trait Stateful {
+    type State;
 
+    fn state(&mut self) -> &mut Self::State;
+}
+
+/// Future that is never ready.
 #[derive(Debug)]
-pub struct Never<T, S>(*mut S, PhantomData<T>);
+pub struct Never<'a, T, S>(&'a mut S, PhantomData<*mut T>);
 
-impl<T, S> Future for Never<T, S> {
+impl<T, S> Future for Never<'_, T, S> {
     type Output = T;
 
     fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<T> {
@@ -27,130 +32,178 @@ impl<T, S> Future for Never<T, S> {
     }
 }
 
-impl<T, S> Stateful<S> for Never<T, S> {
-    fn state(&mut self) -> *mut S {
+impl<T, S> Stateful for Never<'_, T, S> {
+    type State = S;
+
+    fn state(&mut self) -> &mut S {
         self.0
     }
 }
 
-pub trait Stateful<S> {
-    fn state(&mut self) -> *mut S;
-}
-
-/// Asynchonous event loop builder.
-#[derive(Debug)]
-pub struct LoopBuilder<S, F, T>
+/// An asynchronous event.
+struct EventSlice<F, G, V, S, T, Z>
 where
-    F: Future<Output = T> + Stateful<S> + Unpin,
-    T: Unpin,
+    F: Future<Output = Poll<T>> + Stateful<State = S> + Unpin,
+    G: for<'a> Fn(&'a mut S) -> &'a mut [Z] + Unpin,
+    Z: Future<Output = V> + Unpin,
 {
-    future: F,
-    _phantom: PhantomData<*mut S>,
+    // The wrapped stateful future.
+    other: F,
+    // Future getter closure/function.
+    future: G,
+    // Callback function
+    event: fn(&mut S, (usize, V)) -> Poll<T>,
 }
 
-impl<S, F, T> LoopBuilder<S, F, T>
+impl<F, G, V, S, T, Z> Future for EventSlice<F, G, V, S, T, Z>
 where
-    F: Future<Output = T> + Stateful<S> + Unpin,
-    T: Unpin,
+    F: Future<Output = Poll<T>> + Stateful<State = S> + Unpin,
+    G: for<'a> Fn(&'a mut S) -> &'a mut [Z] + Unpin,
+    Z: Future<Output = V> + Unpin,
 {
-    /// Add an asynchronous event.
-    pub fn when<E, U>(
-        self,
-        future: &mut E,
-        event: fn(&mut S, U) -> T,
-    ) -> LoopBuilder<S, MultiFuture<S, E, T, F, U>, T>
-    where
-        E: Future<Output = U> + Unpin,
-    {
-        LoopBuilder {
-            future: MultiFuture {
-                future,
-                translator: event,
-                other: self.future,
-            },
-            _phantom: PhantomData,
-        }
-    }
-
-    /// Add an asynchronous event polling from a list (either a Vec or array) of
-    /// futures.
-    #[allow(clippy::type_complexity)]
-    pub fn poll<E, U>(
-        self,
-        future: &mut E,
-        event: fn(&mut S, U) -> T,
-    ) -> LoopBuilder<S, MultiFuture<S, PastFuture<U, E>, T, F, U>, T>
-    where
-        E: Past<U>,
-    {
-        let future = PastFuture::with(future);
-        LoopBuilder {
-            future: MultiFuture {
-                future,
-                translator: event,
-                other: self.future,
-            },
-            _phantom: PhantomData,
-        }
-    }
-}
-
-struct RaceFuture<T: Unpin, L: Loop<T>>(L, PhantomData<*mut T>);
-
-impl<T: Unpin, L: Loop<T>> Future for RaceFuture<T, L> {
     type Output = Poll<T>;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Poll<T>> {
-        self.0.poll(cx)
-    }
-}
-
-pub trait Seal {}
-
-/// Asynchonous event loop executor.
-pub type EventLoop<S, O> = LoopBuilder<S, Never<Poll<O>, S>, Poll<O>>;
-
-/// An asynchonous event loop.
-pub trait Loop<T>: Unpin + Seal {
-    #[doc(hidden)]
-    fn poll(&mut self, cx: &mut Context<'_>) -> Poll<Poll<T>>;
-}
-
-impl<S, F, T> Seal for LoopBuilder<S, F, Poll<T>>
-where
-    F: Future<Output = Poll<T>> + Stateful<S> + Unpin,
-    T: Unpin,
-{
-}
-
-impl<S, F, T> Loop<T> for LoopBuilder<S, F, Poll<T>>
-where
-    F: Future<Output = Poll<T>> + Stateful<S> + Unpin,
-    T: Unpin,
-{
-    fn poll(&mut self, cx: &mut Context<'_>) -> Poll<Poll<T>> {
-        Pin::new(&mut self.future).poll(cx)
-    }
-}
-
-impl<S, O: Unpin> EventLoop<S, O> {
-    /// Execute multiple asynchronous tasks at once in an event loop.
-    pub async fn run<F, X>(state: &mut S, looper: F) -> O
-    where
-        F: Fn(&mut S, LoopBuilder<S, Never<Poll<O>, S>, Poll<O>>) -> X,
-        X: Loop<O>,
-        O: Unpin,
-    {
-        loop {
-            let race = LoopBuilder {
-                future: Never(state, PhantomData),
-                _phantom: PhantomData,
-            };
-            if let Poll::Ready(output) =
-                RaceFuture(looper(state, race), PhantomData).await
-            {
-                break output;
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Poll<T>> {
+        let this = self.get_mut();
+        if let Poll::Ready(output) = Pin::new(&mut this.other).poll(cx) {
+            return Poll::Ready(output);
+        }
+        for (i, f) in (this.future)(this.other.state()).iter_mut().enumerate() {
+            if let Poll::Ready(out) = Pin::new(f).poll(cx) {
+                return Poll::Ready((this.event)(this.other.state(), (i, out)));
             }
         }
+        Poll::Pending
+    }
+}
+
+impl<F, G, V, S, T, Z> Stateful for EventSlice<F, G, V, S, T, Z>
+where
+    F: Future<Output = Poll<T>> + Stateful<State = S> + Unpin,
+    G: for<'a> Fn(&'a mut S) -> &'a mut [Z] + Unpin,
+    Z: Future<Output = V> + Unpin,
+{
+    type State = S;
+
+    fn state(&mut self) -> &mut S {
+        self.other.state()
+    }
+}
+
+/// An asynchronous event.
+struct Event<F, G, V, S, T, Z>
+where
+    F: Future<Output = Poll<T>> + Stateful<State = S> + Unpin,
+    G: for<'a> Fn(&'a mut S) -> &'a mut Z + Unpin,
+    Z: Future<Output = V> + Unpin,
+{
+    // The wrapped stateful future.
+    wrapped: F,
+    // Future getter closure/function.
+    future: G,
+    // Callback function
+    callback: fn(&mut S, V) -> Poll<T>,
+}
+
+impl<F, G, V, S, T, Z> Future for Event<F, G, V, S, T, Z>
+where
+    F: Future<Output = Poll<T>> + Stateful<State = S> + Unpin,
+    G: for<'a> Fn(&'a mut S) -> &'a mut Z + Unpin,
+    Z: Future<Output = V> + Unpin,
+{
+    type Output = Poll<T>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Poll<T>> {
+        let this = self.get_mut();
+        if let Poll::Ready(output) = Pin::new(&mut this.wrapped).poll(cx) {
+            Poll::Ready(output)
+        } else if let Poll::Ready(output) =
+            Pin::new((this.future)(this.wrapped.state())).poll(cx)
+        {
+            Poll::Ready((this.callback)(this.wrapped.state(), output))
+        } else {
+            Poll::Pending
+        }
+    }
+}
+
+impl<F, G, V, S, T, Z> Stateful for Event<F, G, V, S, T, Z>
+where
+    F: Future<Output = Poll<T>> + Stateful<State = S> + Unpin,
+    G: for<'a> Fn(&'a mut S) -> &'a mut Z + Unpin,
+    Z: Future<Output = V> + Unpin,
+{
+    type State = S;
+
+    fn state(&mut self) -> &mut S {
+        self.wrapped.state()
+    }
+}
+
+/// An asynchronous event loop.
+#[derive(Debug)]
+pub struct Loop<S, T, F>(F)
+where
+    F: Future<Output = Poll<T>> + Stateful<State = S> + Unpin;
+
+impl<'a, S, T> Loop<S, T, Never<'a, Poll<T>, S>> {
+    /// Create a new asynchronous event loop.
+    pub fn new(state: &'a mut S) -> Self {
+        Self(Never(state, PhantomData))
+    }
+}
+
+impl<S, T, F> Loop<S, T, F>
+where
+    F: Future<Output = Poll<T>> + Stateful<State = S> + Unpin,
+{
+    /// Add an asynchronous event to the event loop.
+    pub fn when<G, V, Z>(
+        self,
+        f: G,
+        c: fn(&mut S, V) -> Poll<T>,
+    ) -> Loop<S, T, impl Future<Output = Poll<T>> + Stateful<State = S>>
+    where
+        G: for<'a> Fn(&'a mut S) -> &'a mut Z + Unpin,
+        Z: Future<Output = V> + Unpin,
+    {
+        Loop(Event {
+            wrapped: self.0,
+            future: f,
+            callback: c,
+        })
+    }
+
+    /// Add asynchronous event polling from a slice to the event loop.
+    pub fn poll<G, V, Z>(
+        self,
+        f: G,
+        c: fn(&mut S, (usize, V)) -> Poll<T>,
+    ) -> Loop<S, T, impl Future<Output = Poll<T>> + Stateful<State = S>>
+    where
+        G: for<'a> Fn(&'a mut S) -> &'a mut [Z] + Unpin,
+        Z: Future<Output = V> + Unpin,
+    {
+        Loop(EventSlice {
+            other: self.0,
+            future: f,
+            event: c,
+        })
+    }
+}
+
+impl<S, T, F> Future for Loop<S, T, F>
+where
+    F: Future<Output = Poll<T>> + Stateful<State = S> + Unpin,
+{
+    type Output = T;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
+        while let Poll::Ready(output) = Pin::new(&mut self.0).poll(cx) {
+            if let Poll::Ready(output) = output {
+                return Poll::Ready(output);
+            }
+        }
+        Poll::Pending
     }
 }

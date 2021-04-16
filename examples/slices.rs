@@ -1,5 +1,5 @@
 use core::task::Poll;
-use pasts::{EventLoop, Loop, Task};
+use pasts::{Loop, Task};
 
 type Exit = ();
 
@@ -12,18 +12,16 @@ impl State {
         println!("Received message from {}, completed task: {}", id, val);
         Poll::Ready(())
     }
-
-    fn event_loop(&mut self, elts: EventLoop<Self, Exit>) -> impl Loop<Exit> {
-        elts.poll(&mut self.tasks, Self::completion)
-    }
 }
 
 async fn run() {
-    let mut tasks = State {
+    let mut state = State {
         tasks: [Box::pin(async { "Hello" }), Box::pin(async { "World" })],
     };
 
-    EventLoop::run(&mut tasks, State::event_loop).await;
+    Loop::new(&mut state)
+        .poll(|s| &mut s.tasks, State::completion)
+        .await;
 }
 
 fn main() {

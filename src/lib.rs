@@ -33,7 +33,7 @@
 //! use core::pin::Pin;
 //! use core::task::{Context, Poll};
 //! use core::time::Duration;
-//! use pasts::{Loop, EventLoop};
+//! use pasts::Loop;
 //!
 //! ///////////////////////////////////
 //! //// Implement Interval Future ////
@@ -91,11 +91,6 @@
 //!         self.counter += 1;
 //!         Poll::Pending
 //!     }
-//!
-//!     fn event_loop(&mut self, elts: EventLoop<Self, Exit>) -> impl Loop<Exit> {
-//!         elts.when(&mut self.one, State::one)
-//!             .when(&mut self.two, State::two)
-//!     }
 //! }
 //!
 //! async fn run() {
@@ -105,7 +100,10 @@
 //!         two: Interval::new(Duration::from_secs_f64(2.0)),
 //!     };
 //!
-//!     EventLoop::run(&mut state, State::event_loop).await;
+//!     Loop::new(&mut state)
+//!         .when(|s| &mut s.one, State::one)
+//!         .when(|s| &mut s.two, State::two)
+//!         .await
 //! }
 //!
 //! fn main() {
@@ -139,11 +137,10 @@
 extern crate alloc;
 
 mod exec;
-mod past;
 mod race;
 mod task;
 mod util;
 
 pub use exec::block_on;
-pub use race::{EventLoop, Loop, LoopBuilder};
+pub use race::Loop;
 pub use task::Task;
