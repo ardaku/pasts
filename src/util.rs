@@ -8,7 +8,7 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 //
-//! This file contains functions and macros that require unsafe code to work.
+//! This file contains functions and that require unsafe code to work.
 //! The rest of the libary should be unsafe-free.
 
 #![allow(unsafe_code)]
@@ -29,7 +29,7 @@ where
     const RWVT: RawWakerVTable = RawWakerVTable::new(clone, wake, wake, drop);
 
     #[inline]
-    unsafe fn clone(data: *const ()) -> RawWaker {
+    fn clone(data: *const ()) -> RawWaker {
         RawWaker::new(data, &RWVT)
     }
     #[inline]
@@ -38,7 +38,7 @@ where
         (*exec).wake();
     }
     #[inline]
-    unsafe fn drop(_: *const ()) {}
+    fn drop(_: *const ()) {}
 
     let waker = unsafe { Waker::from_raw(RawWaker::new(exec.cast(), &RWVT)) };
     f(&mut Context::from_waker(&waker))
