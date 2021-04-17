@@ -1,7 +1,7 @@
-use devout::{Tag, log};
+use devout::{log, Tag};
 
 const INFO: Tag = Tag::new("Info").show(true);
 
-pub async fn run() {
+async fn main() {
     log!(INFO, "Hello, world!");
 }

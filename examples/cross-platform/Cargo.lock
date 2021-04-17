@@ -13,15 +13,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
-name = "cross-platform"
-version = "0.1.0"
-dependencies = [
- "devout",
- "pasts",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "devout"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -29,6 +20,14 @@ checksum = "f3f746d3d966bfd758f09151c70097cc3b6f3eb627020da82851e529a6c4bf02"
 dependencies = [
  "wasm-bindgen",
  "web-sys",
+]
+
+[[package]]
+name = "glue"
+version = "0.1.0"
+dependencies = [
+ "devout",
+ "pasts",
 ]
 
 [[package]]

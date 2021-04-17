@@ -15,10 +15,9 @@ cargo install wasm-bindgen-cli https
 
 ## Build
 ```bash
-cargo build --target=wasm32-unknown-unknown --lib --release
+cargo build --target=wasm32-unknown-unknown --release
 mkdir -p wasm/app/
-wasm-bindgen target/wasm32-unknown-unknown/release/cross-platform.wasm\
- --out-dir wasm/app --no-typescript --omit-imports --target web
+wasm-bindgen target/wasm32-unknown-unknown/release/glue.wasm --out-dir wasm/app --no-typescript --omit-imports --target web
 ```
 
 ## Run
