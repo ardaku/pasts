@@ -1,5 +1,5 @@
 use core::task::Poll;
-use pasts::{Loop, Task};
+use pasts::{Executor, Loop, Task};
 
 type Exit = ();
 
@@ -27,8 +27,10 @@ async fn run() {
     Loop::new(&mut state)
         .poll(|s| &mut s.tasks, State::completion)
         .await;
+
+    std::process::exit(0)
 }
 
 fn main() {
-    pasts::block_on(run())
+    Executor::new().cycle(run());
 }

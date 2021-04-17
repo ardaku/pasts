@@ -1,11 +1,9 @@
-#![forbid(unsafe_code)]
-
 use async_std::task::sleep;
 use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 use core::time::Duration;
-use pasts::Loop;
+use pasts::{Executor, Loop};
 
 ///////////////////////////////////
 //// Implement Interval Future ////
@@ -75,9 +73,11 @@ async fn run() {
     Loop::new(&mut state)
         .when(|s| &mut s.one, State::one)
         .when(|s| &mut s.two, State::two)
-        .await
+        .await;
+
+    std::process::exit(0)
 }
 
 fn main() {
-    pasts::block_on(run())
+    Executor::new().cycle(run())
 }

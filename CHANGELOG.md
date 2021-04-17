@@ -8,12 +8,17 @@ and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 ### Added
  - `Loop` struct to replace `wait!()` and `exec!()`.
  - `Task` type definition for dynamically spawning tasks.
+ - `Executor` struct for executing futures (replaces `block_on()`).
+
+### Changed
+ - Removed all unsafe!
 
 ### Removed
  - `exec!()` macro - use `EventLoop` instead.
  - `join!()` macro - use `LoopBuilder::poll()` instead.
  - `race!()` macro - use `LoopBuilder::poll()` instead.
  - `wait!()` macro - use `LoopBuilder` with `EventLoop` instead.
+ - `block_on()` function - use `Executor::new().cycle(future);`, instead.
 
 ## [0.7.4] - 2021-01-08
 ### Fixed

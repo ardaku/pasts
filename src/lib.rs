@@ -33,7 +33,7 @@
 //! use core::pin::Pin;
 //! use core::task::{Context, Poll};
 //! use core::time::Duration;
-//! use pasts::Loop;
+//! use pasts::{Executor, Loop};
 //!
 //! ///////////////////////////////////
 //! //// Implement Interval Future ////
@@ -103,11 +103,13 @@
 //!     Loop::new(&mut state)
 //!         .when(|s| &mut s.one, State::one)
 //!         .when(|s| &mut s.two, State::two)
-//!         .await
+//!         .await;
+//!
+//!     std::process::exit(0)
 //! }
 //!
 //! fn main() {
-//!     pasts::block_on(run())
+//!     Executor::new().cycle(run())
 //! }
 //! ```
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -116,7 +118,7 @@
     html_favicon_url = "https://libcala.github.io/icon.svg",
     html_root_url = "https://docs.rs/pasts"
 )]
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 #![warn(
     anonymous_parameters,
     missing_copy_implementations,
@@ -133,14 +135,12 @@
     variant_size_differences
 )]
 
-#[cfg(any(not(feature = "std"), target_arch = "wasm32"))]
 extern crate alloc;
 
 mod exec;
 mod race;
 mod task;
-mod util;
 
-pub use exec::block_on;
+pub use exec::Executor;
 pub use race::Loop;
 pub use task::Task;

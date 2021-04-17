@@ -8,7 +8,12 @@ mod app;
 
 #[cfg(any(target_arch = "wasm32", target_os = "android"))]
 fn main() {
-    pasts::block_on(app::run());
+    const LOG: devout::Tag = devout::Tag::new("LOGG");
+
+    devout::log!(LOG, "aui");
+    std::thread::park();
+    devout::log!(LOG, "uyo");
+    //    pasts::block_on(app::run());
 }
 
 #[cfg(any(target_arch = "wasm32", target_os = "android"))]

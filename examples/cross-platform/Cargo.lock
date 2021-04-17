@@ -57,7 +57,7 @@ dependencies = [
 
 [[package]]
 name = "pasts"
-version = "0.7.4"
+version = "0.8.0"
 
 [[package]]
 name = "proc-macro2"

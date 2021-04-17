@@ -8,10 +8,8 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use core::future::Future;
-use core::pin::Pin;
-
-#[cfg(any(target_arch = "wasm32", not(feature = "std")))]
+// Compensate for Box not being in the prelude on no-std.
+#[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
 
 /// A boxed, pinned future.
@@ -26,7 +24,7 @@ use alloc::boxed::Box;
 ///
 /// ```
 /// use core::task::Poll;
-/// use pasts::{Task, Loop};
+/// use pasts::{Executor, Loop, Task};
 ///
 /// type Exit = ();
 ///
@@ -48,19 +46,18 @@ use alloc::boxed::Box;
 ///
 /// async fn run() {
 ///     let mut state = State {
-///         tasks: vec![
-///             Box::pin(async { "Hello" }),
-///             Box::pin(async { "World" }),
-///         ]
+///         tasks: vec![Box::pin(async { "Hello" }), Box::pin(async { "World" })],
 ///     };
 ///
 ///     Loop::new(&mut state)
 ///         .poll(|s| &mut s.tasks, State::completion)
 ///         .await;
+///
+///     std::process::exit(0)
 /// }
 ///
 /// fn main() {
-///     pasts::block_on(run())
+///     Executor::new().cycle(run());
 /// }
 /// ```
-pub type Task<T> = Pin<Box<dyn Future<Output = T>>>;
+pub type Task<T> = core::pin::Pin<Box<dyn core::future::Future<Output = T>>>;

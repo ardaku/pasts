@@ -11,27 +11,25 @@ Minimal and simpler alternative to the futures crate.
 The pasts asynchronous runtime is designed for creating user-space software and
 embedded software using an asynchronous event loop.  It aims to abstract away
 all of the pain points of using asynchronous Rust.  Pasts is purposely kept
-small with the entire source directory under 350 lines of Rust code, with
-limited unsafe.
+small with the entire source directory under 350 lines of Rust code.
 
 Check out the [documentation][0] for examples.
 
 # Goals
- - No required std (on no\_std, a single allocation is required)
- - No macros at all (fast compile times)
- - No dependencies
- - No cost (True zero-cost abstractions!)
- - No pain (API super easy to learn & use!)
- - No unsafe code left for *you* to write for working with `Future`s (ability to
-   `#[forbid(unsafe_code)]`)
- - No platform-specific API differences (code works everywhere!).
- - No worrying about pinning and fusing.
+ - No unsafe (safe and sound)
+ - No required std (one-time executor allocation on no-std)
+ - No macros (fast compile times)
+ - No dependencies (bloat-free)
+ - No cost (true zero-cost abstractions)
+ - No pain (API super easy to learn & use)
+ - No platform-specific API differences (code works everywhere).
 
 ### Supported Platforms
 Pasts targets all platforms that can run Rust.  The executor works
 on at least the following platforms (may work on others):
  - All platforms that support threading (includes all tier 1 and some tier 2, 3)
  - Web Assembly In Browser (Tier 2)
+ - No standard devices (Tiers 2 and 3)
 
 ## License
 Licensed under any of
