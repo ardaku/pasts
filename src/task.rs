@@ -52,12 +52,10 @@ use alloc::boxed::Box;
 ///     Loop::new(&mut state)
 ///         .poll(|s| &mut s.tasks, State::completion)
 ///         .await;
-///
-///     std::process::exit(0)
 /// }
 ///
 /// fn main() {
-///     Executor::new().cycle(run());
+///     Executor::default().block_on(run());
 /// }
 /// ```
 pub type Task<T> = core::pin::Pin<Box<dyn core::future::Future<Output = T>>>;

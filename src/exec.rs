@@ -11,6 +11,7 @@
 use alloc::sync::Arc;
 use alloc::task::Wake;
 use core::future::Future;
+use core::sync::atomic::AtomicBool;
 use core::task::Context;
 
 // Compensate for Box not being in the prelude on no-std.
@@ -25,120 +26,95 @@ type GlobalFuture = RefCell<Pin<Box<dyn Future<Output = ()>>>>;
 
 #[cfg(target_arch = "wasm32")]
 thread_local! {
-    static FUTURE: GlobalFuture = RefCell::new(Box::pin(async {}));
+    static FUT: (GlobalFuture, std::task::Waker) = (
+        RefCell::new(Box::pin(async {})), Arc::new(Waker()).into()
+    );
 }
 
 /// The pasts executor.
 #[derive(Debug)]
 #[allow(missing_copy_implementations)] // For no-std
 pub struct Executor {
-    // Which thread the executor is runnning on.
-    #[cfg(feature = "std")]
-    thread: std::thread::Thread,
-
+    // Store waker inside executor if not targetting WebAssembly.
+    #[cfg(not(target_arch = "wasm32"))]
+    waker: Arc<Waker>,
     // Sleep until interrupt routine.
+    #[cfg(not(target_arch = "wasm32"))]
     sleep: fn(),
-    // Wake from interrupt routine.
-    wake: fn(),
 }
 
 impl Default for Executor {
+    #[inline(always)]
     fn default() -> Self {
-        Self::new()
+        Executor {
+            #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+            waker: Arc::new(Waker(std::thread::current())),
+            #[cfg(not(feature = "std"))]
+            waker: Arc::new(Waker(do_nothing)),
+
+            #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+            sleep: std::thread::park,
+            #[cfg(not(feature = "std"))]
+            sleep: do_nothing,
+        }
     }
 }
 
 impl Executor {
-    /// Create a new standard executor.
-    ///
-    /// On no_std, you should use
-    /// [`with_custom()`](crate::Executor::with_custom) to get the best
-    /// performance.
-    pub fn new() -> Self {
-        #[cfg(feature = "std")]
-        return Self::with_custom(std::thread::park, do_nothing);
-
+    /// Create executor with custom sleep until interrupt and wake from
+    /// interrupt routines.  You should always call this method in no-std
+    /// environments.  This method returns `Executor::default()` when the *std*
+    /// feature is enabled.
+    #[inline(always)]
+    pub fn with(sleep: fn(), wake: fn()) -> Self {
+        // Hide unused warnings when *std* feature enabled.
+        let (_sleep, _wake) = (sleep, wake);
         #[cfg(not(feature = "std"))]
-        Self::with_custom(do_nothing, do_nothing)
+        return Self {
+            waker: Arc::new(Waker(_wake)),
+            sleep: _sleep,
+        };
+        #[cfg(feature = "std")]
+        Self::default()
     }
 
-    /// Create an executor with a custom sleep until interrupt and wake from
-    /// interrupt routines.
+    /// Run a future to completion on the current thread.
     ///
-    /// Useful on embedded devices.
-    pub fn with_custom(sleep: fn(), wake: fn()) -> Self {
-        Executor {
-            #[cfg(feature = "std")]
-            thread: std::thread::current(),
-
-            sleep,
-            wake,
-        }
-    }
-
-    /// **std**: Spawn a future on a new thread.
-    #[cfg(feature = "std")]
-    pub fn spawn<F, T>(self, fut: F) -> std::thread::JoinHandle<T>
-    where
-        F: Future<Output = T> + Send + 'static,
-        T: Send + 'static,
-    {
-        self.spawn_with(std::thread::Builder::new(), fut).unwrap()
-    }
-
-    /// **std**: Spawn a future on a new thread.
-    #[cfg(feature = "std")]
-    pub fn spawn_with<F, T>(
-        self,
-        builder: std::thread::Builder,
-        fut: F,
-    ) -> std::io::Result<std::thread::JoinHandle<T>>
-    where
-        F: Future<Output = T> + Send + 'static,
-        T: Send + 'static,
-    {
-        builder.spawn(move || {
-            let mut fut = Box::pin(fut);
-            let sleep = self.sleep;
-            let waker = Arc::new(self).into();
-            let mut cx = Context::from_waker(&waker);
-
-            loop {
-                if let std::task::Poll::Ready(output) =
-                    fut.as_mut().poll(&mut cx)
-                {
-                    break output;
-                } else {
-                    (sleep)();
-                }
-            }
-        })
-    }
-
-    /// Run a future to completion on the current thread in an infinite loop.
-    pub fn cycle<F: Future<Output = ()> + 'static>(self, fut: F) {
+    /// # Platform-Specific Behavior
+    /// In WebAssembly, this function returns immediately instead of blocking,
+    /// since blocking is not supported.  Call this function as the last thing
+    /// in your `main()`, and it will continue to execute the task (yielding to
+    /// the JavaScript executor once `main()` completes).
+    #[inline(always)]
+    pub fn block_on<F: Future<Output = ()> + 'static>(self, fut: F) {
         let mut fut = Box::pin(fut);
-        #[cfg(not(target_arch = "wasm32"))]
-        let sleep = self.sleep;
-        let waker = Arc::new(self).into();
-        let cx = &mut Context::from_waker(&waker);
 
         #[cfg(not(target_arch = "wasm32"))]
-        loop {
-            // Infinite loop.
-            let _ = fut.as_mut().poll(cx);
-            (sleep)();
+        {
+            let waker = self.waker.into();
+            let context = &mut Context::from_waker(&waker);
+            while fut.as_mut().poll(context).is_pending() {
+                (self.sleep)();
+            }
         }
 
         #[cfg(target_arch = "wasm32")]
-        FUTURE.with(move |x| {
-            let _ = fut.as_mut().poll(cx);
+        FUT.with(move |(x, w)| {
+            let _ = fut.as_mut().poll(&mut Context::from_waker(&w));
             *x.borrow_mut() = fut;
-        })
+        });
     }
 }
 
-impl Wake for Executor {
+// The internal waker representation that goes with the executor.
+#[derive(Debug)]
+struct Waker(
+    #[cfg(not(feature = "std"))] fn(),
+    #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+    std::thread::Thread,
+);
+
+impl Wake for Waker {
     #[inline(always)]
     fn wake(self: Arc<Self>) {
         Self::wake_by_ref(&self)
@@ -147,18 +123,17 @@ impl Wake for Executor {
     #[inline(always)]
     fn wake_by_ref(self: &Arc<Self>) {
         #[cfg(not(feature = "std"))]
-        (self.wake)();
+        (self.0)();
 
         #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-        self.thread.unpark();
+        self.0.unpark();
 
         #[cfg(target_arch = "wasm32")]
-        FUTURE.with(move |x| {
-            let waker = self.clone().into();
-            let mut cx = Context::from_waker(&waker);
-            let _ = x.borrow_mut().as_mut().poll(&mut cx);
-        })
+        let _ = FUT.with(|(x, w)| {
+            x.borrow_mut().as_mut().poll(&mut Context::from_waker(&w))
+        });
     }
 }
 
+#[cfg(not(feature = "std"))]
 fn do_nothing() {}

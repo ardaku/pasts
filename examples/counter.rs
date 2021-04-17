@@ -74,10 +74,8 @@ async fn run() {
         .when(|s| &mut s.one, State::one)
         .when(|s| &mut s.two, State::two)
         .await;
-
-    std::process::exit(0)
 }
 
 fn main() {
-    Executor::new().cycle(run())
+    Executor::default().block_on(run())
 }

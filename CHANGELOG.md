@@ -12,13 +12,14 @@ and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
 ### Changed
  - Removed all unsafe!
+ - Executor no longer terminates program upon future completion.
 
 ### Removed
- - `exec!()` macro - use `EventLoop` instead.
- - `join!()` macro - use `LoopBuilder::poll()` instead.
- - `race!()` macro - use `LoopBuilder::poll()` instead.
- - `wait!()` macro - use `LoopBuilder` with `EventLoop` instead.
- - `block_on()` function - use `Executor::new().cycle(future);`, instead.
+ - `exec!()` macro - use `Loop::when()` instead.
+ - `join!()` macro - use `Loop::poll()` instead.
+ - `race!()` macro - use `Loop::poll()` instead.
+ - `wait!()` macro - use `Loop::when()` instead.
+ - `block_on()` function - use `Executor::default().block_on(future);`, instead.
 
 ## [0.7.4] - 2021-01-08
 ### Fixed
