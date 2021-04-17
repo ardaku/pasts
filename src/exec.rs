@@ -15,6 +15,12 @@ use core::future::Future;
 use core::pin::Pin;
 use core::task::Context;
 
+#[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+use std::thread::{self, Thread};
+
+#[cfg(not(target_arch = "wasm32"))]
+use core::sync::atomic::AtomicBool;
+
 #[cfg(target_arch = "wasm32")]
 type GlobalFuture = core::cell::RefCell<Pin<Box<dyn Future<Output = ()>>>>;
 
@@ -41,17 +47,14 @@ pub struct Executor {
 impl Default for Executor {
     #[inline(always)]
     fn default() -> Self {
-        #[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
-        let sleeping = core::sync::atomic::AtomicBool::new(true);
-
         Executor {
             #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-            waker: Arc::new(Waker(std::thread::current(), sleeping)),
+            waker: Arc::new(Waker(thread::current(), AtomicBool::new(true))),
             #[cfg(not(feature = "std"))]
-            waker: Arc::new(Waker(do_nothing)),
+            waker: Arc::new(Waker(do_nothing, AtomicBool::new(true))),
 
             #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-            sleep: std::thread::park,
+            sleep: thread::park,
             #[cfg(not(feature = "std"))]
             sleep: do_nothing,
         }
@@ -69,7 +72,7 @@ impl Executor {
         let (_sleep, _wake) = (sleep, wake);
         #[cfg(not(feature = "std"))]
         return Self {
-            waker: Arc::new(Waker(_wake)),
+            waker: Arc::new(Waker(_wake, AtomicBool::new(true))),
             sleep: _sleep,
         };
         #[cfg(feature = "std")]
@@ -111,10 +114,8 @@ impl Executor {
 #[derive(Debug)]
 struct Waker(
     #[cfg(not(feature = "std"))] fn(),
-    #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-    std::thread::Thread,
-    #[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
-    core::sync::atomic::AtomicBool,
+    #[cfg(all(feature = "std", not(target_arch = "wasm32")))] Thread,
+    #[cfg(all(not(target_arch = "wasm32")))] AtomicBool,
 );
 
 impl Wake for Waker {
@@ -129,8 +130,7 @@ impl Wake for Waker {
         (self.0)();
 
         #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-        {
-            self.1.store(false, core::sync::atomic::Ordering::SeqCst);
+        if self.1.swap(false, core::sync::atomic::Ordering::SeqCst) {
             self.0.unpark();
         }
 

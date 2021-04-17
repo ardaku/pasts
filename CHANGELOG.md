@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 ### Changed
  - Removed all unsafe!
  - Executor no longer terminates program upon future completion.
+ - Executor now uses thread parking instead of condvars internally.
 
 ### Removed
  - `exec!()` macro - use `Loop::when()` instead.
