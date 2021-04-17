@@ -8,7 +8,7 @@ struct State {
 }
 
 impl State {
-    fn completion(&mut self, (id, val): (usize, &str)) -> Poll<Exit> {
+    fn completion(&mut self, id: usize, val: &str) -> Poll<Exit> {
         println!("Received message from {}, completed task: {}", id, val);
         Poll::Ready(())
     }

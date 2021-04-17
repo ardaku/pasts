@@ -63,11 +63,11 @@ impl Default for Executor {
 impl Executor {
     /// Create executor with custom sleep until interrupt and wake from
     /// interrupt routines.  You should always call this method in no-std
-    /// environments.  This method returns `Executor::default()` when the *std*
-    /// feature is enabled.
+    /// environments.  This method returns `Executor::default()` when the
+    /// **std** feature is enabled.
     #[inline(always)]
     pub fn with(sleep: fn(), wake: fn()) -> Self {
-        // Hide unused warnings when *std* feature enabled.
+        // Hide unused warnings when **std** feature enabled.
         let (_sleep, _wake) = (sleep, wake);
         #[cfg(not(feature = "std"))]
         return Self {

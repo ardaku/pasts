@@ -52,7 +52,7 @@ where
     // Future getter closure/function.
     future: G,
     // Callback function
-    event: fn(&mut S, (usize, V)) -> Poll<T>,
+    event: fn(&mut S, usize, V) -> Poll<T>,
 }
 
 impl<F, G, V, S, T, Z> Future for EventSlice<F, G, V, S, T, Z>
@@ -70,7 +70,7 @@ where
         }
         for (i, f) in (this.future)(this.other.state()).iter_mut().enumerate() {
             if let Poll::Ready(out) = Pin::new(f).poll(cx) {
-                return Poll::Ready((this.event)(this.other.state(), (i, out)));
+                return Poll::Ready((this.event)(this.other.state(), i, out));
             }
         }
         Poll::Pending
@@ -178,7 +178,7 @@ where
     pub fn poll<G, V, Z>(
         self,
         f: G,
-        c: fn(&mut S, (usize, V)) -> Poll<T>,
+        c: fn(&mut S, usize, V) -> Poll<T>,
     ) -> Loop<S, T, impl Future<Output = Poll<T>> + Stateful<State = S>>
     where
         G: for<'a> Fn(&'a mut S) -> &'a mut [Z] + Unpin,
