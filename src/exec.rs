@@ -10,24 +10,19 @@
 
 use alloc::sync::Arc;
 use alloc::task::Wake;
+use alloc::boxed::Box;
 use core::future::Future;
 use core::sync::atomic::AtomicBool;
 use core::task::Context;
-
-// Compensate for Box not being in the prelude on no-std.
-#[cfg(not(feature = "std"))]
-use alloc::boxed::Box;
+use core::pin::Pin;
 
 #[cfg(target_arch = "wasm32")]
-use core::{cell::RefCell, pin::Pin};
-
-#[cfg(target_arch = "wasm32")]
-type GlobalFuture = RefCell<Pin<Box<dyn Future<Output = ()>>>>;
+type GlobalFuture = core::cell::RefCell<Pin<Box<dyn Future<Output = ()>>>>;
 
 #[cfg(target_arch = "wasm32")]
 thread_local! {
     static FUT: (GlobalFuture, std::task::Waker) = (
-        RefCell::new(Box::pin(async {})), Arc::new(Waker()).into()
+        core::cell::RefCell::new(Box::pin(async {})), Arc::new(Waker()).into()
     );
 }
 
@@ -87,7 +82,7 @@ impl Executor {
     /// the JavaScript executor once `main()` completes).
     #[inline(always)]
     pub fn block_on<F: Future<Output = ()> + 'static>(self, fut: F) {
-        let mut fut = Box::pin(fut);
+        let mut fut: Pin<Box<_>> = Box::pin(fut);
 
         #[cfg(not(target_arch = "wasm32"))]
         {
