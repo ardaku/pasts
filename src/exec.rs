@@ -8,9 +8,6 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-// This is how you use `Condvar`s, it's in the std library docs
-#![allow(clippy::mutex_atomic)]
-
 use alloc::sync::Arc;
 use alloc::task::Wake;
 use core::future::Future;
@@ -45,7 +42,6 @@ pub struct Executor {
     wake: fn(),
 }
 
-#[cfg(feature = "std")]
 impl Default for Executor {
     fn default() -> Self {
         Self::new()
@@ -53,10 +49,17 @@ impl Default for Executor {
 }
 
 impl Executor {
-    /// **std**: Create a new standard executor.
-    #[cfg(feature = "std")]
+    /// Create a new standard executor.
+    ///
+    /// On no_std, you should use
+    /// [`with_custom()`](crate::Executor::with_custom) to get the best
+    /// performance.
     pub fn new() -> Self {
-        Self::with_custom(std::thread::park, do_nothing)
+        #[cfg(feature = "std")]
+        return Self::with_custom(std::thread::park, do_nothing);
+
+        #[cfg(not(feature = "std"))]
+        Self::with_custom(do_nothing, do_nothing)
     }
 
     /// Create an executor with a custom sleep until interrupt and wake from
@@ -158,5 +161,4 @@ impl Wake for Executor {
     }
 }
 
-#[cfg(feature = "std")]
 fn do_nothing() {}
