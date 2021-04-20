@@ -3,13 +3,13 @@ use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 use core::time::Duration;
-use pasts::{Executor, Loop};
+use pasts::{Executor, Loop, Task};
 
 ///////////////////////////////////
 //// Implement Interval Future ////
 ///////////////////////////////////
 
-struct Interval(Duration, Pin<Box<dyn Future<Output = ()>>>);
+struct Interval(Duration, Task<()>);
 
 impl Interval {
     fn new(duration: Duration) -> Self {
