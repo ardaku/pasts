@@ -14,81 +14,69 @@
 //! The **std** feature is enabled by default, disable it to use on `no_std`.
 //!
 //! # Getting Started
-//! This example pulls in a timer future from the `async-std` crate, then
-//! executes it with the pasts executor.
+//! This example runs two timers in parallel using the `async-std` crate
+//! counting from 0 to 6.  The "one" task will always be run for count 6 and
+//! stop the program, although which task will run for count 5 may be either
+//! "one" or "two" because they trigger at the same time.
 //!
 //! Add the following to your *Cargo.toml*:
 //!
 //! ```toml
 //! [dependencies]
-//! pasts = "0.7"
+//! pasts = "0.8"
 //! aysnc-std = "1.0"
 //! ```
 //!
 //! ```rust,no_run
-//! use core::{time::Duration, future::Future, task::{Context, Poll}, pin::Pin};
-//! use async_std::task;
-//! use pasts::{exec, wait};
+//! use async_std::task::sleep;
+//! use core::future::Future;
+//! use core::task::Poll;
+//! use core::time::Duration;
+//! use pasts::{Loop, Past};
 //!
-//! /// An event handled by the event loop.
-//! enum Event {
-//!     One(()),
-//!     Two(()),
+//! // Exit type for State.
+//! type Exit = ();
+//!
+//! // Shared state between tasks on the thread.
+//! struct State<A: Future<Output = ()>, B: Future<Output = ()>> {
+//!     counter: usize,
+//!     one: Past<(), (), A>,
+//!     two: Past<(), (), B>,
 //! }
 //!
-//! /// Shared state between tasks on the thread.
-//! struct State(usize);
-//!
-//! impl State {
-//!     /// Event loop.  Return false to stop program.
-//!     fn event(&mut self, event: Event) {
-//!         match event {
-//!             Event::One(()) => {
-//!                 println!("One {}", self.0);
-//!                 self.0 += 1;
-//!                 if self.0 > 5 {
-//!                     std::process::exit(0);
-//!                 }
-//!             },
-//!             Event::Two(()) => {
-//!                 println!("Two {}", self.0);
-//!                 self.0 += 1
-//!             },
+//! impl<A: Future<Output = ()>, B: Future<Output = ()>> State<A, B> {
+//!     fn one(&mut self, _: ()) -> Poll<Exit> {
+//!         println!("One {}", self.counter);
+//!         self.counter += 1;
+//!         if self.counter > 6 {
+//!             Poll::Ready(())
+//!         } else {
+//!             Poll::Pending
 //!         }
 //!     }
-//! }
 //!
-//! struct Interval(Duration, Pin<Box<dyn Future<Output = ()>>>);
-//!
-//! impl Interval {
-//!     fn new(duration: Duration) -> Self {
-//!         Interval(duration, Box::pin(task::sleep(duration)))
+//!     fn two(&mut self, _: ()) -> Poll<Exit> {
+//!         println!("Two {}", self.counter);
+//!         self.counter += 1;
+//!         Poll::Pending
 //!     }
 //! }
 //!
-//! impl Future for &mut Interval {
-//!     type Output = ();
+//! async fn run() {
+//!     let mut state = State {
+//!         counter: 0,
+//!         one: Past::new((), |()| sleep(Duration::from_secs_f64(1.0))),
+//!         two: Past::new((), |()| sleep(Duration::from_secs_f64(2.0))),
+//!     };
 //!
-//!     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
-//!         match self.1.as_mut().poll(cx) {
-//!             Poll::Pending => Poll::Pending,
-//!             Poll::Ready(()) => {
-//!                 self.1 = Box::pin(task::sleep(self.0));
-//!                 Poll::Ready(())
-//!             }
-//!         }
-//!     }
+//!     Loop::new(&mut state)
+//!         .when(|s| &mut s.one, State::one)
+//!         .when(|s| &mut s.two, State::two)
+//!         .await;
 //! }
 //!
 //! fn main() {
-//!     let mut state = State(0);
-//!     let mut one = Interval::new(Duration::from_secs_f64(0.999));
-//!     let mut two = Interval::new(Duration::from_secs_f64(2.0));
-//!
-//!     exec!(state.event(wait! {
-//!         Event::One((&mut one).await),
-//!         Event::Two((&mut two).await),
-//!     }))
+//!     pasts::block_on(run())
 //! }
 //! ```
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -97,7 +85,7 @@
     html_favicon_url = "https://libcala.github.io/icon.svg",
     html_root_url = "https://docs.rs/pasts"
 )]
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 #![warn(
     anonymous_parameters,
     missing_copy_implementations,
@@ -114,11 +102,14 @@
     variant_size_differences
 )]
 
-#[cfg(any(not(feature = "std"), target_arch = "wasm32"))]
 extern crate alloc;
 
 mod exec;
-mod poll;
-mod util;
+mod past;
+mod race;
+mod task;
 
-pub use exec::block_on;
+pub use exec::{block_on, Executor};
+pub use past::Past;
+pub use race::Loop;
+pub use task::Task;

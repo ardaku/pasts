@@ -4,6 +4,24 @@ All notable changes to `pasts` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
+## [0.8.0] - Unreleased
+### Added
+ - `Loop` struct to replace `wait!()` and `exec!()`.
+ - `Task` type definition for dynamically spawning tasks.
+ - `Executor` trait for implementing custom executors on no-std.
+ - `Past` struct for executing `!Unpin` futures.
+
+### Changed
+ - Removed all unsafe!
+ - Executor no longer terminates program upon future completion.
+ - Executor now uses thread parking instead of condvars internally.
+
+### Removed
+ - `exec!()` macro - use `Loop::when()` instead.
+ - `join!()` macro - use `Loop::poll()` instead.
+ - `race!()` macro - use `Loop::poll()` instead.
+ - `wait!()` macro - use `Loop::when()` instead.
+
 ## [0.7.4] - 2021-01-08
 ### Fixed
  - Executor never going to sleep, wasting CPU cycles.

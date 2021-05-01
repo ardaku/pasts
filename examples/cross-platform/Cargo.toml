@@ -1,0 +1,19 @@
+[package]
+name = "glue"
+version = "0.1.0"
+authors = ["Jeron Aldaron Lau <jeronlau@plopgrizzly.com>"]
+edition = "2018"
+
+[lib]
+path = "shim.rs"
+
+[[bin]]
+name = "glue"
+path = "glue.rs"
+
+[profile.release]
+opt-level = "s"
+
+[dependencies]
+pasts = { path = "../.." }
+devout = "0.2"

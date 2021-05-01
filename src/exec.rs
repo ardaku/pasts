@@ -8,130 +8,145 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-// This is how you use `Condvar`s, it's in the std library docs
-#![allow(clippy::mutex_atomic)]
-
-use core::future::Future;
-
-#[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-use std::{
-    process,
-    sync::{Condvar, Mutex},
-    task::Poll,
-};
-
-#[cfg(any(target_arch = "wasm32", not(feature = "std")))]
 use alloc::boxed::Box;
-#[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-use core::{cell::RefCell, pin::Pin};
+use alloc::sync::Arc;
+use alloc::task::Wake;
+use core::future::Future;
+use core::pin::Pin;
+use core::task::Context;
 
-#[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-pub(crate) struct Exec(RefCell<Option<Pin<Box<dyn Future<Output = ()>>>>>);
-
-#[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-pub(crate) struct Exec {
-    // The thread-safe waking mechanism: part 1
-    mutex: Mutex<bool>,
-    // The thread-safe waking mechanism: part 2
-    cvar: Condvar,
+#[cfg(target_arch = "wasm32")]
+thread_local! {
+    static FUT: (
+        std::cell::RefCell<Pin<Box<dyn Future<Output = ()>>>>,
+        std::task::Waker,
+    ) = (
+        std::cell::RefCell::new(Box::pin(std::future::pending())),
+        Arc::new(Woke(Exec())).into(),
+    );
 }
 
-impl Exec {
-    #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-    pub(crate) fn new() -> Self {
-        Self {
-            mutex: Mutex::new(true),
-            cvar: Condvar::new(),
+// Internal waker type.
+struct Woke<E: Executor>(E);
+
+// Always call executor's wake() method.
+impl<E: Executor> Wake for Woke<E> {
+    #[inline(always)]
+    fn wake(self: Arc<Self>) {
+        self.0.wake()
+    }
+
+    #[inline(always)]
+    fn wake_by_ref(self: &Arc<Self>) {
+        self.0.wake()
+    }
+}
+
+/// Trait for implementing custom executors.  Useful when targetting no-std.
+pub trait Executor: Sized + Send + Sync + 'static {
+    /// The sleep routine; should put the processor or thread to sleep in order
+    /// to save CPU cycles and power, until the hardware tells it to wake up.
+    fn sleep(&self);
+
+    /// The wake routine; should wake the processor or thread.  If the hardware
+    /// is already waked up automatically, this doesn't need to be implemented.
+    #[inline(always)]
+    fn wake(&self) {}
+
+    /// Block on an unpin future on the current thread.
+    #[inline(always)]
+    fn block_on_pinned<F>(self, future: F)
+    where
+        F: Future<Output = ()> + Unpin + 'static,
+    {
+        #[cfg(target_arch = "wasm32")]
+        self.block_on(future);
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            // Pin the future.
+            let mut f = future;
+            // Put the executor on the heap.
+            let executor = Arc::new(Woke(self));
+            // Convert executor into a waker.
+            let waker = executor.clone().into();
+            // Create a context from the waker.
+            let cx = &mut Context::from_waker(&waker);
+
+            // If blocking is allowed, loop while blocking.
+            loop {
+                // First, poll
+                if let core::task::Poll::Ready(it) = Pin::new(&mut f).poll(cx) {
+                    break it;
+                }
+                // Next, wait for wake up completes before polling again.
+                executor.0.sleep();
+            }
         }
     }
 
-    #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-    pub(crate) fn new() -> Self {
-        Self(RefCell::new(None))
-    }
-
-    #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-    pub(crate) fn wake(&self) {
-        // Keep mutex locked for the remainder of this function call.
-        let mut sleeping = self.mutex.lock().unwrap();
-        // Wake the task running on a separate thread via CondVar
-        *sleeping = false;
-        // We notify the condvar that the value has changed.
-        self.cvar.notify_one();
-    }
-
-    #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-    pub(crate) fn wake(&self) {
-        // Wake the task running on this thread - one pass through executor.
-        crate::util::waker(self, |cx| {
-            self.0
-                .borrow_mut()
-                .as_mut()
-                .unwrap()
-                .as_mut()
-                .poll(cx)
-                .is_pending()
+    /// Block on a future on the current thread (puts the future on the heap).
+    #[inline(always)]
+    fn block_on<F: Future<Output = ()> + 'static>(self, future: F) {
+        // WebAssembly can't block, so poll once, then return.
+        #[cfg(target_arch = "wasm32")]
+        let _ = FUT.with(move |(f, e)| {
+            *f.borrow_mut() = Box::pin(future);
+            f.borrow_mut().as_mut().poll(&mut Context::from_waker(&e))
         });
-    }
 
-    #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-    fn execute<T, F: Future<Output = T>>(&mut self, f: F) -> T {
-        let mut f = Box::pin(f);
-        // Get a waker and context for this executor.
-        crate::util::waker(self, |cx| {
-            loop {
-                // Exit with future output, on future completion, otherwise…
-                if let Poll::Ready(value) = f.as_mut().poll(cx) {
-                    break value;
-                }
-                // Put the thread to sleep until wake() is called.
-                let sleeping = self.mutex.lock().unwrap();
-                *self.cvar.wait_while(sleeping, |p| *p).unwrap() = true;
-            }
-        })
-    }
-
-    #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-    fn execute<F: Future<Output = ()> + 'static>(&self, f: F) {
-        // Set the future for this executor.
-        *self.0.borrow_mut() = Some(Box::pin(f));
-        // Begin Executor
-        self.wake();
+        // Pin and block on the future.
+        #[cfg(not(target_arch = "wasm32"))]
+        self.block_on_pinned(Box::pin(future));
     }
 }
 
-/// Execute a future on the current thread.
-///
-/// Upon completion of the future, the program will exit.  This allows for some
-/// optimizations and simplification of code (as well as behavioral consistency
-/// on Web Assembly.  You may call `block_on()` on multiple threads to build an
-/// asynchronous thread pool.
-pub fn block_on<F: Future<Output = ()> + 'static>(f: F) {
-    // Can start tasks on their own threads.
+// Default executor implementation.
+#[derive(Debug)]
+struct Exec(
+    // On std, store which thread, as well as an "awake?" flag.
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-    {
-        let mut exec = Exec::new();
-        exec.execute(f);
-        process::exit(0);
+    (std::thread::Thread, std::sync::atomic::AtomicBool),
+);
+
+impl Executor for Exec {
+    #[inline(always)]
+    fn sleep(&self) {
+        // On std, park the current thread, without std do nothing.
+        #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+        while self.0 .1.swap(true, std::sync::atomic::Ordering::SeqCst) {
+            std::thread::park();
+        }
     }
 
-    // Can allocate task queue.
-    #[cfg(any(target_arch = "wasm32", not(feature = "std")))]
-    {
-        crate::util::exec().execute(f);
+    #[inline(always)]
+    fn wake(&self) {
+        #[cfg(target_arch = "wasm32")]
+        let _ = FUT.with(move |(f, e)| {
+            f.borrow_mut().as_mut().poll(&mut Context::from_waker(&e))
+        });
+
+        // On std, unpark the current thread, setting the awake? flag if needed.
+        #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+        if self.0 .1.swap(false, std::sync::atomic::Ordering::SeqCst) {
+            self.0 .0.unpark();
+        }
     }
 }
 
-/// Macro to remove boilerplate for executing an asynchronous event loop.
+/// Run a future to completion on the current thread.
 ///
-/// Argument is an async expression that runs continuously in a loop.
-#[macro_export]
-macro_rules! exec {
-    ($exec:expr) => {{
-        $crate::block_on(async move {
-            loop {
-                $exec
-            }
-        });
-    }};
+/// # Platform-Specific Behavior
+/// On WebAssembly, this function returns immediately instead of blocking
+/// because you're not supposed to block in a web browser.
+pub fn block_on<F: Future<Output = ()> + 'static>(future: F) {
+    // On std, associate the current thread.
+    Exec(
+        #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+        (
+            std::thread::current(),
+            std::sync::atomic::AtomicBool::new(true),
+        ),
+    )
+    .block_on(future)
 }

@@ -1,5 +1,3 @@
-#![forbid(unsafe_code)]
-
 use async_std::task;
 use core::time::Duration;
 
