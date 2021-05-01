@@ -24,7 +24,7 @@ use alloc::boxed::Box;
 ///
 /// ```
 /// use core::task::Poll;
-/// use pasts::{Executor, Loop, Task};
+/// use pasts::{Loop, Task};
 ///
 /// type Exit = ();
 ///
@@ -55,7 +55,7 @@ use alloc::boxed::Box;
 /// }
 ///
 /// fn main() {
-///     Executor::default().block_on(run());
+///     pasts::block_on(run());
 /// }
 /// ```
 pub type Task<T> = core::pin::Pin<Box<dyn core::future::Future<Output = T>>>;

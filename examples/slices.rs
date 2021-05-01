@@ -1,5 +1,5 @@
 use core::task::Poll;
-use pasts::{Executor, Loop, Task};
+use pasts::{Loop, Task};
 
 type Exit = ();
 
@@ -25,5 +25,5 @@ async fn run() {
 }
 
 fn main() {
-    Executor::default().block_on(run())
+    pasts::block_on(run())
 }

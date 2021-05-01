@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 ### Added
  - `Loop` struct to replace `wait!()` and `exec!()`.
  - `Task` type definition for dynamically spawning tasks.
- - `Executor` struct for executing futures (replaces `block_on()`).
+ - `Executor` trait for implementing custom executors on no-std.
+ - `Past` struct for executing `!Unpin` futures.
 
 ### Changed
  - Removed all unsafe!
@@ -20,7 +21,6 @@ and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
  - `join!()` macro - use `Loop::poll()` instead.
  - `race!()` macro - use `Loop::poll()` instead.
  - `wait!()` macro - use `Loop::when()` instead.
- - `block_on()` function - use `Executor::default().block_on(future);`, instead.
 
 ## [0.7.4] - 2021-01-08
 ### Fixed

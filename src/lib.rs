@@ -30,52 +30,21 @@
 //! ```rust,no_run
 //! use async_std::task::sleep;
 //! use core::future::Future;
-//! use core::pin::Pin;
-//! use core::task::{Context, Poll};
+//! use core::task::Poll;
 //! use core::time::Duration;
-//! use pasts::{Executor, Loop, Task};
-//!
-//! ///////////////////////////////////
-//! //// Implement Interval Future ////
-//! ///////////////////////////////////
-//!
-//! struct Interval(Duration, Task<()>);
-//!
-//! impl Interval {
-//!     fn new(duration: Duration) -> Self {
-//!         Interval(duration, Box::pin(sleep(duration)))
-//!     }
-//! }
-//!
-//! impl Future for Interval {
-//!     type Output = ();
-//!
-//!     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
-//!         match self.1.as_mut().poll(cx) {
-//!             Poll::Pending => Poll::Pending,
-//!             Poll::Ready(()) => {
-//!                 self.1 = Box::pin(sleep(self.0));
-//!                 Poll::Ready(())
-//!             }
-//!         }
-//!     }
-//! }
-//!
-//! ///////////////////////
-//! //// Pasts Example ////
-//! ///////////////////////
+//! use pasts::{Loop, Past};
 //!
 //! // Exit type for State.
 //! type Exit = ();
 //!
 //! // Shared state between tasks on the thread.
-//! struct State {
+//! struct State<A: Future<Output = ()>, B: Future<Output = ()>> {
 //!     counter: usize,
-//!     one: Interval,
-//!     two: Interval,
+//!     one: Past<(), (), A>,
+//!     two: Past<(), (), B>,
 //! }
 //!
-//! impl State {
+//! impl<A: Future<Output = ()>, B: Future<Output = ()>> State<A, B> {
 //!     fn one(&mut self, _: ()) -> Poll<Exit> {
 //!         println!("One {}", self.counter);
 //!         self.counter += 1;
@@ -96,8 +65,8 @@
 //! async fn run() {
 //!     let mut state = State {
 //!         counter: 0,
-//!         one: Interval::new(Duration::from_secs_f64(1.0)),
-//!         two: Interval::new(Duration::from_secs_f64(2.0)),
+//!         one: Past::new((), |()| sleep(Duration::from_secs_f64(1.0))),
+//!         two: Past::new((), |()| sleep(Duration::from_secs_f64(2.0))),
 //!     };
 //!
 //!     Loop::new(&mut state)
@@ -107,7 +76,7 @@
 //! }
 //!
 //! fn main() {
-//!     Executor::default().block_on(run())
+//!     pasts::block_on(run())
 //! }
 //! ```
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -136,9 +105,11 @@
 extern crate alloc;
 
 mod exec;
+mod past;
 mod race;
 mod task;
 
-pub use exec::Executor;
+pub use exec::{block_on, Executor};
+pub use past::Past;
 pub use race::Loop;
 pub use task::Task;
