@@ -4,7 +4,7 @@ All notable changes to `pasts` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
-## [0.8.0] - Unreleased
+## [0.8.0] - 2021-06-18
 ### Added
  - `Loop` struct to replace `wait!()` and `exec!()`.
  - `Task` type definition for dynamically spawning tasks.
