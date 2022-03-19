@@ -1,5 +1,4 @@
-# Pasts
-# Copyright © 2019-2021 Jeron Aldaron Lau.
+# Copyright © 2019-2022 The Pasts Contributors.
 #
 # Licensed under any of:
 #  - Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
@@ -17,7 +16,7 @@ description = "Minimal and simpler alternative to the futures crate."
 repository = "https://github.com/AldaronLau/pasts"
 documentation = "https://docs.rs/pasts"
 homepage = "https://github.com/AldaronLau/pasts/blob/main/CHANGELOG.md"
-include = ["Cargo.toml", "src/*"]
+include = ["Cargo.toml", "src/*", "README.md"]
 keywords = ["futures", "platform-agnostic", "cross-platform", "io", "executor"]
 categories = ["asynchronous", "embedded", "no-std", "rust-patterns", "wasm"]
 readme = "README.md"
