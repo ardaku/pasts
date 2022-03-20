@@ -2,9 +2,14 @@
 
 #### [Changelog][3] | [Source][4] | [Getting Started][5]
 
-[![tests](https://github.com/AldaronLau/pasts/workflows/tests/badge.svg)][2]
-[![docs](https://docs.rs/pasts/badge.svg)][0]
-[![crates.io](https://img.shields.io/crates/v/pasts.svg)][1]
+[![tests](https://github.com/AldaronLau/pasts/actions/workflows/ci.yml/badge.svg)](https://github.com/AldaronLau/pasts/actions/workflows/ci.yml)
+[![GitHub commit activity](https://img.shields.io/github/commit-activity/m/AldaronLau/pasts)](https://github.com/AldaronLau/pasts/)
+[![GitHub contributors](https://img.shields.io/github/contributors/AldaronLau/pasts)](https://github.com/AldaronLau/pasts/graphs/contributors)  
+[![Crates.io](https://img.shields.io/crates/v/pasts)](https://crates.io/crates/pasts)
+[![Crates.io](https://img.shields.io/crates/d/pasts)](https://crates.io/crates/pasts)
+[![Crates.io (recent)](https://img.shields.io/crates/dr/pasts)](https://crates.io/crates/pasts)  
+[![Crates.io](https://img.shields.io/crates/l/pasts)](https://github.com/AldaronLau/pasts/search?l=Text&q=license)
+[![Docs.rs](https://docs.rs/pasts/badge.svg)](https://docs.rs/pasts/)
 
 Minimal and simpler alternative to the futures crate.
 
