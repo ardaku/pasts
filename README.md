@@ -3,7 +3,7 @@
 #### [Changelog][3] | [Source][4] | [Getting Started][5]
 
 [![tests](https://github.com/AldaronLau/pasts/actions/workflows/ci.yml/badge.svg)](https://github.com/AldaronLau/pasts/actions/workflows/ci.yml)
-[![GitHub commit activity](https://img.shields.io/github/commit-activity/m/AldaronLau/pasts)](https://github.com/AldaronLau/pasts/)
+[![GitHub commit activity](https://img.shields.io/github/commit-activity/y/AldaronLau/pasts)](https://github.com/AldaronLau/pasts/)
 [![GitHub contributors](https://img.shields.io/github/contributors/AldaronLau/pasts)](https://github.com/AldaronLau/pasts/graphs/contributors)  
 [![Crates.io](https://img.shields.io/crates/v/pasts)](https://crates.io/crates/pasts)
 [![Crates.io](https://img.shields.io/crates/d/pasts)](https://crates.io/crates/pasts)
