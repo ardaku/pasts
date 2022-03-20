@@ -34,8 +34,8 @@ impl<A: Future<Output = ()>, B: Future<Output = ()>> State<A, B> {
 async fn run() {
     let mut state = State {
         counter: 0,
-        one: Past::new((), |()| sleep(Duration::from_secs_f64(1.0))),
-        two: Past::new((), |()| sleep(Duration::from_secs_f64(2.0))),
+        one: Past::pin(|| sleep(Duration::from_secs_f64(1.0))),
+        two: Past::pin(|| sleep(Duration::from_secs_f64(2.0))),
     };
 
     Loop::new(&mut state)

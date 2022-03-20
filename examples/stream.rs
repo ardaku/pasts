@@ -44,11 +44,11 @@ mod timer {
     }
 }
 
-use pasts::AsPast;
+use pasts::Past;
 use timer::Timer;
 
 async fn async_main() {
-    let mut timer = Timer::new().as_past();
+    let mut timer = Past::from(&mut Timer::new());
 
     for _ in 0..3 {
         println!("Waiting 1 second...");

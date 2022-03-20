@@ -80,8 +80,8 @@
 //! ```
 #![cfg_attr(not(feature = "std"), no_std)]
 #![doc(
-    html_logo_url = "https://libcala.github.io/logo.svg",
-    html_favicon_url = "https://libcala.github.io/icon.svg",
+    html_logo_url = "https://ardaku.github.io/mm/logo.svg",
+    html_favicon_url = "https://ardaku.github.io/mm/icon.svg",
     html_root_url = "https://docs.rs/pasts"
 )]
 #![forbid(unsafe_code)]
@@ -109,6 +109,6 @@ mod race;
 mod task;
 
 pub use exec::{block_on, Executor};
-pub use past::{AsPast, Past};
+pub use past::Past;
 pub use race::Loop;
 pub use task::Task;

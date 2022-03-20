@@ -13,10 +13,7 @@ use core::{
     iter::{self, RepeatWith},
     marker::PhantomData,
     pin::Pin,
-    task::{
-        Context,
-        Poll::{self, Pending, Ready},
-    },
+    task::{Context, Poll},
 };
 
 /// Trait for infinite async iteration.  Usually you won't need to use this
@@ -25,23 +22,23 @@ use core::{
 /// If the underlying type can become disconnected, that should be handled in
 /// the future's output (wrapping in [`Option`]).
 #[allow(single_use_lifetimes)]
-pub trait AsPast<'a, F, O, R>
+pub trait AsPast<'a, O, F, R>
 where
     F: Future<Output = O> + Send + Unpin,
     R: FnMut() -> F,
 {
     /// Convert into a [`Past`].
-    fn as_past(&'a mut self) -> Past<F, O, R, ()>;
+    fn as_past(&'a mut self) -> Past<O, F, R>;
 }
 
-impl<'a, T: 'a, F, O, R> AsPast<'a, F, O, R> for T
+impl<'a, T: 'a, O, F, R> AsPast<'a, O, F, R> for T
 where
     &'a mut T: IntoIterator<Item = F, IntoIter = RepeatWith<R>>,
     F: Future<Output = O> + Send + Unpin,
     R: FnMut() -> F,
 {
     #[inline(always)]
-    fn as_past(&'a mut self) -> Past<F, O, R, ()> {
+    fn as_past(&'a mut self) -> Past<O, F, R> {
         Past {
             repeater: self.into_iter(),
             future: (),
@@ -50,9 +47,9 @@ where
     }
 }
 
-/// Infinite asynchronous iterator
+/// Infinite asynchronous iterator.
 #[derive(Debug)]
-pub struct Past<F, O, R, M> {
+pub struct Past<O = (), F = crate::Task<O>, R = fn() -> F, M = ()> {
     future: M,
     repeater: RepeatWith<R>,
     // Seriously, not that complicated.
@@ -60,7 +57,7 @@ pub struct Past<F, O, R, M> {
     _phantom: PhantomData<(Pin<Box<F>>, Pin<Box<O>>)>,
 }
 
-impl<F, O, R> Past<F, O, R, ()>
+impl<O, F, R> Past<O, F, R>
 where
     R: FnMut() -> F,
     F: Future<Output = O> + Send + Unpin,
@@ -80,14 +77,11 @@ where
     #[allow(clippy::should_implement_trait)]
     #[inline(always)]
     pub fn next(&mut self) -> F {
-        match self.repeater.next() {
-            Some(x) => x,
-            None => unreachable!(),
-        }
+        self.repeater.next().unwrap_or_else(|| unreachable!())
     }
 }
 
-impl<F, O, R> Past<Box<Pin<F>>, O, R, Pin<Box<F>>>
+impl<O, F, R> Past<Pin<Box<F>>, O, R, Pin<Box<F>>>
 where
     R: (FnMut() -> F) + Send,
     F: Future<Output = O> + Send,
@@ -103,10 +97,7 @@ where
         let mut repeater = iter::repeat_with(async_fn);
 
         Past {
-            future: Box::pin(match repeater.next() {
-                Some(x) => x,
-                None => unreachable!(),
-            }),
+            future: Box::pin(repeater.next().unwrap_or_else(|| unreachable!())),
             repeater,
             _phantom: PhantomData,
         }
@@ -121,15 +112,15 @@ where
     }
 }
 
-struct SendUnpinFuture<'a, F, O, R>
+struct SendUnpinFuture<'a, O, F, R>
 where
     F: Future<Output = O> + Send,
     R: (FnMut() -> F) + Send,
 {
-    past: &'a mut Past<Box<Pin<F>>, O, R, Pin<Box<F>>>,
+    past: &'a mut Past<Pin<Box<F>>, O, R, Pin<Box<F>>>,
 }
 
-impl<F, O, R> Future for SendUnpinFuture<'_, F, O, R>
+impl<O, F, R> Future for SendUnpinFuture<'_, O, F, R>
 where
     F: Future<Output = O> + Send,
     R: (FnMut() -> F) + Send,
@@ -137,16 +128,22 @@ where
     type Output = O;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<O> {
-        match self.past.future.as_mut().poll(cx) {
-            Ready(output) => {
-                let new = match self.past.repeater.next() {
-                    Some(x) => x,
-                    None => unreachable!(),
-                };
-                self.past.future.set(new);
-                Ready(output)
-            }
-            Pending => Pending,
-        }
+        let past = &mut self.past;
+        past.future.as_mut().poll(cx).map(move |output| {
+            let new = past.repeater.next().unwrap_or_else(|| unreachable!());
+            past.future.set(new);
+            output
+        })
+    }
+}
+
+impl<'a, O, F, R, T> From<&'a mut T> for Past<O, F, R>
+where
+    T: AsPast<'a, O, F, R>,
+    F: Future<Output = O> + Send + Unpin,
+    R: FnMut() -> F,
+{
+    fn from(from: &'a mut T) -> Self {
+        from.as_past()
     }
 }
