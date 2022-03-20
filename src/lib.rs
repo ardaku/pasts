@@ -109,6 +109,6 @@ mod race;
 mod task;
 
 pub use exec::{block_on, Executor};
-pub use past::Past;
+pub use past::{AsPast, Past};
 pub use race::Loop;
 pub use task::Task;

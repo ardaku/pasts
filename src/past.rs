@@ -10,37 +10,143 @@
 use alloc::boxed::Box;
 use core::{
     future::Future,
+    iter::{self, RepeatWith},
+    marker::PhantomData,
     pin::Pin,
-    task::{Context, Poll},
+    task::{
+        Context,
+        Poll::{self, Pending, Ready},
+    },
 };
 
-type Fut<T> = Pin<Box<T>>;
-
-/// A repeating `async fn`.
+/// Trait for infinite async iteration.  Usually you won't need to use this
+/// directly.
 ///
-/// This is needed to both pin an `async fn`, and avoid panics of `async fn`
-/// being polled after it returns `Poll::Ready()`.  Note that this does
-/// allocate upon creation.
-#[allow(missing_debug_implementations)]
-pub struct Past<S: Unpin, T, F: Future<Output = T>>(S, fn(&mut S) -> F, Fut<F>);
+/// If the underlying type can become disconnected, that should be handled in
+/// the future's output (wrapping in [`Option`]).
+#[allow(single_use_lifetimes)]
+pub trait AsPast<'a, F, O, R>
+where
+    F: Future<Output = O> + Send + Unpin,
+    R: FnMut() -> F,
+{
+    /// Convert into a [`Past`].
+    fn as_past(&'a mut self) -> Past<F, O, R, ()>;
+}
 
-impl<S: Unpin, T, F: Future<Output = T>> Past<S, T, F> {
-    /// Create a new repeating `Unpin` async function.
-    pub fn new(mut state: S, async_fn: fn(&mut S) -> F) -> Self {
-        let future = Box::pin((async_fn)(&mut state));
-        Self(state, async_fn, future)
+impl<'a, T: 'a, F, O, R> AsPast<'a, F, O, R> for T
+where
+    &'a mut T: IntoIterator<Item = F, IntoIter = RepeatWith<R>>,
+    F: Future<Output = O> + Send + Unpin,
+    R: FnMut() -> F,
+{
+    #[inline(always)]
+    fn as_past(&'a mut self) -> Past<F, O, R, ()> {
+        Past {
+            repeater: self.into_iter(),
+            future: (),
+            _phantom: PhantomData,
+        }
     }
 }
 
-impl<S: Unpin, T, F: Future<Output = T>> Future for Past<S, T, F> {
-    type Output = T;
+/// Infinite asynchronous iterator
+#[derive(Debug)]
+pub struct Past<F, O, R, M> {
+    future: M,
+    repeater: RepeatWith<R>,
+    // Seriously, not that complicated.
+    #[allow(clippy::type_complexity)]
+    _phantom: PhantomData<(Pin<Box<F>>, Pin<Box<O>>)>,
+}
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
-        let poll = self.2.as_mut().poll(cx);
-        if poll.is_ready() {
-            let new = self.1(&mut self.0);
-            self.2.set(new);
+impl<F, O, R> Past<F, O, R, ()>
+where
+    R: FnMut() -> F,
+    F: Future<Output = O> + Send + Unpin,
+{
+    /// Create a [`Past`] from a repeating async function/closure.
+    #[inline(always)]
+    pub fn new(async_fn: R) -> Self {
+        Self {
+            repeater: iter::repeat_with(async_fn),
+            future: (),
+            _phantom: PhantomData,
         }
-        poll
+    }
+
+    /// Get a new [`Unpin`] + [`Send`] future ready on next I/O completion.
+    // Because this is an "async iterator", and doesn't ever return `None`.
+    #[allow(clippy::should_implement_trait)]
+    #[inline(always)]
+    pub fn next(&mut self) -> F {
+        match self.repeater.next() {
+            Some(x) => x,
+            None => unreachable!(),
+        }
+    }
+}
+
+impl<F, O, R> Past<Box<Pin<F>>, O, R, Pin<Box<F>>>
+where
+    R: (FnMut() -> F) + Send,
+    F: Future<Output = O> + Send,
+    O: Send,
+{
+    /// Create a [`Past`] from a repeating async function/closure.
+    ///
+    /// Unlike [`Past::new`], the returned future is not required to be
+    /// [`Unpin`].  This comes at the cost of a single allocation when this
+    /// function is called.
+    #[inline(always)]
+    pub fn pin(async_fn: R) -> Self {
+        let mut repeater = iter::repeat_with(async_fn);
+
+        Past {
+            future: Box::pin(match repeater.next() {
+                Some(x) => x,
+                None => unreachable!(),
+            }),
+            repeater,
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Get a new [`Unpin`] + [`Send`] future ready on next I/O completion.
+    // Because this is an "async iterator", and doesn't ever return `None`.
+    #[allow(clippy::should_implement_trait)]
+    #[inline(always)]
+    pub fn next(&mut self) -> impl Future<Output = O> + Send + Unpin + '_ {
+        SendUnpinFuture { past: self }
+    }
+}
+
+struct SendUnpinFuture<'a, F, O, R>
+where
+    F: Future<Output = O> + Send,
+    R: (FnMut() -> F) + Send,
+{
+    past: &'a mut Past<Box<Pin<F>>, O, R, Pin<Box<F>>>,
+}
+
+impl<F, O, R> Future for SendUnpinFuture<'_, F, O, R>
+where
+    F: Future<Output = O> + Send,
+    R: (FnMut() -> F) + Send,
+{
+    type Output = O;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<O> {
+        match self.past.future.as_mut().poll(cx) {
+            Ready(output) => {
+                let new = match self.past.repeater.next() {
+                    Some(x) => x,
+                    None => unreachable!(),
+                };
+                self.past.future.set(new);
+                Ready(output)
+            }
+            Pending => Pending,
+        }
     }
 }
