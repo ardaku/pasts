@@ -1,7 +1,6 @@
+use core::{future::Future, task::Poll, time::Duration};
+
 use async_std::task::sleep;
-use core::future::Future;
-use core::task::Poll;
-use core::time::Duration;
 use pasts::{Loop, Past};
 
 // Exit type for State.

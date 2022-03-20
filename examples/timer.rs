@@ -1,5 +1,6 @@
-use async_std::task;
 use core::time::Duration;
+
+use async_std::task;
 
 fn main() {
     pasts::block_on(async {

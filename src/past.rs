@@ -8,9 +8,11 @@
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
 use alloc::boxed::Box;
-use core::future::Future;
-use core::pin::Pin;
-use core::task::{Context, Poll};
+use core::{
+    future::Future,
+    pin::Pin,
+    task::{Context, Poll},
+};
 
 type Fut<T> = Pin<Box<T>>;
 

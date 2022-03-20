@@ -7,12 +7,8 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use alloc::boxed::Box;
-use alloc::sync::Arc;
-use alloc::task::Wake;
-use core::future::Future;
-use core::pin::Pin;
-use core::task::Context;
+use alloc::{boxed::Box, sync::Arc, task::Wake};
+use core::{future::Future, pin::Pin, task::Context};
 
 #[cfg(target_arch = "wasm32")]
 thread_local! {
