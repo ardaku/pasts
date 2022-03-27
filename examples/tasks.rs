@@ -1,4 +1,4 @@
-use pasts::{prelude::*, Loop, Task};
+use pasts::{prelude::*, Loop, Past};
 
 enum Exit {
     /// Task has completed, remove it
@@ -18,8 +18,8 @@ impl State {
 async fn run() {
     let mut state = State {};
     let mut tasks = vec![
-        Task::pin(|| async { "Hello" }),
-        Task::pin(|| async { "World" }),
+        Past::pin(|| async { "Hello" }),
+        Past::pin(|| async { "World" }),
     ];
 
     while !tasks.is_empty() {
