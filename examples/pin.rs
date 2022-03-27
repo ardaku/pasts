@@ -11,7 +11,7 @@ async fn async_main() {
     let mut timer = Past::pin(|| async {
         async_std::task::sleep(SECOND).await;
     });
-    
+
     for _ in 0..3 {
         println!("Waiting 1 second...");
         timer.next().await;

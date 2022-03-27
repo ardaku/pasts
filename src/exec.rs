@@ -49,7 +49,7 @@ pub trait Executor: Send + Sync + 'static {
     fn wake(&self) {}
 }
 
-impl<T> BlockOn for T where T: Sized + Executor { }
+impl<T> BlockOn for T where T: Sized + Executor {}
 
 /// Trait that implements block_on and block_on_pinned methods for an Executor
 pub trait BlockOn: Sized + Executor {
