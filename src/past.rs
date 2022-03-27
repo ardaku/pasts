@@ -26,35 +26,40 @@ use core::{
 /// they both complete.
 ///
 /// ```
-/// use core::task::Poll;
-/// use pasts::{Loop, Task};
+/// use pasts::{prelude::*, Loop, Task};
 ///
-/// type Exit = ();
-///
-/// struct State {
-///     tasks: Vec<Task<&'static str>>,
+/// enum Exit {
+///     /// Task has completed, remove it
+///     Remove(usize),
 /// }
 ///
+/// struct State {}
+///
 /// impl State {
-///     fn completion(&mut self, id: usize, val: &str) -> Poll<Exit> {
-///         self.tasks.remove(id);
+///     fn completion(&mut self, (id, val): (usize, &str)) -> Poll<Exit> {
 ///         println!("Received message from completed task: {}", val);
-///         if self.tasks.is_empty() {
-///             Poll::Ready(())
-///         } else {
-///             Poll::Pending
-///         }
+///
+///         Ready(Exit::Remove(id))
 ///     }
 /// }
 ///
 /// async fn run() {
-///     let mut state = State {
-///         tasks: vec![Box::pin(async { "Hello" }), Box::pin(async { "World" })],
-///     };
+///     let mut state = State {};
+///     let mut tasks = vec![
+///         Task::pin(|| async { "Hello" }),
+///         Task::pin(|| async { "World" }),
+///     ];
 ///
-///     Loop::new(&mut state)
-///         .poll(|s| &mut s.tasks, State::completion)
-///         .await;
+///     while !tasks.is_empty() {
+///         match Loop::new(&mut state)
+///             .on(tasks.as_mut_slice(), State::completion)
+///             .await
+///         {
+///             Exit::Remove(index) => {
+///                 tasks.swap_remove(index);
+///             }
+///         }
+///     }
 /// }
 ///
 /// fn main() {
@@ -74,7 +79,7 @@ pub struct Past<F: FnMut(&mut Context<'_>) -> Poll<O>, O = ()> {
     poll_next: F,
 }
 
-impl<O> Past<fn(&mut Context<'_>) -> Poll<O>, O> {
+impl<O> Past<Box<dyn FnMut(&mut Context<'_>) -> Poll<O> + Send>, O> {
     /// Creates a [`Past`] that wraps a function returning a `!`[`Unpin`] future.
     ///
     /// Note that this API does require an allocator.
@@ -85,6 +90,7 @@ impl<O> Past<fn(&mut Context<'_>) -> Poll<O>, O> {
         N: FnMut() -> T + Send + 'static,
     {
         let mut boxy = Box::pin((future_fn)());
+
         Past::with(Box::new(move |cx| {
             boxy.as_mut().poll(cx).map(|output| {
                 boxy.set((future_fn)());
@@ -104,6 +110,7 @@ impl<O> Past<fn(&mut Context<'_>) -> Poll<O>, O> {
     {
         let mut iter = iter.into_iter();
         let mut fut = iter.next().unwrap_or_else(|| unreachable!());
+
         Past::with(move |cx| {
             Pin::new(&mut fut).poll(cx).map(|output| {
                 fut = iter.next().unwrap_or_else(|| unreachable!());

@@ -13,14 +13,14 @@ impl State {
 
 async fn run() {
     let mut state = State {};
-    let mut tasks = vec![
+    let mut tasks = [
         Past::pin(|| async { "Hello" }),
         Past::pin(|| async { "World" }),
     ];
 
     // First task will complete first.
     Loop::new(&mut state)
-        .on(tasks.as_mut_slice(), State::completion)
+        .on(&mut tasks[..], State::completion)
         .await;
 }
 
