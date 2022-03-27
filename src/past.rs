@@ -10,96 +10,67 @@
 use alloc::boxed::Box;
 use core::{
     future::Future,
-    iter::{self, RepeatWith},
-    marker::PhantomData,
     pin::Pin,
     task::{Context, Poll},
+    iter::RepeatWith,
 };
 
-/// Trait for infinite async iteration.  Usually you won't need to use this
-/// directly.
-///
-/// If the underlying type can become disconnected, that should be handled in
-/// the future's output (wrapping in [`Option`]).
-#[allow(single_use_lifetimes)]
-pub trait AsPast<'a, O, F, R>
-where
-    F: Future<Output = O> + Send + Unpin,
-    R: FnMut() -> F,
-{
-    /// Convert into a [`Past`].
-    fn as_past(&'a mut self) -> Past<O, F, R>;
-}
-
-impl<'a, T: 'a, O, F, R> AsPast<'a, O, F, R> for T
-where
-    &'a mut T: IntoIterator<Item = F, IntoIter = RepeatWith<R>>,
-    F: Future<Output = O> + Send + Unpin,
-    R: FnMut() -> F,
-{
-    #[inline(always)]
-    fn as_past(&'a mut self) -> Past<O, F, R> {
-        Past {
-            repeater: self.into_iter(),
-            future: (),
-            _phantom: PhantomData,
-        }
-    }
-}
-
 /// Infinite asynchronous iterator.
+/// 
+/// You can create a `Past` with one of three functions:
+///  - [`Past::pin`] Using a closure to create a future, usable with `async fn`s
+///  - [`Past::new`] Create a past from a future iterator (recommended)
+///  - [`Past::with`] Create a past from a function
+///    
 #[derive(Debug)]
-pub struct Past<O = (), F = crate::Task<O>, R = fn() -> F, M = ()> {
-    future: M,
-    repeater: RepeatWith<R>,
-    // Seriously, not that complicated.
-    #[allow(clippy::type_complexity)]
-    _phantom: PhantomData<(Pin<Box<F>>, Pin<Box<O>>)>,
+pub struct Past<F: FnMut(&mut Context<'_>) -> Poll<O>, O = ()> {
+    poll_next: F,
 }
 
-impl<O, F, R> Past<O, F, R>
-where
-    R: FnMut() -> F,
-    F: Future<Output = O> + Send + Unpin,
-{
-    /// Create a [`Past`] from a repeating async function/closure.
-    #[inline(always)]
-    pub fn new(async_fn: R) -> Self {
-        Self {
-            repeater: iter::repeat_with(async_fn),
-            future: (),
-            _phantom: PhantomData,
-        }
-    }
-
-    /// Get a new [`Unpin`] + [`Send`] future ready on next I/O completion.
-    // Because this is an "async iterator", and doesn't ever return `None`.
-    #[allow(clippy::should_implement_trait)]
-    #[inline(always)]
-    pub fn next(&mut self) -> F {
-        self.repeater.next().unwrap_or_else(|| unreachable!())
-    }
-}
-
-impl<O, F, R> Past<Pin<Box<F>>, O, R, Pin<Box<F>>>
-where
-    R: (FnMut() -> F) + Send,
-    F: Future<Output = O> + Send,
-    O: Send,
-{
-    /// Create a [`Past`] from a repeating async function/closure.
+impl<O> Past<fn(&mut Context<'_>) -> Poll<O>, O> {
+    /// Creates a [`Past`] that wraps a function returning a `!`[`Unpin`] future.
     ///
-    /// Unlike [`Past::new`], the returned future is not required to be
-    /// [`Unpin`].  This comes at the cost of a single allocation when this
-    /// function is called.
+    /// Note that this API does require an allocator.
     #[inline(always)]
-    pub fn pin(async_fn: R) -> Self {
-        let mut repeater = iter::repeat_with(async_fn);
+    pub fn pin<T, N>(mut future_fn: N) -> Past<impl FnMut(&mut Context<'_>) -> Poll<O>, O>
+        where T: Future<Output = O> + Send + 'static, N: FnMut() -> T + Send + 'static
+    {
+        let mut boxy = Box::pin((future_fn)());
+        Past::with(move |cx| {
+            boxy.as_mut().poll(cx).map(|output| {
+                boxy.set((future_fn)());
+                output
+            })
+        })
+    }
 
+    /// Creates a [`Past`] from an infinite iterator of futures.
+    pub fn new<I, T, R>(iter: I) -> Past<impl FnMut(&mut Context<'_>) -> Poll<O>, O>
+        where I: IntoIterator<Item = T, IntoIter = RepeatWith<R>>,
+              T: Future<Output = O> + Unpin + Send,
+              R: FnMut() -> T + Send,
+    {
+        let mut iter = iter.into_iter();
+        let mut fut = iter.next().unwrap_or_else(|| unreachable!());
+        Past::with(move |cx| {
+            Pin::new(&mut fut).poll(cx).map(|output| {
+                fut = iter.next().unwrap_or_else(|| unreachable!());
+                output
+            })
+        })
+    }
+}
+
+impl<F, O> Past<F, O>
+    where F: FnMut(&mut Context<'_>) -> Poll<O> + Send,
+{
+
+    /// Creates a [`Past`] that wraps a function returning
+    /// [`Poll`](core::task::Poll).
+    #[inline(always)]
+    pub fn with(poll_next: F) -> Self {
         Past {
-            future: Box::pin(repeater.next().unwrap_or_else(|| unreachable!())),
-            repeater,
-            _phantom: PhantomData,
+            poll_next,
         }
     }
 
@@ -108,42 +79,16 @@ where
     #[allow(clippy::should_implement_trait)]
     #[inline(always)]
     pub fn next(&mut self) -> impl Future<Output = O> + Send + Unpin + '_ {
-        SendUnpinFuture { past: self }
+        Fut(self)
     }
 }
 
-struct SendUnpinFuture<'a, O, F, R>
-where
-    F: Future<Output = O> + Send,
-    R: (FnMut() -> F) + Send,
-{
-    past: &'a mut Past<Pin<Box<F>>, O, R, Pin<Box<F>>>,
-}
+struct Fut<'a, F: FnMut(&mut Context<'_>) -> Poll<O> + Send, O>(&'a mut Past<F, O>);
 
-impl<O, F, R> Future for SendUnpinFuture<'_, O, F, R>
-where
-    F: Future<Output = O> + Send,
-    R: (FnMut() -> F) + Send,
-{
+impl<F: FnMut(&mut Context<'_>) -> Poll<O> + Send, O> Future for Fut<'_, F, O> {
     type Output = O;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<O> {
-        let past = &mut self.past;
-        past.future.as_mut().poll(cx).map(move |output| {
-            let new = past.repeater.next().unwrap_or_else(|| unreachable!());
-            past.future.set(new);
-            output
-        })
-    }
-}
-
-impl<'a, O, F, R, T> From<&'a mut T> for Past<O, F, R>
-where
-    T: AsPast<'a, O, F, R>,
-    F: Future<Output = O> + Send + Unpin,
-    R: FnMut() -> F,
-{
-    fn from(from: &'a mut T) -> Self {
-        from.as_past()
+        (self.0.poll_next)(cx)
     }
 }

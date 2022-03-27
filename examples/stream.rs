@@ -1,3 +1,5 @@
+//! This example shows how to use async iteration.
+
 mod timer {
     const SECOND: core::time::Duration = core::time::Duration::from_secs(1);
 
@@ -15,7 +17,7 @@ mod timer {
 
     impl IntoIterator for &mut Timer {
         type IntoIter =
-            core::iter::RepeatWith<Box<dyn FnMut() -> SealedFuture>>;
+            core::iter::RepeatWith<Box<dyn FnMut() -> SealedFuture + Send>>;
         type Item = SealedFuture;
 
         fn into_iter(self) -> Self::IntoIter {
@@ -48,7 +50,8 @@ use pasts::Past;
 use timer::Timer;
 
 async fn async_main() {
-    let mut timer = Past::from(&mut Timer::new());
+    let mut timer = Timer::new();
+    let mut timer = Past::new(&mut timer);
 
     for _ in 0..3 {
         println!("Waiting 1 second...");
