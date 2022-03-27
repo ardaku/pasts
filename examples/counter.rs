@@ -1,7 +1,7 @@
 use core::time::Duration;
 
 use async_std::task::sleep;
-use pasts::{prelude::*, Loop, Past};
+use pasts::{prelude::*, Loop};
 
 // Exit type for State.
 type Exit = ();
@@ -32,8 +32,8 @@ impl State {
 async fn run() {
     let mut state = State { counter: 0 };
 
-    let one = Past::pin(|| sleep(Duration::from_secs_f64(1.0)));
-    let two = Past::pin(|| sleep(Duration::from_secs_f64(2.0)));
+    let one = || sleep(Duration::from_secs_f64(1.0));
+    let two = || sleep(Duration::from_secs_f64(2.0));
 
     Loop::new(&mut state)
         .on(one, State::one)

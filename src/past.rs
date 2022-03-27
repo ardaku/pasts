@@ -95,6 +95,25 @@ pub trait ToPast<P: Pasty<O>, O> {
     fn to_past(self) -> P;
 }
 
+struct FnWrapper<O, T: FnMut(&mut Context<'_>) -> Poll<O> + Unpin>(T);
+
+impl<O, T> ToPast<FnWrapper<O, T>, O> for T
+    where T: FnMut(&mut Context<'_>) -> Poll<O> + Unpin
+{
+    fn to_past(self) -> FnWrapper<O, Self> {
+        FnWrapper(self)
+    }
+}
+
+impl<O, T> Pasty<O> for FnWrapper<O, T>
+    where T: FnMut(&mut Context<'_>) -> Poll<O> + Unpin
+{
+    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<O> {
+        (self.0)(cx)
+    }
+}
+
+
 impl<O, F, T> ToPast<T, (usize, O)> for T
 where
     F: FnMut(&mut Context<'_>) -> Poll<O> + Unpin,
@@ -175,6 +194,42 @@ where
     }
 }
 
+#[derive(Debug)]
+pub struct BoxedPastIter<O, F, N>
+where
+    F: Future<Output = O> + Send,
+    N: (FnMut() -> F) + Unpin,
+{
+    future: Pin<Box<F>>,
+    next: N,
+}
+
+impl<O, F, N> Pasty<O> for BoxedPastIter<O, F, N>
+where
+    F: Future<Output = O> + Send,
+    N: (FnMut() -> F) + Unpin,
+{
+    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<O> {
+        Pin::new(&mut self.future).poll(cx).map(|output| {
+            self.future.set((self.next)());
+            output
+        })
+    }
+}
+
+impl<O, F, N> ToPast<BoxedPastIter<O, F, N>, O> for N
+where
+    F: Future<Output = O> + Send,
+    N: (FnMut() -> F) + Unpin,
+{
+    fn to_past(mut self) -> BoxedPastIter<O, F, N> {
+        let future = Box::pin((self)());
+        let next = self;
+
+        BoxedPastIter { next, future }
+    }
+}
+
 struct Fut<'a, O, F>(&'a mut Past<O, F>)
 where
     F: FnMut(&mut Context<'_>) -> Poll<O> + Send;
@@ -233,7 +288,10 @@ impl<S: Unpin, T, F: Stateful<S, T>> Loop<S, T, F> {
     ///  - [`DerefMut`](core::ops::DerefMut)`<`[`[`](slice)[`Past`](crate::Past)[`]`](slice)`>`:  
     ///    `(index, output)` passed to handler
     ///  - [`IntoIterator`]`<IntoIter = `[`RepeatWith`](core::iter::RepeatWith)`<`[`Future`](core::future::Future)`>>`:  
+    ///    `output` passed to handler (future must be [`Unpin`])
+    ///  - An async function (no parameters) / closure that returns a future (allocates):  
     ///    `output` passed to handler
+    ///  - A poll function (`FnMut(&mut Context<'_>) -> Poll<O>`)
     pub fn on<P, O, N>(
         self,
         past: P,
