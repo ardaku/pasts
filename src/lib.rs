@@ -105,11 +105,9 @@ extern crate alloc;
 
 mod exec;
 mod past;
-mod task;
 
 pub use exec::{block_on, BlockOn, Executor};
-pub use past::{Loop, Past};
-pub use task::Task;
+pub use past::{Loop, Past, Task};
 
 pub mod prelude {
     //! Types that are almost always needed

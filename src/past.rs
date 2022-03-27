@@ -15,6 +15,54 @@ use core::{
     task::{Context, Poll},
 };
 
+/// A boxed, pinned future.
+///
+/// You should use this in conjunction with
+/// [`Loop::poll`](crate::Loop::poll) if you need a dynamic number of tasks (for
+/// instance, a web server).
+///
+/// # Example
+/// This example spawns two tasks on the same thread, and then terminates when
+/// they both complete.
+///
+/// ```
+/// use core::task::Poll;
+/// use pasts::{Loop, Task};
+///
+/// type Exit = ();
+///
+/// struct State {
+///     tasks: Vec<Task<&'static str>>,
+/// }
+///
+/// impl State {
+///     fn completion(&mut self, id: usize, val: &str) -> Poll<Exit> {
+///         self.tasks.remove(id);
+///         println!("Received message from completed task: {}", val);
+///         if self.tasks.is_empty() {
+///             Poll::Ready(())
+///         } else {
+///             Poll::Pending
+///         }
+///     }
+/// }
+///
+/// async fn run() {
+///     let mut state = State {
+///         tasks: vec![Box::pin(async { "Hello" }), Box::pin(async { "World" })],
+///     };
+///
+///     Loop::new(&mut state)
+///         .poll(|s| &mut s.tasks, State::completion)
+///         .await;
+/// }
+///
+/// fn main() {
+///     pasts::block_on(run());
+/// }
+/// ```
+pub type Task<O> = Past<Box<dyn FnMut(&mut Context<'_>) -> Poll<O> + Send>, O>;
+
 /// Infinite asynchronous iterator.
 ///
 /// You can create a `Past` with one of three functions:
@@ -31,9 +79,7 @@ impl<O> Past<fn(&mut Context<'_>) -> Poll<O>, O> {
     ///
     /// Note that this API does require an allocator.
     #[inline(always)]
-    pub fn pin<T, N>(
-        mut future_fn: N,
-    ) -> Past<Box<dyn FnMut(&mut Context<'_>) -> Poll<O> + Send>, O>
+    pub fn pin<T, N>(mut future_fn: N) -> Task<O>
     where
         T: Future<Output = O> + Send + 'static,
         N: FnMut() -> T + Send + 'static,
@@ -92,18 +138,20 @@ pub trait ToPast<P: Pasty<O>, O> {
     fn to_past(self) -> P;
 }
 
-impl<F, O> ToPast<Vec<Past<F, O>>, (usize, O)> for Vec<Past<F, O>>
+impl<F, O, T> ToPast<T, (usize, O)> for T
 where
     F: FnMut(&mut Context<'_>) -> Poll<O> + Unpin,
+    T: core::ops::DerefMut<Target = [Past<F, O>]> + Unpin,
 {
     fn to_past(self) -> Self {
         self
     }
 }
 
-impl<F, O> Pasty<(usize, O)> for Vec<Past<F, O>>
+impl<F, O, T> Pasty<(usize, O)> for T
 where
     F: FnMut(&mut Context<'_>) -> Poll<O> + Unpin,
+    T: core::ops::DerefMut<Target = [Past<F, O>]> + Unpin,
 {
     fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<(usize, O)> {
         for (i, this) in self.iter_mut().enumerate() {
