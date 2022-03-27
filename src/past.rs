@@ -15,11 +15,7 @@ use core::{
     task::{Context, Poll},
 };
 
-/// A boxed, pinned future.
-///
-/// You should use this in conjunction with
-/// [`Loop::poll`](crate::Loop::poll) if you need a dynamic number of tasks (for
-/// instance, a web server).
+/// A repeating `async fn`.
 ///
 /// # Example
 /// This example spawns two tasks on the same thread, and then terminates when
