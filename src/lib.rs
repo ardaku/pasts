@@ -105,10 +105,13 @@ extern crate alloc;
 
 mod exec;
 mod past;
-mod race;
 mod task;
 
 pub use exec::{block_on, BlockOn, Executor};
-pub use past::{Past, Loop2};
-pub use race::Loop;
+pub use past::{Loop, Past};
 pub use task::Task;
+
+pub mod prelude {
+    //! Types that are almost always needed
+    pub use core::task::Poll::{self, Pending, Ready};
+}

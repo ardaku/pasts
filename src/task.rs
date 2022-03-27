@@ -57,4 +57,5 @@ use alloc::boxed::Box;
 ///     pasts::block_on(run());
 /// }
 /// ```
-pub type Task<T> = core::pin::Pin<Box<dyn core::future::Future<Output = T>>>;
+pub type Task<T> =
+    core::pin::Pin<Box<dyn core::future::Future<Output = T> + Send>>;

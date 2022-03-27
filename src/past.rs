@@ -33,18 +33,18 @@ impl<O> Past<fn(&mut Context<'_>) -> Poll<O>, O> {
     #[inline(always)]
     pub fn pin<T, N>(
         mut future_fn: N,
-    ) -> Past<impl FnMut(&mut Context<'_>) -> Poll<O>, O>
+    ) -> Past<Box<dyn FnMut(&mut Context<'_>) -> Poll<O> + Send>, O>
     where
         T: Future<Output = O> + Send + 'static,
         N: FnMut() -> T + Send + 'static,
     {
         let mut boxy = Box::pin((future_fn)());
-        Past::with(move |cx| {
+        Past::with(Box::new(move |cx| {
             boxy.as_mut().poll(cx).map(|output| {
                 boxy.set((future_fn)());
                 output
             })
-        })
+        }))
     }
 
     /// Creates a [`Past`] from an infinite iterator of futures.
@@ -67,10 +67,7 @@ impl<O> Past<fn(&mut Context<'_>) -> Poll<O>, O> {
     }
 }
 
-impl<F, O> Past<F, O>
-where
-    F: FnMut(&mut Context<'_>) -> Poll<O> + Send,
-{
+impl<F: FnMut(&mut Context<'_>) -> Poll<O> + Send, O> Past<F, O> {
     /// Creates a [`Past`] that wraps a function returning
     /// [`Poll`](core::task::Poll).
     #[inline(always)]
@@ -87,11 +84,91 @@ where
     }
 }
 
-/*impl<F, O, T> From<T> for Past<F, O>
-    where T: IntoIterator<Item = T, IntoIter = RepeatWith<R>>
-{
+pub trait Pasty<O>: Unpin {
+    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<O>;
+}
 
-}*/
+pub trait ToPast<P: Pasty<O>, O> {
+    fn to_past(self) -> P;
+}
+
+impl<F, O> ToPast<Vec<Past<F, O>>, (usize, O)> for Vec<Past<F, O>>
+where
+    F: FnMut(&mut Context<'_>) -> Poll<O> + Unpin,
+{
+    fn to_past(self) -> Self {
+        self
+    }
+}
+
+impl<F, O> Pasty<(usize, O)> for Vec<Past<F, O>>
+where
+    F: FnMut(&mut Context<'_>) -> Poll<O> + Unpin,
+{
+    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<(usize, O)> {
+        for (i, this) in self.iter_mut().enumerate() {
+            if let Poll::Ready(value) = (this.poll_next)(cx) {
+                return Poll::Ready((i, value));
+            }
+        }
+        Poll::Pending
+    }
+}
+
+impl<F, O> ToPast<Past<F, O>, O> for Past<F, O>
+where
+    F: FnMut(&mut Context<'_>) -> Poll<O> + Unpin,
+{
+    fn to_past(self) -> Self {
+        self
+    }
+}
+
+impl<F, O> Pasty<O> for Past<F, O>
+where
+    F: FnMut(&mut Context<'_>) -> Poll<O> + Unpin,
+{
+    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<O> {
+        (self.poll_next)(cx)
+    }
+}
+
+#[derive(Debug)]
+pub struct PastIter<F, O, N>
+where
+    F: Future<Output = O> + Unpin + Send,
+    N: FnMut() -> F,
+{
+    future: F,
+    iter: RepeatWith<N>,
+}
+
+impl<F, O, N> Pasty<O> for PastIter<F, O, N>
+where
+    F: Future<Output = O> + Unpin + Send,
+    N: FnMut() -> F + Unpin,
+{
+    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<O> {
+        Pin::new(&mut self.future).poll(cx).map(|output| {
+            self.future = self.iter.next().unwrap_or_else(|| unreachable!());
+            output
+        })
+    }
+}
+
+impl<F, O, N, T> ToPast<PastIter<F, O, N>, O> for T
+where
+    F: Future<Output = O> + Unpin + Send,
+    T: IntoIterator<Item = F, IntoIter = RepeatWith<N>>,
+    N: FnMut() -> F + Unpin,
+{
+    fn to_past(self) -> PastIter<F, O, N> {
+        let mut iter = self.into_iter();
+        let future = iter.next().unwrap_or_else(|| unreachable!());
+
+        PastIter { iter, future }
+    }
+}
 
 struct Fut<'a, F, O>(&'a mut Past<F, O>)
 where
@@ -112,7 +189,8 @@ pub trait Stateful<S, T>: Unpin {
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<Poll<T>>;
 }
 
-struct Never<'a, S>(&'a mut S);
+#[derive(Debug)]
+pub struct Never<'a, S>(&'a mut S);
 
 impl<S, T> Stateful<S, T> for Never<'_, S> {
     fn state(&mut self) -> &mut S {
@@ -124,46 +202,44 @@ impl<S, T> Stateful<S, T> for Never<'_, S> {
     }
 }
 
-/// Composable event loop.
+/// Composable asynchronous event loop.
 #[derive(Debug)]
-pub struct Loop2<S: Unpin, T, F: Stateful<S, T>> {
+pub struct Loop<S: Unpin, T, F: Stateful<S, T>> {
     other: F,
     _phantom: core::marker::PhantomData<(S, T)>,
 }
 
-impl<'a, S: Unpin, T> Loop2<S, T, Never<'a, S>> {
+impl<'a, S: Unpin, T> Loop<S, T, Never<'a, S>> {
     /// Create an empty event loop.
     pub fn new(state: &'a mut S) -> Self {
         let other = Never(state);
         let _phantom = core::marker::PhantomData;
 
-        Loop2 {
-            other, _phantom
-        }
+        Loop { other, _phantom }
     }
 }
 
-impl<S: Unpin, T, F: Stateful<S, T>> Loop2<S, T, F> {
+impl<S: Unpin, T, F: Stateful<S, T>> Loop<S, T, F> {
     /// Register a callback.
-    pub fn on<P, O, N>(self, past: P, then: fn(&mut S, O) -> Poll<T>) -> Loop2<S, T, impl Stateful<S, T>>
-        where P: Into<Past<N, O>>, N: FnMut(&mut Context<'_>) -> Poll<O> + Unpin
+    pub fn on<P, O, N>(
+        self,
+        past: P,
+        then: fn(&mut S, O) -> Poll<T>,
+    ) -> Loop<S, T, impl Stateful<S, T>>
+    where
+        P: ToPast<N, O>,
+        N: Pasty<O>,
     {
-        let past = past.into();
+        let past = past.to_past();
         let other = self.other;
         let _phantom = core::marker::PhantomData;
-        let other = Join {
-            other,
-            past,
-            then,
-        };
+        let other = Join { other, past, then };
 
-        Loop2 {
-            other, _phantom
-        }
+        Loop { other, _phantom }
     }
 }
 
-impl<S: Unpin, T: Unpin, F: Stateful<S, T>> Future for Loop2<S, T, F> {
+impl<S: Unpin, T: Unpin, F: Stateful<S, T>> Future for Loop<S, T, F> {
     type Output = T;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
@@ -178,27 +254,27 @@ impl<S: Unpin, T: Unpin, F: Stateful<S, T>> Future for Loop2<S, T, F> {
     }
 }
 
-struct Join<S, T, F: Stateful<S, T>, N, O>
-where
-    N: FnMut(&mut Context<'_>) -> Poll<O> + Unpin
-{
+struct Join<S, T, F: Stateful<S, T>, O, P: Pasty<O>> {
     other: F,
-    past: Past<N, O>,
+    past: P,
     then: fn(&mut S, O) -> Poll<T>,
 }
 
-impl<S, T, F: Stateful<S, T>, N, O> Stateful<S, T> for Join<S, T, F, N, O>
+impl<S, T, F, O, P> Stateful<S, T> for Join<S, T, F, O, P>
 where
-    N: FnMut(&mut Context<'_>) -> Poll<O> + Unpin
+    F: Stateful<S, T>,
+    P: Pasty<O>,
 {
     fn state(&mut self) -> &mut S {
         self.other.state()
     }
 
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<Poll<T>> {
-        if let Poll::Ready(output) = (self.past.poll_next)(cx).map(|output| {
-            (self.then)(self.other.state(), output)
-        }) {
+        if let Poll::Ready(output) = self
+            .past
+            .poll_next(cx)
+            .map(|output| (self.then)(self.other.state(), output))
+        {
             Poll::Ready(output)
         } else {
             self.other.poll(cx)
