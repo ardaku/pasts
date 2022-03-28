@@ -4,6 +4,25 @@ All notable changes to `pasts` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
+## [0.9.0] - 2022-03-27
+### Added
+ - A `prelude` module containing a `core::task::Poll::{self, Pending, Ready}`
+   re-export
+ - `Loop::on()`
+ - `BlockOn` trait
+ - `Task::new()`
+ - `Task::poll_next()`
+
+### Changed
+ - Replaced `Loop::when` and `Loop::poll` with `Loop::on()`
+ - Move `block_on_pinned()` and `block_on` out of `Executor` and into their own
+   `BlockOn` trait
+ - `Task` is no longer an alias, but its own type
+
+### Removed
+ - `Loop::when()` - use `Loop::on()`
+ - `Loop::poll()` - use `Loop::on()`
+
 ## [0.8.0] - 2021-06-18
 ### Added
  - `Loop` struct to replace `wait!()` and `exec!()`.
