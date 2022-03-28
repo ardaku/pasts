@@ -18,9 +18,6 @@ embedded software using an asynchronous event loop.  It aims to abstract away
 all of the pain points of using asynchronous Rust.  Pasts is purposely kept
 small with the entire source directory under 350 lines of Rust code.
 
-Pasts is able to be simple by being opinionated on how asynchronous code should
-be written; All futures must be wrapped by an `Iterator` and must be `Unpin`.
-
 Check out the [documentation][0] for examples.
 
 # Goals
@@ -38,79 +35,6 @@ on at least the following platforms (may work on others):
  - All platforms that support threading (includes all tier 1 and some tier 2, 3)
  - Web Assembly In Browser (Tier 2)
  - No standard devices (Tiers 2 and 3)
-
-## Async Deviations
-When writing an async library, this is how most async code currently works:
-
-```rust
-/// Sleep for a period of time.  Returns implementation of `Future`
-async fn sleep(dur: Duration) {
-   // Do something, method can widely vary
-}
-```
-
-Pasts-style async pattern:
-
-```rust
-/// Implements `Past` (implemented for all
-/// `impl Iterator<Item = impl Future<Output = _> + Send + Unpin>`)
-pub struct Timer { /* */ }
-
-impl Timer {
-    /// Create a timer that infinitely repeats at a specified time interval
-    pub fn new(dur: Duration) -> Self {
-        Self { /* */ }
-    }
-}
-
-impl Drop for Timer {
-    fn drop(&mut self) {
-        // 1. Panic if leased is set
-        /* */
-
-        // 2. Free leased I/O buffer
-        /* */
-    }
-}
-
-impl Iterator for Timer {
-    type Item = SealedFuture;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        // Timers can't be disconnected, so never returns `None`
-        Some(SealedFuture { /* */ })
-    }
-}
-
-// Not re-exported to public API
-pub struct SealedFuture { /* */ }
-
-impl Future for SealedFuture {
-    type Output = ();
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        // 1. Unset `ready` flag, return `Pending` & replace waker if not ready
-        /* */
-
-        // 2. Transfer I/O (ex: number of intervals elapsed since last poll)
-        /* */
-
-        // 3. Depending on I/O result, return `Ready(())` or `Pending()`,
-        //    when ready remove lease
-        /* */
-    }
-}
-
-impl Drop for SealedFuture {
-    fn drop(&mut self) {
-        // 1. Cancel Future I/O
-        /* */
-
-        // 2. Unset leased
-        /* */
-    }
-}
-```
 
 ## License
 Licensed under any of
