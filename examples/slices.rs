@@ -1,4 +1,4 @@
-use pasts::{prelude::*, Loop, Past};
+use pasts::{prelude::*, Loop, Task};
 
 type Exit = ();
 
@@ -14,8 +14,8 @@ impl State {
 async fn run() {
     let mut state = State {};
     let mut tasks = [
-        Past::pin(|| async { "Hello" }),
-        Past::pin(|| async { "World" }),
+        Task::new(|| async { "Hello" }),
+        Task::new(|| async { "World" }),
     ];
 
     // First task will complete first.

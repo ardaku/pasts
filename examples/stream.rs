@@ -46,16 +46,16 @@ mod timer {
     }
 }
 
-use pasts::Past;
+use pasts::Task;
 use timer::Timer;
 
 async fn async_main() {
     let mut timer = Timer::new();
-    let mut timer = Past::new(&mut timer);
+    let mut timer = Task::new(&mut timer);
 
     for _ in 0..3 {
         println!("Waiting 1 second...");
-        timer.next().await;
+        async_std::future::poll_fn(|cx| timer.poll_next(cx)).await;
     }
 
     println!("Waited 3 seconds!");

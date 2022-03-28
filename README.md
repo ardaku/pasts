@@ -16,7 +16,7 @@ Minimal and simpler alternative to the futures crate.
 The pasts asynchronous runtime is designed for creating user-space software and
 embedded software using an asynchronous event loop.  It aims to abstract away
 all of the pain points of using asynchronous Rust.  Pasts is purposely kept
-small with the entire source directory under 500 lines of Rust code.
+small with the entire source directory under 350 lines of Rust code.
 
 Pasts is able to be simple by being opinionated on how asynchronous code should
 be written; All futures must be wrapped by an `Iterator` and must be `Unpin`.
