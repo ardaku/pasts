@@ -38,7 +38,7 @@ impl<E: Executor> Wake for Woke<E> {
 }
 
 /// Trait for implementing custom executors.  Useful when targetting no-std.
-pub trait Executor: Sized + Send + Sync + 'static {
+pub trait Executor: Send + Sync + 'static {
     /// The sleep routine; should put the processor or thread to sleep in order
     /// to save CPU cycles and power, until the hardware tells it to wake up.
     fn sleep(&self);
@@ -47,7 +47,12 @@ pub trait Executor: Sized + Send + Sync + 'static {
     /// is already waked up automatically, this doesn't need to be implemented.
     #[inline(always)]
     fn wake(&self) {}
+}
 
+impl<T> BlockOn for T where T: Sized + Executor {}
+
+/// Trait that implements block_on and block_on_pinned methods for an Executor
+pub trait BlockOn: Sized + Executor {
     /// Block on an unpin future on the current thread.
     #[inline(always)]
     fn block_on_pinned<F>(self, future: F)

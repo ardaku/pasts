@@ -9,7 +9,7 @@
 
 [package]
 name = "pasts"
-version = "0.8.0"
+version = "0.9.0"
 authors = ["Jeron Aldaron Lau <jeronlau@plopgrizzly.com>"]
 license = "Apache-2.0 OR MIT OR BSL-1.0"
 description = "Minimal and simpler alternative to the futures crate."

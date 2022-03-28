@@ -1,46 +1,43 @@
-use core::{future::Future, task::Poll, time::Duration};
+use core::time::Duration;
 
 use async_std::task::sleep;
-use pasts::{Loop, Past};
+use pasts::{prelude::*, Loop};
 
 // Exit type for State.
 type Exit = ();
 
 // Shared state between tasks on the thread.
-struct State<A: Future<Output = ()>, B: Future<Output = ()>> {
+struct State {
     counter: usize,
-    one: Past<(), (), A>,
-    two: Past<(), (), B>,
 }
 
-impl<A: Future<Output = ()>, B: Future<Output = ()>> State<A, B> {
+impl State {
     fn one(&mut self, _: ()) -> Poll<Exit> {
         println!("One {}", self.counter);
         self.counter += 1;
         if self.counter > 6 {
-            Poll::Ready(())
+            Ready(())
         } else {
-            Poll::Pending
+            Pending
         }
     }
 
     fn two(&mut self, _: ()) -> Poll<Exit> {
         println!("Two {}", self.counter);
         self.counter += 1;
-        Poll::Pending
+        Pending
     }
 }
 
 async fn run() {
-    let mut state = State {
-        counter: 0,
-        one: Past::new((), |()| sleep(Duration::from_secs_f64(1.0))),
-        two: Past::new((), |()| sleep(Duration::from_secs_f64(2.0))),
-    };
+    let mut state = State { counter: 0 };
+
+    let one = || sleep(Duration::from_secs_f64(1.0));
+    let two = || sleep(Duration::from_secs_f64(2.0));
 
     Loop::new(&mut state)
-        .when(|s| &mut s.one, State::one)
-        .when(|s| &mut s.two, State::two)
+        .on(one, State::one)
+        .on(two, State::two)
         .await;
 }
 

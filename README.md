@@ -22,7 +22,7 @@ Check out the [documentation][0] for examples.
 
 # Goals
  - No unsafe (safe and sound)
- - No required std (one-time executor allocation on no-std)
+ - No required std (only ZST allocator required)
  - No macros (fast compile times)
  - No dependencies (bloat-free)
  - No cost (true zero-cost abstractions)

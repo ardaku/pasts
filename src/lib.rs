@@ -27,61 +27,57 @@
 //! ```
 //!
 //! ```rust,no_run
-//! use async_std::task::sleep;
-//! use core::future::Future;
-//! use core::task::Poll;
 //! use core::time::Duration;
-//! use pasts::{Loop, Past};
-//!
+//! 
+//! use async_std::task::sleep;
+//! use pasts::{prelude::*, Loop};
+//! 
 //! // Exit type for State.
 //! type Exit = ();
-//!
+//! 
 //! // Shared state between tasks on the thread.
-//! struct State<A: Future<Output = ()>, B: Future<Output = ()>> {
+//! struct State {
 //!     counter: usize,
-//!     one: Past<(), (), A>,
-//!     two: Past<(), (), B>,
 //! }
-//!
-//! impl<A: Future<Output = ()>, B: Future<Output = ()>> State<A, B> {
+//! 
+//! impl State {
 //!     fn one(&mut self, _: ()) -> Poll<Exit> {
 //!         println!("One {}", self.counter);
 //!         self.counter += 1;
 //!         if self.counter > 6 {
-//!             Poll::Ready(())
+//!             Ready(())
 //!         } else {
-//!             Poll::Pending
+//!             Pending
 //!         }
 //!     }
-//!
+//! 
 //!     fn two(&mut self, _: ()) -> Poll<Exit> {
 //!         println!("Two {}", self.counter);
 //!         self.counter += 1;
-//!         Poll::Pending
+//!         Pending
 //!     }
 //! }
-//!
+//! 
 //! async fn run() {
-//!     let mut state = State {
-//!         counter: 0,
-//!         one: Past::new((), |()| sleep(Duration::from_secs_f64(1.0))),
-//!         two: Past::new((), |()| sleep(Duration::from_secs_f64(2.0))),
-//!     };
-//!
+//!     let mut state = State { counter: 0 };
+//! 
+//!     let one = || sleep(Duration::from_secs_f64(1.0));
+//!     let two = || sleep(Duration::from_secs_f64(2.0));
+//! 
 //!     Loop::new(&mut state)
-//!         .when(|s| &mut s.one, State::one)
-//!         .when(|s| &mut s.two, State::two)
+//!         .on(one, State::one)
+//!         .on(two, State::two)
 //!         .await;
 //! }
-//!
+//! 
 //! fn main() {
 //!     pasts::block_on(run())
 //! }
 //! ```
 #![cfg_attr(not(feature = "std"), no_std)]
 #![doc(
-    html_logo_url = "https://libcala.github.io/logo.svg",
-    html_favicon_url = "https://libcala.github.io/icon.svg",
+    html_logo_url = "https://ardaku.github.io/mm/logo.svg",
+    html_favicon_url = "https://ardaku.github.io/mm/icon.svg",
     html_root_url = "https://docs.rs/pasts"
 )]
 #![forbid(unsafe_code)]
@@ -105,10 +101,11 @@ extern crate alloc;
 
 mod exec;
 mod past;
-mod race;
-mod task;
 
-pub use exec::{block_on, Executor};
-pub use past::Past;
-pub use race::Loop;
-pub use task::Task;
+pub use exec::{block_on, BlockOn, Executor};
+pub use past::{Loop, Task};
+
+pub mod prelude {
+    //! Types that are almost always needed
+    pub use core::task::Poll::{self, Pending, Ready};
+}

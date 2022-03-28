@@ -1,27 +1,26 @@
-use core::task::Poll;
-
-use pasts::{Loop, Task};
+use pasts::{prelude::*, Loop, Task};
 
 type Exit = ();
 
-struct State {
-    tasks: [Task<&'static str>; 2],
-}
+struct State {}
 
 impl State {
-    fn completion(&mut self, id: usize, val: &str) -> Poll<Exit> {
+    fn completion(&mut self, (id, val): (usize, &str)) -> Poll<Exit> {
         println!("Received message from {}, completed task: {}", id, val);
-        Poll::Ready(())
+        Ready(())
     }
 }
 
 async fn run() {
-    let mut state = State {
-        tasks: [Box::pin(async { "Hello" }), Box::pin(async { "World" })],
-    };
+    let mut state = State {};
+    let mut tasks = [
+        Task::new(|| async { "Hello" }),
+        Task::new(|| async { "World" }),
+    ];
 
+    // First task will complete first.
     Loop::new(&mut state)
-        .poll(|s| &mut s.tasks, State::completion)
+        .on(&mut tasks[..], State::completion)
         .await;
 }
 
