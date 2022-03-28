@@ -1,4 +1,4 @@
-//! This example shows how to create a `Past` from a future that is `!Unpin`.
+//! This example shows how to create a `Task` from a future that is `!Unpin`.
 //!
 //! Note that this does incur an allocation, so if your environment can not
 //! allocate, do not use this API.
