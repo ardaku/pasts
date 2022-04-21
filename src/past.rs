@@ -266,3 +266,23 @@ where
         }
     }
 }
+
+struct PollFn<T, F: FnMut(&mut Context<'_>) -> Poll<T> + Unpin>(F);
+
+impl<T, F: FnMut(&mut Context<'_>) -> Poll<T> + Unpin> Future for PollFn<T, F> {
+    type Output = T;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
+        (&mut self.0)(cx)
+    }
+}
+
+/// Polyfill for [`core::future::poll_fn`].
+///
+/// Create a [`Future`] from a repeating function returning [`Poll`].
+pub fn poll_fn<T, F>(f: F) -> impl Future<Output = T> + Unpin
+where
+    F: FnMut(&mut Context<'_>) -> Poll<T> + Unpin,
+{
+    PollFn(f)
+}

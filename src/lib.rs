@@ -103,7 +103,7 @@ mod exec;
 mod past;
 
 pub use exec::{block_on, BlockOn, Executor};
-pub use past::{Loop, Task};
+pub use past::{poll_fn, Loop, Task};
 
 pub mod prelude {
     //! Types that are almost always needed
