@@ -4,6 +4,10 @@ All notable changes to `pasts` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
+## [0.10.0] - Unreleased
+### Changed
+ - Lifted requirement of `Send` in some places
+
 ## [0.9.0] - 2022-03-27
 ### Added
  - A `prelude` module containing a `core::task::Poll::{self, Pending, Ready}`

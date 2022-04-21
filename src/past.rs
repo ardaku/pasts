@@ -93,7 +93,7 @@ where
 #[derive(Debug)]
 pub struct PastIter<O, F, N>
 where
-    F: Future<Output = O> + Unpin + Send,
+    F: Future<Output = O> + Unpin,
     N: FnMut() -> F,
 {
     future: F,
@@ -102,7 +102,7 @@ where
 
 impl<O, F, N> Pasty<O> for PastIter<O, F, N>
 where
-    F: Future<Output = O> + Unpin + Send,
+    F: Future<Output = O> + Unpin,
     N: FnMut() -> F + Unpin,
 {
     fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<O> {
@@ -115,7 +115,7 @@ where
 
 impl<O, F, N, T> ToPast<PastIter<O, F, N>, O> for T
 where
-    F: Future<Output = O> + Unpin + Send,
+    F: Future<Output = O> + Unpin,
     T: IntoIterator<Item = F, IntoIter = RepeatWith<N>>,
     N: FnMut() -> F + Unpin,
 {
@@ -130,7 +130,7 @@ where
 #[derive(Debug)]
 pub struct BoxedPastIter<O, F, N>
 where
-    F: Future<Output = O> + Send,
+    F: Future<Output = O>,
     N: (FnMut() -> F) + Unpin,
 {
     future: Pin<Box<F>>,
@@ -139,7 +139,7 @@ where
 
 impl<O, F, N> Pasty<O> for BoxedPastIter<O, F, N>
 where
-    F: Future<Output = O> + Send,
+    F: Future<Output = O>,
     N: (FnMut() -> F) + Unpin,
 {
     fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<O> {
@@ -152,7 +152,7 @@ where
 
 impl<O, F, N> ToPast<BoxedPastIter<O, F, N>, O> for N
 where
-    F: Future<Output = O> + Send,
+    F: Future<Output = O>,
     N: (FnMut() -> F) + Unpin,
 {
     fn to_past(mut self) -> BoxedPastIter<O, F, N> {

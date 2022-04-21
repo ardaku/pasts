@@ -17,7 +17,7 @@ mod timer {
 
     impl IntoIterator for &mut Timer {
         type IntoIter =
-            core::iter::RepeatWith<Box<dyn FnMut() -> SealedFuture + Send>>;
+            core::iter::RepeatWith<Box<dyn FnMut() -> SealedFuture>>;
         type Item = SealedFuture;
 
         fn into_iter(self) -> Self::IntoIter {
@@ -31,7 +31,7 @@ mod timer {
 
     /// Sealed: not re-exported
     pub struct SealedFuture(
-        core::pin::Pin<Box<dyn core::future::Future<Output = ()> + Send>>,
+        core::pin::Pin<Box<dyn core::future::Future<Output = ()>>>,
     );
 
     impl core::future::Future for SealedFuture {
