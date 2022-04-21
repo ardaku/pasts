@@ -8,12 +8,9 @@
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
 use alloc::boxed::Box;
-use core::{
-    future::Future,
-    iter::RepeatWith,
-    pin::Pin,
-    task::{Context, Poll},
-};
+use core::{future::Future, iter::RepeatWith, pin::Pin, task::Context};
+
+use crate::prelude::*;
 
 /// Type-erased repeating async function
 #[allow(missing_debug_implementations)]
@@ -82,11 +79,11 @@ where
 {
     fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<(usize, O)> {
         for (i, this) in self.iter_mut().enumerate() {
-            if let Poll::Ready(value) = this.poll_next(cx) {
-                return Poll::Ready((i, value));
+            if let Ready(value) = this.poll_next(cx) {
+                return Ready((i, value));
             }
         }
-        Poll::Pending
+        Pending
     }
 }
 
@@ -178,7 +175,7 @@ impl<S, T> Stateful<S, T> for Never<'_, S> {
     }
 
     fn poll(&mut self, _cx: &mut Context<'_>) -> Poll<Poll<T>> {
-        Poll::Pending
+        Pending
     }
 }
 
@@ -232,13 +229,13 @@ impl<S: Unpin, T: Unpin, F: Stateful<S, T>> Future for Loop<S, T, F> {
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
         let this = self.get_mut();
-        while let Poll::Ready(output) = Pin::new(&mut this.other).poll(cx) {
-            if let Poll::Ready(output) = output {
-                return Poll::Ready(output);
+        while let Ready(output) = Pin::new(&mut this.other).poll(cx) {
+            if let Ready(output) = output {
+                return Ready(output);
             }
         }
 
-        Poll::Pending
+        Pending
     }
 }
 
@@ -258,12 +255,12 @@ where
     }
 
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<Poll<T>> {
-        if let Poll::Ready(output) = self
+        if let Ready(output) = self
             .past
             .poll_next(cx)
             .map(|output| (self.then)(self.other.state(), output))
         {
-            Poll::Ready(output)
+            Ready(output)
         } else {
             self.other.poll(cx)
         }

@@ -10,6 +10,8 @@
 use alloc::{boxed::Box, sync::Arc, task::Wake};
 use core::{future::Future, pin::Pin, task::Context};
 
+use crate::prelude::*;
+
 #[cfg(target_arch = "wasm32")]
 thread_local! {
     static FUT: (
@@ -76,7 +78,7 @@ pub trait BlockOn: Sized + Executor {
             // If blocking is allowed, loop while blocking.
             loop {
                 // First, poll
-                if let core::task::Poll::Ready(it) = Pin::new(&mut f).poll(cx) {
+                if let Ready(it) = Pin::new(&mut f).poll(cx) {
                     break it;
                 }
                 // Next, wait for wake up completes before polling again.
