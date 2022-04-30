@@ -7,7 +7,7 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use core::{cell::Cell, future::Future, pin::Pin, task::Context, fmt};
+use core::{cell::Cell, fmt, future::Future, pin::Pin, task::Context};
 
 use crate::prelude::*;
 
@@ -67,14 +67,18 @@ impl<'a, F, I: Iterator<Item = F>> Iterator for &'a mut BoxAsyncIter<'_, F, I> {
     }
 }
 
-/// 
+/// Async iteration extensions.
+///
+/// This trait adds a `boxed()` method to iterators, which pins and transforms
+/// `!`[`Unpin`] futures into [`Unpin`] futures with a one-time allocation.
+///
+/// Can't be used on a ZST allocator.
 pub trait IterAsyncExt: Iterator + Sized {
-    /// Re-use a heap allocation for `!Unpin` futures to make them `Unpin`.
+    /// Re-use a heap allocation for `!`[`Unpin`] futures to make them [`Unpin`]
     fn boxed(
         mut self,
-        future_state: &Cell<Option<Pin<Box<Self::Item>>>>
-    ) -> BoxAsyncIter<'_, Self::Item, Self>
-    {
+        future_state: &Cell<Option<Pin<Box<Self::Item>>>>,
+    ) -> BoxAsyncIter<'_, Self::Item, Self> {
         future_state.set(self.next().map(Box::pin));
 
         BoxAsyncIter {

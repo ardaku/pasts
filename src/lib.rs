@@ -101,15 +101,15 @@ extern crate alloc;
 
 mod exec;
 mod func;
+mod iter;
 mod past;
 mod task;
-mod iter;
 
 pub use exec::{block_on, BlockOn, Executor};
 pub use func::{poll_fn, poll_next_fn};
+pub use iter::IterAsyncExt;
 pub use past::Loop;
 pub use task::Task;
-pub use iter::{IterAsyncExt};
 
 pub mod prelude {
     //! Items that are almost always needed.

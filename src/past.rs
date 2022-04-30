@@ -58,30 +58,10 @@ where
     }
 }
 
-/*struct FnWrapper<O, T: FnMut(&mut Context<'_>) -> Poll<O> + Unpin>(T);
-
-impl<O, T> ToPast<FnWrapper<O, T>, O> for T
-where
-    T: FnMut(&mut Context<'_>) -> Poll<O> + Unpin,
-{
-    fn to_past(self) -> FnWrapper<O, Self> {
-        FnWrapper(self)
-    }
-}
-
-impl<O, T> Past<O> for FnWrapper<O, T>
-where
-    T: FnMut(&mut Context<'_>) -> Poll<O> + Unpin,
-{
-    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<O> {
-        (self.0)(cx)
-    }
-}
-
 impl<O, T, D> ToPast<T, (usize, O)> for T
 where
     T: core::ops::DerefMut<Target = [D]> + Unpin,
-    D: Past<O>,
+    D: Future<Output = O> + Unpin,
 {
     fn to_past(self) -> Self {
         self
@@ -91,68 +71,18 @@ where
 impl<O, T, D> Past<(usize, O)> for T
 where
     T: core::ops::DerefMut<Target = [D]> + Unpin,
-    D: Past<O>,
+    D: Future<Output = O> + Unpin,
 {
-    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<(usize, O)> {
-        for (i, this) in self.iter_mut().enumerate() {
-            if let Ready(value) = this.poll_next(cx) {
-                return Ready((i, value));
+    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<Option<(usize, O)>> {
+        for (i, mut this) in self.iter_mut().enumerate() {
+            match Pin::new(&mut this).poll(cx) {
+                Ready(value) => return Ready(Some((i, value))),
+                Pending => {}
             }
         }
         Pending
     }
 }
-
-
-impl<O, F, N, T> ToPast<PastIter<O, F, N>, O> for T
-where
-    F: Future<Output = O> + Unpin,
-    T: IntoIterator<Item = F, IntoIter = RepeatWith<N>>,
-    N: FnMut() -> F + Unpin,
-{
-    fn to_past(self) -> PastIter<O, F, N> {
-        let mut iter = self.into_iter();
-        let future = iter.next().unwrap_or_else(|| unreachable!());
-
-        PastIter { iter, future }
-    }
-}
-
-#[derive(Debug)]
-pub struct FnPastIter<O, F, N>
-where
-    F: Future<Output = O>,
-    N: (FnMut() -> F) + Unpin,
-{
-    future: F,
-    next: N,
-}
-
-impl<O, F, N> Past<O> for FnPastIter<O, F, N>
-where
-    F: Future<Output = O> + Unpin,
-    N: (FnMut() -> F) + Unpin,
-{
-    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<O> {
-        Pin::new(&mut self.future).poll(cx).map(|output| {
-            self.future = (self.next)();
-            output
-        })
-    }
-}
-
-impl<O, F, N> ToPast<FnPastIter<O, F, N>, O> for N
-where
-    F: Future<Output = O> + Unpin,
-    N: (FnMut() -> F) + Unpin,
-{
-    fn to_past(mut self) -> FnPastIter<O, F, N> {
-        let future = (self)();
-        let next = self;
-
-        FnPastIter { next, future }
-    }
-}*/
 
 pub trait Stateful<S, T>: Unpin {
     fn state(&mut self) -> &mut S;

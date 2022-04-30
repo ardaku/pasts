@@ -1,7 +1,7 @@
-use core::{iter, time::Duration, cell::Cell};
+use core::{cell::Cell, iter, time::Duration};
 
 use async_std::task::sleep;
-use pasts::{prelude::*, Loop, IterAsyncExt};
+use pasts::{prelude::*, IterAsyncExt, Loop};
 
 // Exit type for State.
 type Exit = ();
