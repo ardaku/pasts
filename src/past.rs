@@ -7,42 +7,58 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use alloc::boxed::Box;
-use core::{future::Future, iter::RepeatWith, pin::Pin, task::Context};
+use core::{future::Future, pin::Pin, task::Context};
 
 use crate::prelude::*;
 
-/// Type-erased repeating async function
-#[allow(missing_debug_implementations)]
-pub struct Task<O>(Box<dyn Pasty<O>>);
-
-impl<O> Task<O> {
-    /// Create a new type-erased task.
-    pub fn new<P: Pasty<O> + 'static, N: ToPast<P, O>>(func: N) -> Self {
-        Task(Box::new(func.to_past()))
-    }
-
-    /// Poll for next output.
-    pub fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<O> {
-        self.0.as_mut().poll_next(cx)
-    }
+#[derive(Debug)]
+pub struct AsyncIter<O, F: Future<Output = O> + Unpin, I: Iterator<Item = F>> {
+    iter: I,
+    future: Option<F>,
 }
 
-pub trait Pasty<O>: Unpin {
-    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<O>;
-}
-
-impl<O> Pasty<O> for Task<O> {
-    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<O> {
-        self.0.as_mut().poll_next(cx)
+impl<O, F, I> Past<O> for AsyncIter<O, F, I>
+where
+    F: Future<Output = O> + Unpin,
+    I: Iterator<Item = F>,
+{
+    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<Option<O>> {
+        if let Some(ref mut future) = self.future {
+            Pin::new(future).poll(cx).map(|output| {
+                self.future = self.iter.next();
+                Some(output)
+            })
+        } else {
+            Ready(None)
+        }
     }
 }
 
-pub trait ToPast<P: Pasty<O>, O> {
+/// This sealed trait essentially is a `Stream` or `AsyncIterator`
+pub trait Past<O> {
+    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<Option<O>>;
+}
+
+/// Sealed trait for `Loop::on()`
+pub trait ToPast<P: Past<O>, O> {
     fn to_past(self) -> P;
 }
 
-struct FnWrapper<O, T: FnMut(&mut Context<'_>) -> Poll<O> + Unpin>(T);
+impl<T, O, F, I> ToPast<AsyncIter<O, F, I>, O> for T
+where
+    T: IntoIterator<Item = F, IntoIter = I>,
+    I: Iterator<Item = F>,
+    F: Future<Output = O> + Unpin,
+{
+    fn to_past(self) -> AsyncIter<O, F, I> {
+        let mut iter = self.into_iter();
+        let future = iter.next();
+
+        AsyncIter { iter, future }
+    }
+}
+
+/*struct FnWrapper<O, T: FnMut(&mut Context<'_>) -> Poll<O> + Unpin>(T);
 
 impl<O, T> ToPast<FnWrapper<O, T>, O> for T
 where
@@ -53,7 +69,7 @@ where
     }
 }
 
-impl<O, T> Pasty<O> for FnWrapper<O, T>
+impl<O, T> Past<O> for FnWrapper<O, T>
 where
     T: FnMut(&mut Context<'_>) -> Poll<O> + Unpin,
 {
@@ -65,17 +81,17 @@ where
 impl<O, T, D> ToPast<T, (usize, O)> for T
 where
     T: core::ops::DerefMut<Target = [D]> + Unpin,
-    D: Pasty<O>,
+    D: Past<O>,
 {
     fn to_past(self) -> Self {
         self
     }
 }
 
-impl<O, T, D> Pasty<(usize, O)> for T
+impl<O, T, D> Past<(usize, O)> for T
 where
     T: core::ops::DerefMut<Target = [D]> + Unpin,
-    D: Pasty<O>,
+    D: Past<O>,
 {
     fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<(usize, O)> {
         for (i, this) in self.iter_mut().enumerate() {
@@ -87,28 +103,6 @@ where
     }
 }
 
-#[derive(Debug)]
-pub struct PastIter<O, F, N>
-where
-    F: Future<Output = O> + Unpin,
-    N: FnMut() -> F,
-{
-    future: F,
-    iter: RepeatWith<N>,
-}
-
-impl<O, F, N> Pasty<O> for PastIter<O, F, N>
-where
-    F: Future<Output = O> + Unpin,
-    N: FnMut() -> F + Unpin,
-{
-    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<O> {
-        Pin::new(&mut self.future).poll(cx).map(|output| {
-            self.future = self.iter.next().unwrap_or_else(|| unreachable!());
-            output
-        })
-    }
-}
 
 impl<O, F, N, T> ToPast<PastIter<O, F, N>, O> for T
 where
@@ -125,40 +119,40 @@ where
 }
 
 #[derive(Debug)]
-pub struct BoxedPastIter<O, F, N>
+pub struct FnPastIter<O, F, N>
 where
     F: Future<Output = O>,
     N: (FnMut() -> F) + Unpin,
 {
-    future: Pin<Box<F>>,
+    future: F,
     next: N,
 }
 
-impl<O, F, N> Pasty<O> for BoxedPastIter<O, F, N>
+impl<O, F, N> Past<O> for FnPastIter<O, F, N>
 where
-    F: Future<Output = O>,
+    F: Future<Output = O> + Unpin,
     N: (FnMut() -> F) + Unpin,
 {
     fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<O> {
         Pin::new(&mut self.future).poll(cx).map(|output| {
-            self.future.set((self.next)());
+            self.future = (self.next)();
             output
         })
     }
 }
 
-impl<O, F, N> ToPast<BoxedPastIter<O, F, N>, O> for N
+impl<O, F, N> ToPast<FnPastIter<O, F, N>, O> for N
 where
-    F: Future<Output = O>,
+    F: Future<Output = O> + Unpin,
     N: (FnMut() -> F) + Unpin,
 {
-    fn to_past(mut self) -> BoxedPastIter<O, F, N> {
-        let future = Box::pin((self)());
+    fn to_past(mut self) -> FnPastIter<O, F, N> {
+        let future = (self)();
         let next = self;
 
-        BoxedPastIter { next, future }
+        FnPastIter { next, future }
     }
-}
+}*/
 
 pub trait Stateful<S, T>: Unpin {
     fn state(&mut self) -> &mut S;
@@ -202,18 +196,18 @@ impl<S: Unpin, T, F: Stateful<S, T>> Loop<S, T, F> {
     /// Parameter `past` may be one of:
     ///  - [`IntoIterator`]`<IntoIter = `[`RepeatWith`](core::iter::RepeatWith)`<`[`Future`](core::future::Future)`>>`:  
     ///    (future must be [`Unpin`])
-    ///  - An async function (no parameters) / closure that returns a future (allocates):  
+    ///  - An async function (no parameters) / closure that returns a future
     ///  - A poll function (`FnMut(&mut Context<'_>) -> Poll<O>`)
     ///  - Anything that dereferences to a slice of any of the above
     ///    (passes `(usize, O)` to `then()`)
     pub fn on<P, O, N>(
         self,
         past: P,
-        then: fn(&mut S, O) -> Poll<T>,
+        then: fn(&mut S, Option<O>) -> Poll<T>,
     ) -> Loop<S, T, impl Stateful<S, T>>
     where
         P: ToPast<N, O>,
-        N: Pasty<O>,
+        N: Past<O> + Unpin,
     {
         let past = past.to_past();
         let other = self.other;
@@ -239,16 +233,16 @@ impl<S: Unpin, T: Unpin, F: Stateful<S, T>> Future for Loop<S, T, F> {
     }
 }
 
-struct Join<S, T, O, F: Stateful<S, T>, P: Pasty<O>> {
+struct Join<S, T, O, F: Stateful<S, T>, P: Past<O>> {
     other: F,
     past: P,
-    then: fn(&mut S, O) -> Poll<T>,
+    then: fn(&mut S, Option<O>) -> Poll<T>,
 }
 
 impl<S, T, O, F, P> Stateful<S, T> for Join<S, T, O, F, P>
 where
     F: Stateful<S, T>,
-    P: Pasty<O>,
+    P: Past<O> + Unpin,
 {
     fn state(&mut self) -> &mut S {
         self.other.state()
@@ -265,24 +259,4 @@ where
             self.other.poll(cx)
         }
     }
-}
-
-struct PollFn<T, F: FnMut(&mut Context<'_>) -> Poll<T> + Unpin>(F);
-
-impl<T, F: FnMut(&mut Context<'_>) -> Poll<T> + Unpin> Future for PollFn<T, F> {
-    type Output = T;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
-        (&mut self.0)(cx)
-    }
-}
-
-/// Polyfill for [`core::future::poll_fn`].
-///
-/// Create a [`Future`] from a repeating function returning [`Poll`].
-pub fn poll_fn<T, F>(f: F) -> impl Future<Output = T> + Unpin
-where
-    F: FnMut(&mut Context<'_>) -> Poll<T> + Unpin,
-{
-    PollFn(f)
 }

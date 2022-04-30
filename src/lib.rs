@@ -100,12 +100,23 @@
 extern crate alloc;
 
 mod exec;
+mod func;
 mod past;
+mod task;
+mod iter;
 
 pub use exec::{block_on, BlockOn, Executor};
-pub use past::{poll_fn, Loop, Task};
+pub use func::{poll_fn, poll_next_fn};
+pub use past::Loop;
+pub use task::Task;
+pub use iter::{IterAsyncExt};
 
 pub mod prelude {
-    //! Types that are almost always needed
+    //! Items that are almost always needed.
+    //!
+    //! Includes [`Poll`], [`Poll::Pending`], and [`Poll::Ready`] because they
+    //! are essentially the asynchronous equivalent of [`Option`] which is in
+    //! the prelude, though more geared towards control flow.
+
     pub use core::task::Poll::{self, Pending, Ready};
 }
