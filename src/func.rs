@@ -7,52 +7,12 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use core::{fmt, future::Future, pin::Pin, task::Context};
+use core::{fmt, task::Context};
 
 use crate::{
     past::{Past, ToPast},
     prelude::*,
 };
-
-pub struct PollFn<F>(F);
-
-impl<F> fmt::Debug for PollFn<F> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "PollFn")
-    }
-}
-
-impl<T, F: FnMut(&mut Context<'_>) -> Poll<T> + Unpin> Future for PollFn<F> {
-    type Output = T;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
-        self.0(cx)
-    }
-}
-
-/// Polyfill for [`core::future::poll_fn`].
-///
-/// Create a [`Future`] from a repeating function returning [`Poll`].
-///
-/// ```rust
-/// use pasts::prelude::*;
-/// use core::task::Context;
-///
-/// fn read_line(_cx: &mut Context<'_>) -> Poll<String> {
-///     Ready("Hello, World!".into())
-/// }
-///
-/// pasts::block_on(async {
-///     let read_future = pasts::poll_fn(read_line);
-///     assert_eq!(read_future.await, "Hello, World!".to_owned());
-/// });
-/// ```
-pub fn poll_fn<T, F>(f: F) -> PollFn<F>
-where
-    F: FnMut(&mut Context<'_>) -> Poll<T> + Unpin,
-{
-    PollFn(f)
-}
 
 pub struct PollNextFn<F>(F);
 
@@ -80,7 +40,7 @@ where
     }
 }
 
-/// Like [`poll_fn`] but for asynchronous iteration.
+/// Like [`poll_fn`](core::future::poll_fn) but for asynchronous iteration.
 ///
 /// Useful for interoperability with other abstractions, such as `Stream` and
 /// `AsyncIterator`.

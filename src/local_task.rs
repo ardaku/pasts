@@ -17,9 +17,7 @@ use crate::{past::Past, prelude::*};
 /// Usage of this type requires an allocator.
 ///
 /// See docs for [`Task`](crate::Task)
-pub struct LocalTask<'a, O = ()>(
-    Option<Pin<Box<dyn Future<Output = O> + 'a>>>,
-);
+pub struct LocalTask<'a, O = ()>(Option<Pin<Box<dyn Future<Output = O> + 'a>>>);
 
 impl<O> fmt::Debug for LocalTask<'_, O> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
