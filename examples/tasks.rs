@@ -8,8 +8,10 @@ enum Exit {
 struct State {}
 
 impl State {
-    fn completion(&mut self, (id, val): (usize, &str)) -> Poll<Exit> {
-        println!("Received message from completed task: {}", val);
+    fn completion(&mut self, next: Option<(usize, &str)>) -> Poll<Exit> {
+        let (id, val) = next.unwrap();
+
+        println!("Received message from completed task: {val}");
 
         Ready(Exit::Remove(id))
     }
@@ -17,10 +19,8 @@ impl State {
 
 async fn run() {
     let mut state = State {};
-    let mut tasks = vec![
-        Task::new(|| async { "Hello" }),
-        Task::new(|| async { "World" }),
-    ];
+    let mut tasks =
+        vec![Task::new(async { "Hello" }), Task::new(async { "World" })];
 
     while !tasks.is_empty() {
         match Loop::new(&mut state)
