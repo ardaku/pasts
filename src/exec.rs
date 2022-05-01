@@ -53,7 +53,8 @@ pub trait Executor: Send + Sync + 'static {
 
 impl<T> BlockOn for T where T: Sized + Executor {}
 
-/// Trait that implements block_on and block_on_pinned methods for an Executor
+/// Trait that implements `block_on()` and `block_on_pinned()` methods for an
+/// [`Executor`]
 pub trait BlockOn: Sized + Executor {
     /// Block on an unpin future on the current thread.
     #[inline(always)]
