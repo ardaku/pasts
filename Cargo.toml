@@ -9,13 +9,12 @@
 
 [package]
 name = "pasts"
-version = "0.9.0"
-authors = ["Jeron Aldaron Lau <jeronlau@plopgrizzly.com>"]
+version = "0.10.0"
 license = "Apache-2.0 OR MIT OR BSL-1.0"
 description = "Minimal and simpler alternative to the futures crate."
-repository = "https://github.com/AldaronLau/pasts"
+repository = "https://github.com/ardaku/pasts"
 documentation = "https://docs.rs/pasts"
-homepage = "https://github.com/AldaronLau/pasts/blob/stable/CHANGELOG.md"
+homepage = "https://github.com/ardaku/pasts/blob/stable/CHANGELOG.md"
 include = ["Cargo.toml", "src/*", "README.md"]
 keywords = ["futures", "platform-agnostic", "cross-platform", "io", "executor"]
 categories = ["asynchronous", "embedded", "no-std", "rust-patterns", "wasm"]

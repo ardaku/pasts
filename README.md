@@ -2,13 +2,13 @@
 
 #### [Changelog][3] | [Source][4] | [Getting Started][5]
 
-[![tests](https://github.com/AldaronLau/pasts/actions/workflows/ci.yml/badge.svg)](https://github.com/AldaronLau/pasts/actions/workflows/ci.yml)
-[![GitHub commit activity](https://img.shields.io/github/commit-activity/y/AldaronLau/pasts)](https://github.com/AldaronLau/pasts/)
-[![GitHub contributors](https://img.shields.io/github/contributors/AldaronLau/pasts)](https://github.com/AldaronLau/pasts/graphs/contributors)  
+[![tests](https://github.com/ardaku/pasts/actions/workflows/ci.yml/badge.svg)](https://github.com/ardaku/pasts/actions/workflows/ci.yml)
+[![GitHub commit activity](https://img.shields.io/github/commit-activity/y/ardaku/pasts)](https://github.com/ardaku/pasts/)
+[![GitHub contributors](https://img.shields.io/github/contributors/ardaku/pasts)](https://github.com/ardaku/pasts/graphs/contributors)  
 [![Crates.io](https://img.shields.io/crates/v/pasts)](https://crates.io/crates/pasts)
 [![Crates.io](https://img.shields.io/crates/d/pasts)](https://crates.io/crates/pasts)
 [![Crates.io (recent)](https://img.shields.io/crates/dr/pasts)](https://crates.io/crates/pasts)  
-[![Crates.io](https://img.shields.io/crates/l/pasts)](https://github.com/AldaronLau/pasts/search?l=Text&q=license)
+[![Crates.io](https://img.shields.io/crates/l/pasts)](https://github.com/ardaku/pasts/search?l=Text&q=license)
 [![Docs.rs](https://docs.rs/pasts/badge.svg)](https://docs.rs/pasts/)
 
 Minimal and simpler alternative to the futures crate.
@@ -57,15 +57,15 @@ email at [aldaronlau@gmail.com][13].
 
 [0]: https://docs.rs/pasts
 [1]: https://crates.io/crates/pasts
-[2]: https://github.com/AldaronLau/pasts/actions?query=workflow%3Atests
-[3]: https://github.com/AldaronLau/pasts/blob/stable/CHANGELOG.md
-[4]: https://github.com/AldaronLau/pasts
+[2]: https://github.com/ardaku/pasts/actions?query=workflow%3Atests
+[3]: https://github.com/ardaku/pasts/blob/stable/CHANGELOG.md
+[4]: https://github.com/ardaku/pasts
 [5]: https://docs.rs/pasts#getting-started
 [6]: https://aldaronlau.com/
-[7]: https://github.com/AldaronLau/pasts/blob/stable/LICENSE_APACHE_2_0.txt
+[7]: https://github.com/ardaku/pasts/blob/stable/LICENSE_APACHE_2_0.txt
 [8]: https://www.apache.org/licenses/LICENSE-2.0
-[9]: https://github.com/AldaronLau/pasts/blob/stable/LICENSE_MIT.txt
+[9]: https://github.com/ardaku/pasts/blob/stable/LICENSE_MIT.txt
 [10]: https://mit-license.org/
-[11]: https://github.com/AldaronLau/pasts/blob/stable/LICENSE_BOOST_1_0.txt
+[11]: https://github.com/ardaku/pasts/blob/stable/LICENSE_BOOST_1_0.txt
 [12]: https://www.boost.org/LICENSE_1_0.txt
 [13]: mailto:aldaronlau@gmail.com
