@@ -22,17 +22,22 @@ use crate::prelude::*;
 ///  - Want an abstraction over `Pin<Box<dyn Future<Output = O> + Send>>`
 ///
 /// ```rust
+/// use pasts::Task;
+///
 /// let future_a = async { println!("Hello") };
 /// let future_b = async { println!("World") };
 ///
-/// let future_list = [Task::new(future_a), Task::new(future_b)].to_vec();
+/// let future_list = vec![Task::new(future_a), Task::new(future_b)];
 /// ```
 ///
 /// ```rust
+/// use pasts::Task;
+/// use core::{pin::Pin, future::Future};
+///
 /// struct Futures {
-///     task_b: Task<'static, ()>,
+///     task_a: Task<'static, ()>,
 ///     // instead of:
-///     task_a: Pin<Box<dyn Future<Output = ()> + Send>>,
+///     task_b: Pin<Box<dyn Future<Output = ()> + Send>>,
 /// }
 ///
 /// let futures = Futures {
@@ -42,12 +47,20 @@ use crate::prelude::*;
 /// };
 /// ```
 ///
-/// ## Practical Examples
-/// Usage with [`Loop`](crate::Loop):
+/// # Selecting on Futures:
+/// Select first completed future.
 ///
-/// FIXME: Joining / selecting on futures:
+/// ```rust
+#[doc = include_str!("../examples/slices.rs")]
+/// ```
 ///
-/// FIXME: Task spawning:
+/// # Task spawning
+/// Spawns tasks in a [`Vec`], and removes them as they complete.
+///
+/// ```rust
+#[doc = include_str!("../examples/tasks.rs")]
+/// ```
+///
 pub struct Task<'a, O = ()>(Pin<Box<dyn Future<Output = O> + Send + 'a>>);
 
 impl<O> fmt::Debug for Task<'_, O> {

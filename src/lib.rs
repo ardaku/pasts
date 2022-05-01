@@ -13,66 +13,22 @@
 //! The **std** feature is enabled by default, disable it to use on `no_std`.
 //!
 //! # Getting Started
+//!
+//! Add the following to your *Cargo.toml*:
+//! ```toml
+//! [dependencies]
+//! pasts = "0.10"
+//! aysnc-std = "1.0"
+//! ```
+//!
+//! ## Multi-Tasking On Multiple Iterators of Futures
 //! This example runs two timers in parallel using the `async-std` crate
 //! counting from 0 to 6.  The "one" task will always be run for count 6 and
 //! stop the program, although which task will run for count 5 may be either
 //! "one" or "two" because they trigger at the same time.
 //!
-//! Add the following to your *Cargo.toml*:
-//!
-//! ```toml
-//! [dependencies]
-//! pasts = "0.8"
-//! aysnc-std = "1.0"
-//! ```
-//!
 //! ```rust,no_run
-//! use core::time::Duration;
-//!
-//! use async_std::task::sleep;
-//! use pasts::{prelude::*, Loop};
-//!
-//! // Exit type for State.
-//! type Exit = ();
-//!
-//! // Shared state between tasks on the thread.
-//! struct State {
-//!     counter: usize,
-//! }
-//!
-//! impl State {
-//!     fn one(&mut self, _: ()) -> Poll<Exit> {
-//!         println!("One {}", self.counter);
-//!         self.counter += 1;
-//!         if self.counter > 6 {
-//!             Ready(())
-//!         } else {
-//!             Pending
-//!         }
-//!     }
-//!
-//!     fn two(&mut self, _: ()) -> Poll<Exit> {
-//!         println!("Two {}", self.counter);
-//!         self.counter += 1;
-//!         Pending
-//!     }
-//! }
-//!
-//! async fn run() {
-//!     let mut state = State { counter: 0 };
-//!
-//!     let one = || sleep(Duration::from_secs_f64(1.0));
-//!     let two = || sleep(Duration::from_secs_f64(2.0));
-//!
-//!     Loop::new(&mut state)
-//!         .on(one, State::one)
-//!         .on(two, State::two)
-//!         .await;
-//! }
-//!
-//! fn main() {
-//!     pasts::block_on(run())
-//! }
+#![doc = include_str!("../examples/counter.rs")]
 //! ```
 #![cfg_attr(not(feature = "std"), no_std)]
 #![doc(

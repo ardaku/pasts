@@ -122,14 +122,6 @@ impl<'a, S: Unpin, T> Loop<S, T, Never<'a, S>> {
 
 impl<S: Unpin, T, F: Stateful<S, T>> Loop<S, T, F> {
     /// Register an event handler.
-    ///
-    /// Parameter `past` may be one of:
-    ///  - [`IntoIterator`]`<IntoIter = `[`RepeatWith`](core::iter::RepeatWith)`<`[`Future`](core::future::Future)`>>`:  
-    ///    (future must be [`Unpin`])
-    ///  - An async function (no parameters) / closure that returns a future
-    ///  - A poll function (`FnMut(&mut Context<'_>) -> Poll<O>`)
-    ///  - Anything that dereferences to a slice of any of the above
-    ///    (passes `(usize, O)` to `then()`)
     pub fn on<P, O, N>(
         self,
         past: P,
