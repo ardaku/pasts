@@ -32,7 +32,7 @@ impl<T, F: FnMut(&mut Context<'_>) -> Poll<T> + Unpin> Future for PollFn<F> {
 /// Create a [`Future`] from a repeating function returning [`Poll`].
 pub fn poll_fn<T, F>(f: F) -> PollFn<F>
 where
-    F: FnMut(&mut Context<'_>) -> Poll<Option<T>> + Unpin,
+    F: FnMut(&mut Context<'_>) -> Poll<T> + Unpin,
 {
     PollFn(f)
 }
@@ -55,9 +55,9 @@ where
 }
 
 /// Like [`poll_fn`] but for asynchronous iteration.
-pub fn poll_next_fn<T, F, N>(n: N) -> PollNextFn<N>
+pub fn poll_next_fn<T, F>(f: F) -> PollNextFn<F>
 where
     F: FnMut(&mut Context<'_>) -> Poll<T> + Unpin,
 {
-    PollNextFn(n)
+    PollNextFn(f)
 }
