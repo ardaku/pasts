@@ -47,9 +47,9 @@ impl<F> fmt::Debug for PollNextFn<F> {
 
 impl<T, F> Past<T> for PollNextFn<F>
 where
-    F: FnMut(&mut Context<'_>) -> Poll<Option<T>> + Unpin,
+    F: FnMut(&mut Context<'_>) -> Poll<T> + Unpin,
 {
-    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<Option<T>> {
+    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<T> {
         self.0(cx)
     }
 }
@@ -57,7 +57,7 @@ where
 /// Like [`poll_fn`] but for asynchronous iteration.
 pub fn poll_next_fn<T, F, N>(n: N) -> PollNextFn<N>
 where
-    F: FnMut(&mut Context<'_>) -> Poll<Option<T>> + Unpin,
+    F: FnMut(&mut Context<'_>) -> Poll<T> + Unpin,
 {
     PollNextFn(n)
 }

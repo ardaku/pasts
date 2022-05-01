@@ -17,7 +17,7 @@ pub struct AsyncIter<O, F: Future<Output = O> + Unpin, I: Iterator<Item = F>> {
     future: Option<F>,
 }
 
-impl<O, F, I> Past<O> for AsyncIter<O, F, I>
+impl<O, F, I> Past<Option<O>> for AsyncIter<O, F, I>
 where
     F: Future<Output = O> + Unpin,
     I: Iterator<Item = F>,
@@ -36,7 +36,7 @@ where
 
 /// This sealed trait essentially is a `Stream` or `AsyncIterator`
 pub trait Past<O> {
-    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<Option<O>>;
+    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<O>;
 }
 
 /// Sealed trait for `Loop::on()`
@@ -44,7 +44,7 @@ pub trait ToPast<P: Past<O>, O> {
     fn to_past(self) -> P;
 }
 
-impl<T, O, F, I> ToPast<AsyncIter<O, F, I>, O> for T
+impl<T, O, F, I> ToPast<AsyncIter<O, F, I>, Option<O>> for T
 where
     T: IntoIterator<Item = F, IntoIter = I>,
     I: Iterator<Item = F>,
@@ -58,7 +58,7 @@ where
     }
 }
 
-impl<O, T, D> ToPast<T, (usize, O)> for T
+impl<O, T, D> ToPast<T, Option<(usize, O)>> for T
 where
     T: core::ops::DerefMut<Target = [D]> + Unpin,
     D: Future<Output = O> + Unpin,
@@ -68,7 +68,7 @@ where
     }
 }
 
-impl<O, T, D> Past<(usize, O)> for T
+impl<O, T, D> Past<Option<(usize, O)>> for T
 where
     T: core::ops::DerefMut<Target = [D]> + Unpin,
     D: Future<Output = O> + Unpin,
@@ -125,7 +125,7 @@ impl<S: Unpin, T, F: Stateful<S, T>> Loop<S, T, F> {
     pub fn on<P, O, N>(
         self,
         past: P,
-        then: fn(&mut S, Option<O>) -> Poll<T>,
+        then: fn(&mut S, O) -> Poll<T>,
     ) -> Loop<S, T, impl Stateful<S, T>>
     where
         P: ToPast<N, O>,
@@ -158,7 +158,7 @@ impl<S: Unpin, T: Unpin, F: Stateful<S, T>> Future for Loop<S, T, F> {
 struct Join<S, T, O, F: Stateful<S, T>, P: Past<O>> {
     other: F,
     past: P,
-    then: fn(&mut S, Option<O>) -> Poll<T>,
+    then: fn(&mut S, O) -> Poll<T>,
 }
 
 impl<S, T, O, F, P> Stateful<S, T> for Join<S, T, O, F, P>
