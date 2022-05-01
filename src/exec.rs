@@ -142,6 +142,11 @@ impl Executor for Exec {
 /// # Platform-Specific Behavior
 /// On WebAssembly, this function returns immediately instead of blocking
 /// because you're not supposed to block in a web browser.
+///
+/// # Example
+/// ```rust,no_run
+#[doc = include_str!("../examples/timer.rs")]
+/// ```
 pub fn block_on<F: Future<Output = ()> + 'static>(future: F) {
     // On std, associate the current thread.
     Exec(

@@ -61,7 +61,7 @@ where
 impl<O, T, D> ToPast<T, Option<(usize, O)>> for T
 where
     T: core::ops::DerefMut<Target = [D]> + Unpin,
-    D: Future<Output = O> + Unpin,
+    D: Past<O>,
 {
     fn to_past(self) -> Self {
         self
@@ -71,11 +71,11 @@ where
 impl<O, T, D> Past<Option<(usize, O)>> for T
 where
     T: core::ops::DerefMut<Target = [D]> + Unpin,
-    D: Future<Output = O> + Unpin,
+    D: Past<O>,
 {
     fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<Option<(usize, O)>> {
         for (i, mut this) in self.iter_mut().enumerate() {
-            match Pin::new(&mut this).poll(cx) {
+            match Pin::new(&mut this).poll_next(cx) {
                 Ready(value) => return Ready(Some((i, value))),
                 Pending => {}
             }
@@ -122,6 +122,15 @@ impl<'a, S: Unpin, T> Loop<S, T, Never<'a, S>> {
 
 impl<S: Unpin, T, F: Stateful<S, T>> Loop<S, T, F> {
     /// Register an event handler.
+    ///
+    /// The first parameter can be one of:
+    ///  - [`IntoIterator`] for any [`Iterator`] of [`Future`]s (Generic
+    ///    `O = Option<Future::Output>`)
+    ///  - Return value from [`poll_next_fn`](crate::poll_next_fn) (Generic
+    ///    `O = FnMut::Output`)
+    ///  - [`Task`](crate::Task) (Generic `O = Task::O`)
+    ///  - Anything that derefs to an slice of the above (Generic
+    ///    `O = (usize, _)`)
     pub fn on<P, O, N>(
         self,
         past: P,

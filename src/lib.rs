@@ -70,9 +70,7 @@ pub use task::Task;
 pub mod prelude {
     //! Items that are almost always needed.
     //!
-    //! Includes [`Poll`], [`Poll::Pending`], and [`Poll::Ready`] because they
-    //! are essentially the asynchronous equivalent of [`Option`] which is in
-    //! the prelude, though more geared towards control flow.
+    //! Includes [`Poll`], [`Poll::Pending`], and [`Poll::Ready`].
 
     pub use core::task::Poll::{self, Pending, Ready};
 }

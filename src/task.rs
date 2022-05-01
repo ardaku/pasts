@@ -10,9 +10,9 @@
 use alloc::boxed::Box;
 use core::{fmt, future::Future, pin::Pin, task::Context};
 
-use crate::prelude::*;
+use crate::{past::Past, prelude::*};
 
-/// Type-erased `?`[`Unpin`] + [`Send`] future.
+/// Type-erased `?`[`Unpin`] + [`Send`] fused future.
 ///
 /// Usage of this type requires an allocator.
 ///
@@ -61,7 +61,9 @@ use crate::prelude::*;
 #[doc = include_str!("../examples/tasks.rs")]
 /// ```
 ///
-pub struct Task<'a, O = ()>(Pin<Box<dyn Future<Output = O> + Send + 'a>>);
+pub struct Task<'a, O = ()>(
+    Option<Pin<Box<dyn Future<Output = O> + Send + 'a>>>,
+);
 
 impl<O> fmt::Debug for Task<'_, O> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -73,13 +75,28 @@ impl<O> Future for Task<'_, O> {
     type Output = O;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        Pin::new(&mut self.get_mut().0).poll(cx)
+        self.get_mut().poll_next(cx)
+    }
+}
+
+impl<O> Past<O> for Task<'_, O> {
+    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<O> {
+        match self.0 {
+            Some(ref mut future) => match Pin::new(future).poll(cx) {
+                Pending => Pending,
+                Ready(output) => {
+                    self.0 = None;
+                    Ready(output)
+                }
+            },
+            None => Pending,
+        }
     }
 }
 
 impl<'a, O> Task<'a, O> {
     /// Create a new type-erased task from a [`Future`].
     pub fn new(future: impl Future<Output = O> + Send + 'a) -> Self {
-        Task(Box::pin(future))
+        Task(Some(Box::pin(future)))
     }
 }
