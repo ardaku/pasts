@@ -73,9 +73,11 @@ impl<S: Unpin, T, F: Stateful<S, T>> Loop<S, T, F> {
     ///
     /// The first parameter can be one of:
     ///  - [`Task`](crate::Task) (`O = Future::Output`)
+    ///  - Mutable reference to [`Task`](crate::Task) (`O = Future::Output`)
     ///  - Return value from [`poll_next_fn`](crate::poll_next_fn)
     ///    (`O = FnMut::Output`)
-    ///  - Anything that derefs to an slice of the above (`O = (usize, _)`)
+    ///  - Anything that derefs to a mutable slice of the above
+    ///    (`O = (usize, _)`)
     pub fn on<P, O>(
         self,
         past: P,

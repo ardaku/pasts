@@ -120,12 +120,9 @@ pub struct Task<
     _phantom: core::marker::PhantomData<Box<O>>,
 }
 
-impl<
-    O: ?Sized,
-    F: Future,
-    I: Iterator<Item = F>,
-    S: Setter<F>,
-> Task<O, F, I, S> {
+impl<O: ?Sized, F: Future, I: Iterator<Item = F>, S: Setter<F>>
+    Task<O, F, I, S>
+{
     /// For integeration with `AsyncIterator` or `Stream` traits
     pub fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<F::Output> {
         <Self as Past<F::Output>>::poll_next(self, cx)
@@ -244,5 +241,16 @@ where
             self.future.set(self.iterator.next());
         }
         output
+    }
+}
+
+impl<O: ?Sized, F, I, S> Past<F::Output> for &mut Task<O, F, I, S>
+where
+    F: Future,
+    I: Iterator<Item = F>,
+    S: Setter<F>,
+{
+    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<F::Output> {
+        (*self).poll_next(cx)
     }
 }
