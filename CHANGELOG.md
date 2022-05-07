@@ -4,12 +4,15 @@ All notable changes to `pasts` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
-## [0.10.0] - Unreleased
+## [0.10.0] - 2022-05-07
 ### Added
- - `poll_fn()`
+ - More documentation
+ - `poll_next_fn()`
 
 ### Changed
- - Lifted requirement of `Send` in some places
+ - Completely reimplemented `Task` so it doesn't always require allocation or
+   `Send` (it should be more obvious which methods require allocation now)
+ - `Loop::on()` accepts different types for the second parameter
 
 ## [0.9.0] - 2022-03-27
 ### Added
