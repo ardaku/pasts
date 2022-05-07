@@ -72,13 +72,10 @@ impl<S: Unpin, T, F: Stateful<S, T>> Loop<S, T, F> {
     /// Register an event handler.
     ///
     /// The first parameter can be one of:
-    ///  - [`IntoIterator`] for any [`Iterator`] of [`Future`]s (Generic
-    ///    `O = Option<Future::Output>`)
-    ///  - Return value from [`poll_next_fn`](crate::poll_next_fn) (Generic
-    ///    `O = FnMut::Output`)
-    ///  - [`Task`](crate::Task) (Generic `O = Task::O`)
-    ///  - Anything that derefs to an slice of the above (Generic
-    ///    `O = (usize, _)`)
+    ///  - [`Task`](crate::Task) (`O = Future::Output`)
+    ///  - Return value from [`poll_next_fn`](crate::poll_next_fn)
+    ///    (`O = FnMut::Output`)
+    ///  - Anything that derefs to an slice of the above (`O = (usize, _)`)
     pub fn on<P, O>(
         self,
         past: P,
