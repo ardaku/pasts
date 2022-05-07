@@ -9,25 +9,13 @@
 
 use core::{fmt, task::Context};
 
-use crate::{
-    past::{Past, ToPast},
-    prelude::*,
-};
+use crate::{past::Past, prelude::*};
 
 pub struct PollNextFn<F>(F);
 
 impl<F> fmt::Debug for PollNextFn<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "PollNextFn")
-    }
-}
-
-impl<T, F> ToPast<PollNextFn<F>, T> for PollNextFn<F>
-where
-    F: FnMut(&mut Context<'_>) -> Poll<T> + Unpin,
-{
-    fn to_past(self) -> Self {
-        self
     }
 }
 

@@ -11,61 +11,9 @@ use core::{future::Future, pin::Pin, task::Context};
 
 use crate::prelude::*;
 
-#[derive(Debug)]
-pub struct AsyncIter<O, F: Future<Output = O> + Unpin, I: Iterator<Item = F>> {
-    iter: I,
-    future: Option<F>,
-}
-
-impl<O, F, I> Past<Option<O>> for AsyncIter<O, F, I>
-where
-    F: Future<Output = O> + Unpin,
-    I: Iterator<Item = F>,
-{
-    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<Option<O>> {
-        if let Some(ref mut future) = self.future {
-            Pin::new(future).poll(cx).map(|output| {
-                self.future = self.iter.next();
-                Some(output)
-            })
-        } else {
-            Ready(None)
-        }
-    }
-}
-
 /// This sealed trait essentially is a `Stream` or `AsyncIterator`
 pub trait Past<O> {
     fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<O>;
-}
-
-/// Sealed trait for `Loop::on()`
-pub trait ToPast<P: Past<O>, O> {
-    fn to_past(self) -> P;
-}
-
-impl<T, O, F, I> ToPast<AsyncIter<O, F, I>, Option<O>> for T
-where
-    T: IntoIterator<Item = F, IntoIter = I>,
-    I: Iterator<Item = F>,
-    F: Future<Output = O> + Unpin,
-{
-    fn to_past(self) -> AsyncIter<O, F, I> {
-        let mut iter = self.into_iter();
-        let future = iter.next();
-
-        AsyncIter { iter, future }
-    }
-}
-
-impl<O, T, D> ToPast<T, Option<(usize, O)>> for T
-where
-    T: core::ops::DerefMut<Target = [D]> + Unpin,
-    D: Past<O>,
-{
-    fn to_past(self) -> Self {
-        self
-    }
 }
 
 impl<O, T, D> Past<Option<(usize, O)>> for T
@@ -131,16 +79,14 @@ impl<S: Unpin, T, F: Stateful<S, T>> Loop<S, T, F> {
     ///  - [`Task`](crate::Task) (Generic `O = Task::O`)
     ///  - Anything that derefs to an slice of the above (Generic
     ///    `O = (usize, _)`)
-    pub fn on<P, O, N>(
+    pub fn on<P, O>(
         self,
         past: P,
         then: fn(&mut S, O) -> Poll<T>,
     ) -> Loop<S, T, impl Stateful<S, T>>
     where
-        P: ToPast<N, O>,
-        N: Past<O> + Unpin,
+        P: Past<O> + Unpin,
     {
-        let past = past.to_past();
         let other = self.other;
         let _phantom = core::marker::PhantomData;
         let other = Join { other, past, then };

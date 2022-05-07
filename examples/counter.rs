@@ -1,7 +1,7 @@
-use core::{cell::Cell, iter, time::Duration};
+use core::time::Duration;
 
 use async_std::task::sleep;
-use pasts::{prelude::*, IterAsyncExt, Loop};
+use pasts::{prelude::*, Loop, Task};
 
 // Exit type for State.
 type Exit = ();
@@ -12,7 +12,7 @@ struct State {
 }
 
 impl State {
-    fn one(&mut self, _: Option<()>) -> Poll<Exit> {
+    fn one(&mut self, _: ()) -> Poll<Exit> {
         println!("One {}", self.counter);
         self.counter += 1;
         if self.counter > 6 {
@@ -22,7 +22,7 @@ impl State {
         }
     }
 
-    fn two(&mut self, _: Option<()>) -> Poll<Exit> {
+    fn two(&mut self, _: ()) -> Poll<Exit> {
         println!("Two {}", self.counter);
         self.counter += 1;
         Pending
@@ -34,15 +34,12 @@ async fn run() {
 
     let mut state = State { counter: 0 };
 
-    let one = Cell::new(None);
-    let mut one = iter::repeat_with(|| sleep(1.0)).boxed(&one);
-
-    let two = Cell::new(None);
-    let mut two = iter::repeat_with(|| sleep(2.0)).boxed(&two);
+    let one = Task::with_fn_boxed(|| sleep(1.0));
+    let two = Task::with_fn_boxed(|| sleep(2.0));
 
     Loop::new(&mut state)
-        .on(&mut one, State::one)
-        .on(&mut two, State::two)
+        .on(one, State::one)
+        .on(two, State::two)
         .await;
 }
 
