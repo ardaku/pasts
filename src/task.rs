@@ -129,7 +129,7 @@ impl<O: ?Sized, F: Future, I: Iterator<Item = F>, S: Setter<F>>
     }
 }
 
-impl<O, F: Future + Unpin> Task<O, F> {
+impl<F: Future + Unpin> Task<(), F> {
     /// Create a new fused asynchronous task from a `Future`.
     pub fn with(future: F) -> Self {
         Task::from(iter::once(future))
@@ -142,7 +142,7 @@ impl<F: Future> Task<F> {
     ///
     /// **Requires non-ZST-exclusive-allocator**
     pub fn with_boxed(future: F) -> Task<F> {
-        Task::with(Box::pin(future))
+        Task::from(iter::once(Box::pin(future)))
     }
 }
 
