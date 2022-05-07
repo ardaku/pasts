@@ -120,6 +120,18 @@ pub struct Task<
     _phantom: core::marker::PhantomData<Box<O>>,
 }
 
+impl<
+    O: ?Sized,
+    F: Future,
+    I: Iterator<Item = F>,
+    S: Setter<F>,
+> Task<O, F, I, S> {
+    /// For integeration with `AsyncIterator` or `Stream` traits
+    pub fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<F::Output> {
+        <Self as Past<F::Output>>::poll_next(self, cx)
+    }
+}
+
 impl<O, F: Future + Unpin> Task<O, F> {
     /// Create a new fused asynchronous task from a `Future`.
     pub fn with(future: F) -> Self {
