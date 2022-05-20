@@ -21,13 +21,14 @@ use crate::prelude::*;
 ///
 /// Polyfill for [`AsyncIterator`](core::async_iter::AsyncIterator), with a
 /// few deviations:
+///  - Requires [`Unpin`]
 ///  - [`poll_next()`](AsyncIterator::poll_next) takes `&mut Self` instead of
 ///    `Pin<&mut Self>`
-///  - [`into_iter()`](AsyncIterator::into_iter) replaces duplicating iterator
-///    methods
-pub trait AsyncIterator {
+///  - [`into_iter()`](AsyncIterator::into_iter) replaces the need for
+///    duplicated iterator methods
+pub trait AsyncIterator: Unpin {
     /// The type that is yielded by this async iterator
-    type Item;
+    type Item: Unpin;
 
     /// Attempt to get the next value from this iterator, registering a wakeup
     /// when not ready.
@@ -50,7 +51,7 @@ pub trait AsyncIterator {
     /// Convert this `AsyncIterator` into an [`AsyncIter`].
     fn into_iter(self) -> IntoAsyncIterFuture<Self>
     where
-        Self: Sized + Unpin,
+        Self: Sized,
     {
         IntoAsyncIterFuture(Some(self))
     }
@@ -77,9 +78,9 @@ impl<I: AsyncIterator + ?Sized> Future for IterNextFuture<'_, I> {
 }
 
 #[derive(Debug)]
-pub struct IntoAsyncIterFuture<I: AsyncIterator + Unpin>(Option<I>);
+pub struct IntoAsyncIterFuture<I: AsyncIterator>(Option<I>);
 
-impl<I: AsyncIterator + Unpin> Future for IntoAsyncIterFuture<I> {
+impl<I: AsyncIterator> Future for IntoAsyncIterFuture<I> {
     type Output = AsyncIter<I>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -143,9 +144,11 @@ impl<I: AsyncIterator> AsyncIterator for AsyncIter<I> {
     }
 }
 
-struct PollNextFn<T, F: FnMut(&mut Context<'_>) -> Poll<Option<T>> + Unpin>(F);
+struct PollNextFn<T: Unpin, F>(F)
+where
+    F: FnMut(&mut Context<'_>) -> Poll<Option<T>> + Unpin;
 
-impl<T, F> AsyncIterator for PollNextFn<T, F>
+impl<T: Unpin, F> AsyncIterator for PollNextFn<T, F>
 where
     F: FnMut(&mut Context<'_>) -> Poll<Option<T>> + Unpin,
 {
