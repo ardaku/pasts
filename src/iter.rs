@@ -117,3 +117,15 @@ impl<I: AsyncIterator> Iterator for AsyncIter<I> {
         self.1.take()
     }
 }
+
+impl<I: AsyncIterator> AsyncIterator for AsyncIter<I> {
+    type Item = I::Item;
+
+    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        if let Some(queued) = self.1.take() {
+            Ready(Some(queued))
+        } else {
+            self.0.poll_next(cx)
+        }
+    }
+}
