@@ -106,7 +106,7 @@ where
     F: FnMut(&mut Context<'_>) -> Poll<Option<T>> + Unpin,
 {
     /// Create a new `AsyncIter` from a function.
-    pub async fn new(poll_next_fn: F) -> Self {
+    pub async fn from_fn(poll_next_fn: F) -> Self {
         let iter = PollNextFn(poll_next_fn);
         let mut this = Self(iter, None);
         this.prepare().await;
