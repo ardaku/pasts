@@ -100,6 +100,19 @@ impl<I: AsyncIterator + Unpin> Future for IntoAsyncIterFuture<I> {
 #[derive(Debug)]
 pub struct AsyncIter<I: AsyncIterator>(I, Option<I::Item>);
 
+impl<T: Unpin, F> AsyncIter<PollNextFn<T, F>>
+where
+    F: FnMut(&mut Context<'_>) -> Poll<Option<T>> + Unpin,
+{
+    /// Create a new `AsyncIter` from a function.
+    pub async fn new(poll_next_fn: F) -> Self {
+        let iter = PollNextFn(poll_next_fn);
+        let mut this = Self(iter, None);
+        this.prepare().await;
+        this
+    }
+}
+
 impl<I: AsyncIterator> AsyncIter<I> {
     /// Prepare iterator's next value.
     ///
@@ -127,5 +140,18 @@ impl<I: AsyncIterator> AsyncIterator for AsyncIter<I> {
         } else {
             self.0.poll_next(cx)
         }
+    }
+}
+
+struct PollNextFn<T, F: FnMut(&mut Context<'_>) -> Poll<Option<T>> + Unpin>(F);
+
+impl<T, F> AsyncIterator for PollNextFn<T, F>
+where
+    F: FnMut(&mut Context<'_>) -> Poll<Option<T>> + Unpin,
+{
+    type Item = T;
+
+    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<Option<T>> {
+        self.0(cx)
     }
 }

@@ -56,13 +56,11 @@
 extern crate alloc;
 
 mod exec;
-mod func;
 mod iter;
 mod past;
 mod task;
 
 pub use exec::{block_on, BlockOn, Executor};
-pub use func::poll_next_fn;
 pub use iter::{AsyncIter, AsyncIterator};
 pub use past::Loop;
 pub use task::Task;
