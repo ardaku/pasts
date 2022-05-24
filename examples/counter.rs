@@ -1,7 +1,7 @@
-use core::time::Duration;
+use core::{iter, time::Duration};
 
 use async_std::task::sleep;
-use pasts::{prelude::*, Loop, Task};
+use pasts::{prelude::*, AsyncIter, Loop};
 
 // Exit type for State.
 type Exit = ();
@@ -12,7 +12,7 @@ struct State {
 }
 
 impl State {
-    fn one(&mut self, _: ()) -> Poll<Exit> {
+    fn one(&mut self, _: Option<()>) -> Poll<Exit> {
         println!("One {}", self.counter);
         self.counter += 1;
         if self.counter > 6 {
@@ -22,7 +22,7 @@ impl State {
         }
     }
 
-    fn two(&mut self, _: ()) -> Poll<Exit> {
+    fn two(&mut self, _: Option<()>) -> Poll<Exit> {
         println!("Two {}", self.counter);
         self.counter += 1;
         Pending
@@ -31,11 +31,10 @@ impl State {
 
 async fn run() {
     let sleep = |seconds| sleep(Duration::from_secs_f64(seconds));
+    let one = &mut AsyncIter::from_pin(iter::repeat_with(|| sleep(1.0)));
+    let two = &mut AsyncIter::from_pin(iter::repeat_with(|| sleep(2.0)));
 
     let mut state = State { counter: 0 };
-
-    let one = Task::with_fn_boxed(|| sleep(1.0));
-    let two = Task::with_fn_boxed(|| sleep(2.0));
 
     Loop::new(&mut state)
         .on(one, State::one)

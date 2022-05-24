@@ -9,28 +9,7 @@
 
 use core::{future::Future, pin::Pin, task::Context};
 
-use crate::prelude::*;
-
-/// This sealed trait essentially is a `Stream` or `AsyncIterator`
-pub trait Past<O> {
-    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<O>;
-}
-
-impl<O, T, D> Past<Option<(usize, O)>> for T
-where
-    T: core::ops::DerefMut<Target = [D]> + Unpin,
-    D: Past<O>,
-{
-    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<Option<(usize, O)>> {
-        for (i, mut this) in self.iter_mut().enumerate() {
-            match Pin::new(&mut this).poll_next(cx) {
-                Ready(value) => return Ready(Some((i, value))),
-                Pending => {}
-            }
-        }
-        Pending
-    }
-}
+use crate::{prelude::*, AsyncIterator};
 
 pub trait Stateful<S, T>: Unpin {
     fn state(&mut self) -> &mut S;
@@ -52,6 +31,21 @@ impl<S, T> Stateful<S, T> for Never<'_, S> {
 }
 
 /// Composable asynchronous event loop.
+///
+/// # Selecting on Futures:
+/// Select first completed future.
+///
+/// ```rust
+#[doc = include_str!("../examples/slices.rs")]
+/// ```
+///
+/// # Task spawning
+/// Spawns tasks in a [`Vec`], and removes them as they complete.
+///
+/// ```rust
+#[doc = include_str!("../examples/tasks.rs")]
+/// ```
+///
 #[derive(Debug)]
 pub struct Loop<S: Unpin, T, F: Stateful<S, T>> {
     other: F,
@@ -70,21 +64,13 @@ impl<'a, S: Unpin, T> Loop<S, T, Never<'a, S>> {
 
 impl<S: Unpin, T, F: Stateful<S, T>> Loop<S, T, F> {
     /// Register an event handler.
-    ///
-    /// The first parameter can be one of:
-    ///  - [`Task`](crate::Task) (`O = Future::Output`)
-    ///  - Mutable reference to [`Task`](crate::Task) (`O = Future::Output`)
-    ///  - Return value from `poll_next_fn`
-    ///    (`O = FnMut::Output`)
-    ///  - Anything that derefs to a mutable slice of the above
-    ///    (`O = (usize, _)`)
-    pub fn on<P, O>(
+    pub fn on<I>(
         self,
-        past: P,
-        then: fn(&mut S, O) -> Poll<T>,
+        past: I,
+        then: fn(&mut S, Option<I::Item>) -> Poll<T>,
     ) -> Loop<S, T, impl Stateful<S, T>>
     where
-        P: Past<O> + Unpin,
+        I: AsyncIterator + Unpin,
     {
         let other = self.other;
         let _phantom = core::marker::PhantomData;
@@ -109,24 +95,23 @@ impl<S: Unpin, T: Unpin, F: Stateful<S, T>> Future for Loop<S, T, F> {
     }
 }
 
-struct Join<S, T, O, F: Stateful<S, T>, P: Past<O>> {
+struct Join<S, T, O, F: Stateful<S, T>, I: AsyncIterator<Item = O>> {
     other: F,
-    past: P,
-    then: fn(&mut S, O) -> Poll<T>,
+    past: I,
+    then: fn(&mut S, Option<O>) -> Poll<T>,
 }
 
-impl<S, T, O, F, P> Stateful<S, T> for Join<S, T, O, F, P>
+impl<S, T, O, F, I> Stateful<S, T> for Join<S, T, O, F, I>
 where
     F: Stateful<S, T>,
-    P: Past<O> + Unpin,
+    I: AsyncIterator<Item = O> + Unpin,
 {
     fn state(&mut self) -> &mut S {
         self.other.state()
     }
 
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<Poll<T>> {
-        if let Ready(output) = self
-            .past
+        if let Ready(output) = Pin::new(&mut self.past)
             .poll_next(cx)
             .map(|output| (self.then)(self.other.state(), output))
         {

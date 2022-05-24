@@ -19,7 +19,7 @@ include = ["Cargo.toml", "src/", "examples/", "README.md"]
 keywords = ["futures", "platform-agnostic", "cross-platform", "io", "executor"]
 categories = ["asynchronous", "embedded", "no-std", "rust-patterns", "wasm"]
 readme = "README.md"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 
