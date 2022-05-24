@@ -10,10 +10,7 @@
 use alloc::boxed::Box;
 use core::{
     cell::{RefCell, RefMut},
-    future::Future,
     iter::Fuse,
-    pin::Pin,
-    task::{Context, Poll},
 };
 
 use crate::prelude::*;

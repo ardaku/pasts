@@ -8,7 +8,6 @@
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
 use alloc::{boxed::Box, sync::Arc, task::Wake};
-use core::{future::Future, pin::Pin, task::Context};
 
 use crate::prelude::*;
 

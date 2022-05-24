@@ -7,8 +7,6 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use core::{future::Future, pin::Pin, task::Context};
-
 use crate::{prelude::*, AsyncIterator};
 
 pub trait Stateful<S, T>: Unpin {

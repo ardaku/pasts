@@ -68,11 +68,12 @@ pub mod prelude {
     //!
     //! Includes [`Poll`], [`Poll::Pending`], and [`Poll::Ready`].  As well as
     //! [`AsyncIterator`], [`BoxAsyncIterator`], [`LocalBoxAsyncIterator`],
-    //! [`Context`] and [`Pin`].
+    //! [`Context`], [`Pin`], and [`Future`].
 
     use alloc::boxed::Box;
     pub use core::{
         pin::Pin,
+        future::Future,
         task::{
             Context,
             Poll::{self, Pending, Ready},
