@@ -72,8 +72,8 @@ pub mod prelude {
 
     use alloc::boxed::Box;
     pub use core::{
-        pin::Pin,
         future::Future,
+        pin::Pin,
         task::{
             Context,
             Poll::{self, Pending, Ready},

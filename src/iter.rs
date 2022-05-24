@@ -197,8 +197,7 @@ where
 
     /// Prepare iterator's next value.
     pub async fn prepare(&mut self) {
-        let this = self.0.get_mut();
-        this.1 = this.0.next().await;
+        self.0.get_mut().1 = self.0.get_mut().0.next().await;
     }
 }
 
@@ -257,12 +256,8 @@ impl<I: AsyncIterator + Unpin> Future for Prepare<'_, I> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
-        if let Ready(output) = Pin::new(&mut (*self.0).0).poll_next(cx) {
-            (*self.0).1 = output;
-            Ready(())
-        } else {
-            Pending
-        }
+        let poll = Pin::new(&mut (*self.0).0).poll_next(cx);
+        poll.map(|output| (*self.0).1 = output)
     }
 }
 
@@ -285,14 +280,13 @@ where
     type Item = I::Item;
 
     fn poll_next(
-        self: Pin<&mut Self>,
+        mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<Option<Self::Item>> {
-        let this = self.get_mut();
-        if let Some(queued) = this.0.get_mut().1.take() {
+        if let Some(queued) = self.0.get_mut().1.take() {
             Ready(Some(queued))
         } else {
-            Pin::new(&mut this.0.get_mut().0).poll_next(cx)
+            Pin::new(&mut self.0.get_mut().0).poll_next(cx)
         }
     }
 }
@@ -308,18 +302,18 @@ where
     }
 }
 
-impl<I: Unpin + Iterator> AsyncIter<FutureIterAsyncIterator<I>>
+impl<I: Unpin + Iterator> AsyncIter<FutureAsyncIterator<I>>
 where
     I::Item: Future + Unpin,
     <I::Item as Future>::Output: Unpin,
 {
     /// Converts an iterator of futures into an async iterator.
     pub fn from(iter: I) -> Self {
-        Self((FutureIterAsyncIterator(iter.fuse(), None), None).into())
+        Self((FutureAsyncIterator(iter.fuse(), None), None).into())
     }
 }
 
-impl<I: Unpin + Iterator> AsyncIter<BoxFutureIterAsyncIterator<I>>
+impl<I: Unpin + Iterator> AsyncIter<BoxFutureAsyncIterator<I>>
 where
     I::Item: Future,
     <I::Item as Future>::Output: Unpin,
@@ -328,7 +322,7 @@ where
     ///
     /// Requires a non-ZST allocator
     pub fn from_pin(iter: I) -> Self {
-        Self((BoxFutureIterAsyncIterator(iter.fuse(), None), None).into())
+        Self((BoxFutureAsyncIterator(iter.fuse(), None), None).into())
     }
 }
 
@@ -343,11 +337,8 @@ where
 {
     type Item = T;
 
-    fn poll_next(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Option<T>> {
-        self.0(cx)
+    fn poll_next(self: Pin<&mut Self>, c: &mut Context<'_>) -> Poll<Option<T>> {
+        self.get_mut().0(c)
     }
 }
 
@@ -366,12 +357,11 @@ impl<I: Iterator + Unpin> AsyncIterator for IterAsyncIterator<I> {
 }
 
 #[derive(Debug)]
-pub struct FutureIterAsyncIterator<I>(Fuse<I>, Option<I::Item>)
+pub struct FutureAsyncIterator<I: Iterator + Unpin>(Fuse<I>, Option<I::Item>)
 where
-    I::Item: Future + Unpin,
-    I: Iterator + Unpin;
+    I::Item: Future + Unpin;
 
-impl<I: Iterator + Unpin> AsyncIterator for FutureIterAsyncIterator<I>
+impl<I: Iterator + Unpin> AsyncIterator for FutureAsyncIterator<I>
 where
     I::Item: Future + Unpin,
 {
@@ -382,12 +372,10 @@ where
         cx: &mut Context<'_>,
     ) -> Poll<Option<Self::Item>> {
         if let Some(ref mut future) = &mut self.1 {
-            if let Ready(output) = Pin::new(future).poll(cx) {
+            Pin::new(future).poll(cx).map(|output| {
                 self.1 = self.0.next();
-                Ready(Some(output))
-            } else {
-                Pending
-            }
+                Some(output)
+            })
         } else if let Some(next) = self.0.next() {
             self.1 = Some(next);
             self.poll_next(cx)
@@ -398,31 +386,28 @@ where
 }
 
 #[derive(Debug)]
-pub struct BoxFutureIterAsyncIterator<I>(Fuse<I>, Option<Pin<Box<I::Item>>>)
+pub struct BoxFutureAsyncIterator<I>(Fuse<I>, Option<Pin<Box<I::Item>>>)
 where
     I: Iterator + Unpin,
     I::Item: Future;
 
-impl<I: Iterator + Unpin> AsyncIterator for BoxFutureIterAsyncIterator<I>
+impl<I: Iterator + Unpin> AsyncIterator for BoxFutureAsyncIterator<I>
 where
     I::Item: Future,
 {
     type Item = <I::Item as Future>::Output;
 
     fn poll_next(
-        self: Pin<&mut Self>,
+        mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<Option<Self::Item>> {
-        let mut this = self.get_mut();
-        let (iter, fut) = (&mut this.0, &mut this.1);
-        if let Some(ref mut future) = fut {
-            let mut future = future;
-            let poll = Pin::new(&mut future).poll(cx);
-            if let Ready(output) = poll {
-                if let Some(next) = iter.next() {
-                    future.set(next);
-                } else {
-                    *fut = None;
+        let Self(ref mut iter, ref mut fut) = &mut *self;
+
+        if let Some(mut future) = fut.as_mut() {
+            if let Ready(output) = Pin::new(&mut future).poll(cx) {
+                match iter.next() {
+                    Some(next) => future.set(next),
+                    None => *fut = None,
                 }
                 Ready(Some(output))
             } else {
@@ -430,7 +415,7 @@ where
             }
         } else if let Some(next) = iter.next() {
             *fut = Some(Box::pin(next));
-            Pin::new(&mut this).poll_next(cx)
+            Pin::new(&mut self).poll_next(cx)
         } else {
             Ready(None)
         }
