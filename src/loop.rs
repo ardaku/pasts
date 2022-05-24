@@ -12,7 +12,9 @@ use crate::{prelude::*, AsyncIterator};
 pub trait Stateful<S, T>: Unpin {
     fn state(&mut self) -> &mut S;
 
-    fn poll(&mut self, cx: &mut Context<'_>) -> Poll<Poll<T>>;
+    fn poll(&mut self, _cx: &mut Context<'_>) -> Poll<Poll<T>> {
+        Pending
+    }
 }
 
 #[derive(Debug)]
@@ -21,10 +23,6 @@ pub struct Never<'a, S>(&'a mut S);
 impl<S, T> Stateful<S, T> for Never<'_, S> {
     fn state(&mut self) -> &mut S {
         self.0
-    }
-
-    fn poll(&mut self, _cx: &mut Context<'_>) -> Poll<Poll<T>> {
-        Pending
     }
 }
 
@@ -81,9 +79,9 @@ impl<S: Unpin, T, F: Stateful<S, T>> Loop<S, T, F> {
 impl<S: Unpin, T: Unpin, F: Stateful<S, T>> Future for Loop<S, T, F> {
     type Output = T;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
-        let this = self.get_mut();
-        while let Ready(output) = Pin::new(&mut this.other).poll(cx) {
+    #[inline]
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
+        while let Ready(output) = Pin::new(&mut self.other).poll(cx) {
             if let Ready(output) = output {
                 return Ready(output);
             }
@@ -104,16 +102,16 @@ where
     F: Stateful<S, T>,
     I: AsyncIterator<Item = O> + Unpin,
 {
+    #[inline]
     fn state(&mut self) -> &mut S {
         self.other.state()
     }
 
+    #[inline]
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<Poll<T>> {
-        if let Ready(output) = Pin::new(&mut self.past)
-            .poll_next(cx)
-            .map(|output| (self.then)(self.other.state(), output))
-        {
-            Ready(output)
+        let poll = Pin::new(&mut self.past).poll_next(cx);
+        if let Ready(out) = poll.map(|x| (self.then)(self.other.state(), x)) {
+            Ready(out)
         } else {
             self.other.poll(cx)
         }
