@@ -12,7 +12,7 @@ use crate::{prelude::*, AsyncIterator};
 pub trait Stateful<S, T>: Unpin {
     fn state(&mut self) -> &mut S;
 
-    fn poll(&mut self, _cx: &mut Context<'_>) -> Poll<Poll<T>> {
+    fn poll(&mut self, _cx: &mut TaskCx<'_>) -> Poll<Poll<T>> {
         Pending
     }
 }
@@ -80,7 +80,7 @@ impl<S: Unpin, T: Unpin, F: Stateful<S, T>> Future for Loop<S, T, F> {
     type Output = T;
 
     #[inline]
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut TaskCx<'_>) -> Poll<T> {
         while let Ready(output) = Pin::new(&mut self.other).poll(cx) {
             if let Ready(output) = output {
                 return Ready(output);
@@ -108,7 +108,7 @@ where
     }
 
     #[inline]
-    fn poll(&mut self, cx: &mut Context<'_>) -> Poll<Poll<T>> {
+    fn poll(&mut self, cx: &mut TaskCx<'_>) -> Poll<Poll<T>> {
         let poll = Pin::new(&mut self.past).poll_next(cx);
         if let Ready(out) = poll.map(|x| (self.then)(self.other.state(), x)) {
             Ready(out)

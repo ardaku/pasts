@@ -75,7 +75,7 @@ pub mod prelude {
         future::Future,
         pin::Pin,
         task::{
-            Context,
+            Context as TaskCx,
             Poll::{self, Pending, Ready},
         },
     };

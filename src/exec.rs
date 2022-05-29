@@ -73,7 +73,7 @@ pub trait BlockOn: Sized + Executor {
             // Convert executor into a waker.
             let waker = executor.clone().into();
             // Create a context from the waker.
-            let cx = &mut Context::from_waker(&waker);
+            let cx = &mut TaskCx::from_waker(&waker);
 
             // If blocking is allowed, loop while blocking.
             loop {
@@ -94,7 +94,7 @@ pub trait BlockOn: Sized + Executor {
         #[cfg(target_arch = "wasm32")]
         let _ = FUT.with(move |(f, e)| {
             *f.borrow_mut() = Box::pin(future);
-            f.borrow_mut().as_mut().poll(&mut Context::from_waker(&e))
+            f.borrow_mut().as_mut().poll(&mut TaskCx::from_waker(&e))
         });
 
         // Pin and block on the future.
@@ -125,7 +125,7 @@ impl Executor for Exec {
     fn wake(&self) {
         #[cfg(target_arch = "wasm32")]
         let _ = FUT.with(move |(f, e)| {
-            f.borrow_mut().as_mut().poll(&mut Context::from_waker(&e))
+            f.borrow_mut().as_mut().poll(&mut TaskCx::from_waker(&e))
         });
 
         // On std, unpark the current thread, setting the awake? flag if needed.

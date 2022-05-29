@@ -35,7 +35,7 @@ pub trait AsyncIterator {
     ///    called again (may panic).
     fn poll_next(
         self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
+        cx: &mut TaskCx<'_>,
     ) -> Poll<Option<Self::Item>>;
 
     /// Get the next `Option<Self::Item>`
@@ -50,7 +50,7 @@ pub trait AsyncIterator {
     ///
     ///     fn poll_next(
     ///         self: Pin<&mut Self>,
-    ///         _cx: &mut Context<'_>
+    ///         _cx: &mut TaskCx<'_>
     ///     ) -> Poll<Option<Self::Item>> {
     ///         Ready(Some(1))
     ///     }
@@ -94,7 +94,7 @@ pub trait AsyncIterator {
     ///
     ///     fn poll_next(
     ///         self: Pin<&mut Self>,
-    ///         _cx: &mut Context<'_>
+    ///         _cx: &mut TaskCx<'_>
     ///     ) -> Poll<Option<Self::Item>> {
     ///         Ready(Some(1))
     ///     }
@@ -125,7 +125,7 @@ impl<I: AsyncIterator + Unpin + ?Sized> AsyncIterator for &mut I {
     #[inline]
     fn poll_next(
         mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
+        cx: &mut TaskCx<'_>,
     ) -> Poll<Option<Self::Item>> {
         Pin::new(&mut **self).poll_next(cx)
     }
@@ -136,7 +136,7 @@ impl<I: AsyncIterator + Unpin> AsyncIterator for [I] {
 
     fn poll_next(
         mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
+        cx: &mut TaskCx<'_>,
     ) -> Poll<Option<Self::Item>> {
         for (i, mut this) in self.iter_mut().enumerate() {
             if let Ready(value) = Pin::new(&mut this).poll_next(cx) {
@@ -153,7 +153,7 @@ pub struct IterNextFuture<'a, I>(&'a mut (dyn AsyncIterator<Item = I> + Unpin));
 impl<I> Future for IterNextFuture<'_, I> {
     type Output = Option<I>;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut TaskCx<'_>) -> Poll<Self::Output> {
         Pin::new(&mut self.get_mut().0).poll_next(cx)
     }
 }
@@ -167,7 +167,7 @@ where
 {
     type Output = AsyncIter<I>;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut TaskCx<'_>) -> Poll<Self::Output> {
         let mut this = self;
         let mut iter = this.0.take().expect("Future awaited after completion");
 
@@ -203,7 +203,7 @@ where
 
 impl<T: Unpin, F> AsyncIter<PollNextFn<T, F>>
 where
-    F: FnMut(&mut Context<'_>) -> Poll<Option<T>> + Unpin,
+    F: FnMut(&mut TaskCx<'_>) -> Poll<Option<T>> + Unpin,
 {
     /// Create a new `AsyncIter` from a function.
     ///
@@ -255,7 +255,7 @@ where
 impl<I: AsyncIterator + Unpin> Future for Prepare<'_, I> {
     type Output = ();
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut TaskCx<'_>) -> Poll<()> {
         let poll = Pin::new(&mut (*self.0).0).poll_next(cx);
         poll.map(|output| (*self.0).1 = output)
     }
@@ -281,7 +281,7 @@ where
 
     fn poll_next(
         mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
+        cx: &mut TaskCx<'_>,
     ) -> Poll<Option<Self::Item>> {
         if let Some(queued) = self.0.get_mut().1.take() {
             Ready(Some(queued))
@@ -329,15 +329,15 @@ where
 #[derive(Debug)]
 pub struct PollNextFn<T: Unpin, F>(F)
 where
-    F: FnMut(&mut Context<'_>) -> Poll<Option<T>> + Unpin;
+    F: FnMut(&mut TaskCx<'_>) -> Poll<Option<T>> + Unpin;
 
 impl<T: Unpin, F> AsyncIterator for PollNextFn<T, F>
 where
-    F: FnMut(&mut Context<'_>) -> Poll<Option<T>> + Unpin,
+    F: FnMut(&mut TaskCx<'_>) -> Poll<Option<T>> + Unpin,
 {
     type Item = T;
 
-    fn poll_next(self: Pin<&mut Self>, c: &mut Context<'_>) -> Poll<Option<T>> {
+    fn poll_next(self: Pin<&mut Self>, c: &mut TaskCx<'_>) -> Poll<Option<T>> {
         self.get_mut().0(c)
     }
 }
@@ -350,7 +350,7 @@ impl<I: Iterator + Unpin> AsyncIterator for IterAsyncIterator<I> {
 
     fn poll_next(
         mut self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
+        _cx: &mut TaskCx<'_>,
     ) -> Poll<Option<Self::Item>> {
         Ready(self.0.next())
     }
@@ -369,7 +369,7 @@ where
 
     fn poll_next(
         mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
+        cx: &mut TaskCx<'_>,
     ) -> Poll<Option<Self::Item>> {
         if let Some(ref mut future) = &mut self.1 {
             Pin::new(future).poll(cx).map(|output| {
@@ -399,7 +399,7 @@ where
 
     fn poll_next(
         mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
+        cx: &mut TaskCx<'_>,
     ) -> Poll<Option<Self::Item>> {
         let Self(ref mut iter, ref mut fut) = &mut *self;
 
@@ -430,7 +430,7 @@ where
 
     fn poll_next(
         self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
+        cx: &mut TaskCx<'_>,
     ) -> Poll<Option<Self::Item>> {
         Pin::new(&mut **self.get_mut()).poll_next(cx)
     }
