@@ -60,13 +60,14 @@ impl<'a, S: Unpin, T> Join<S, T, Never<'a, S>> {
 
 impl<S: Unpin, T, F: Stateful<S, T>> Join<S, T, F> {
     /// Register an event handler.
-    pub fn on<N>(
+    pub fn on<N, P>(
         self,
-        past: N,
+        past: P,
         then: fn(&mut S, N::Event) -> Poll<T>,
     ) -> Join<S, T, impl Stateful<S, T>>
     where
-        N: Notifier + Unpin,
+        N: Notifier + Unpin + ?Sized,
+        P: for<'a> FnMut(&'a mut S) -> &'a mut N + Unpin,
     {
         let other = self.other;
         let _phantom = core::marker::PhantomData;
@@ -91,16 +92,17 @@ impl<S: Unpin, T: Unpin, F: Stateful<S, T>> Future for Join<S, T, F> {
     }
 }
 
-struct Joiner<S, T, E, F: Stateful<S, T>, N: Notifier<Event = E>> {
+struct Joiner<S, T, E, F: Stateful<S, T>, P> {
     other: F,
-    past: N,
+    past: P,
     then: fn(&mut S, E) -> Poll<T>,
 }
 
-impl<S, T, E, F, N> Stateful<S, T> for Joiner<S, T, E, F, N>
+impl<S, T, E, F, N, P> Stateful<S, T> for Joiner<S, T, E, F, P>
 where
     F: Stateful<S, T>,
-    N: Notifier<Event = E> + Unpin,
+    N: Notifier<Event = E> + Unpin + ?Sized,
+    P: for<'a> FnMut(&'a mut S) -> &'a mut N + Unpin,
 {
     #[inline]
     fn state(&mut self) -> &mut S {
@@ -109,9 +111,10 @@ where
 
     #[inline]
     fn poll(&mut self, cx: &mut TaskCx<'_>) -> Poll<Poll<T>> {
-        let poll = Pin::new(&mut self.past).poll_next(cx);
+        let state = self.other.state();
+        let poll = Pin::new((self.past)(state)).poll_next(cx);
 
-        if let Ready(out) = poll.map(|x| (self.then)(self.other.state(), x)) {
+        if let Ready(out) = poll.map(|x| (self.then)(state, x)) {
             Ready(out)
         } else {
             self.other.poll(cx)

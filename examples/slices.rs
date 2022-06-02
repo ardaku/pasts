@@ -1,27 +1,28 @@
 use pasts::{prelude::*, BoxTask, Join, Task};
 
-type Exit = ();
+struct Exit;
 
-struct State {}
+struct State<'a> {
+    tasks: &'a mut [BoxTask<'static, &'static str>],
+}
 
-impl State {
+impl State<'_> {
     fn completion(&mut self, (id, val): (usize, &str)) -> Poll<Exit> {
         println!("Received message from {id}, completed task: {val}");
 
-        Ready(())
+        Ready(Exit)
     }
 }
 
 async fn run() {
-    let mut state = State {};
-
-    let tasks: &mut [BoxTask<'static, &str>] = &mut [
+    let tasks = &mut [
         Task::new(async { "Hello" }).into(),
         Task::new(async { "World" }).into(),
     ];
+    let mut state = State { tasks };
 
     // First task will complete first.
-    Join::new(&mut state).on(tasks, State::completion).await;
+    Join::new(&mut state).on(|s| s.tasks, State::completion).await;
 }
 
 fn main() {
