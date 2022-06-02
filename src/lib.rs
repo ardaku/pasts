@@ -17,7 +17,7 @@
 //! Add the following to your *Cargo.toml*:
 //! ```toml
 //! [dependencies]
-//! pasts = "0.10"
+//! pasts = "0.11"
 //! aysnc-std = "1.0"
 //! ```
 //!
