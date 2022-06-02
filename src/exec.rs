@@ -40,7 +40,6 @@ impl<E: Executor> Wake for Woke<E> {
 }
 
 /// Trait for implementing custom executors.  Useful when targetting no-std.
-
 pub trait Executor: Send + Sync + 'static {
     /// The sleep routine; should put the processor or thread to sleep in order
     /// to save CPU cycles and power, until the hardware tells it to wake up.

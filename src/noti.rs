@@ -198,20 +198,60 @@ impl<F: Future + ?Sized> Notifier for Task<F> {
     }
 }
 
+pub trait Looper<F: Future>: Unpin {
+    fn poll(&mut self, cx: &mut TaskCx<'_>) -> Poll<F::Output>;
+    fn set(&mut self, future: F);
+}
+
+impl<F: Future> Looper<F> for Pin<Box<F>> {
+    fn poll(&mut self, cx: &mut TaskCx<'_>) -> Poll<F::Output> {
+        Pin::new(self).poll(cx)
+    }
+
+    fn set(&mut self, f: F) {
+        self.set(f);
+    }
+}
+
+impl<F: Future + Unpin> Looper<F> for F {
+    fn poll(&mut self, cx: &mut TaskCx<'_>) -> Poll<F::Output> {
+        Pin::new(self).poll(cx)
+    }
+
+    fn set(&mut self, f: F) {
+        *self = f;
+    }
+}
+
 /// A [`Notifier`] created from a function returning [`Future`]s.
 ///
 /// A repeating [`Task`].
 #[derive(Debug)]
-pub struct Loop<F: Future, L: FnMut() -> F + Unpin>(Pin<Box<F>>, L);
+pub struct Loop<F: Future, L: FnMut() -> F + Unpin, S>(S, L);
 
-impl<F: Future, L: FnMut() -> F + Unpin> Loop<F, L> {
-    /// Create a fused [`Notifier`] from a [`Future`]
-    pub fn new(mut looper: L) -> Self {
+impl<F: Future, L: FnMut() -> F + Unpin> Loop<F, L, F> {
+    /// Create a fused [`Notifier`] from an [`Unpin`] [`Future`]
+    pub fn new(mut looper: L) -> Self
+    where
+        F: Unpin,
+    {
+        Self(looper(), looper)
+    }
+}
+
+impl<F: Future, L: FnMut() -> F + Unpin> Loop<F, L, Pin<Box<F>>> {
+    /// Create a fused [`Notifier`] from a `!Unpin` [`Future`]
+    ///
+    /// Requires non-ZST allocator.
+    pub fn pin(mut looper: L) -> Self {
         Self(Box::pin(looper()), looper)
     }
 }
 
-impl<F: Future, L: FnMut() -> F + Unpin> Notifier for Loop<F, L> {
+impl<F: Future, L, S: Looper<F>> Notifier for Loop<F, L, S>
+where
+    L: FnMut() -> F + Unpin,
+{
     type Event = F::Output;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut TaskCx<'_>) -> Poll<F::Output> {

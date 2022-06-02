@@ -31,8 +31,8 @@ impl State<'_> {
 
 async fn run() {
     let sleep = |seconds| sleep(Duration::from_secs_f64(seconds));
-    let one = &mut Loop::new(|| sleep(1.0));
-    let two = &mut Loop::new(|| sleep(2.0));
+    let one = &mut Loop::pin(|| sleep(1.0));
+    let two = &mut Loop::pin(|| sleep(2.0));
     let counter = 0;
     let mut state = State { counter, one, two };
 
