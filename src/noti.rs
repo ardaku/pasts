@@ -207,7 +207,7 @@ pub struct Loop<F: Future, L: FnMut() -> F + Unpin>(Pin<Box<F>>, L);
 impl<F: Future, L: FnMut() -> F + Unpin> Loop<F, L> {
     /// Create a fused [`Notifier`] from a [`Future`]
     pub fn new(mut looper: L) -> Self {
-        Self(Box::pin(looper()).into(), looper)
+        Self(Box::pin(looper()), looper)
     }
 }
 

@@ -1,4 +1,4 @@
-use pasts::{prelude::*, BoxTask, Race, Task};
+use pasts::{prelude::*, BoxTask, Join, Task};
 
 enum Exit {
     /// Task has completed, remove it
@@ -24,7 +24,7 @@ async fn run() {
     ];
 
     while !tasks.is_empty() {
-        match Race::new(&mut state).on(&mut tasks[..], State::completion).await
+        match Join::new(&mut state).on(&mut tasks[..], State::completion).await
         {
             Exit::Remove(index) => {
                 tasks.swap_remove(index);

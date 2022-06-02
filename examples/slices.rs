@@ -1,4 +1,4 @@
-use pasts::{prelude::*, BoxTask, Race, Task};
+use pasts::{prelude::*, BoxTask, Join, Task};
 
 type Exit = ();
 
@@ -21,7 +21,7 @@ async fn run() {
     ];
 
     // First task will complete first.
-    Race::new(&mut state).on(tasks, State::completion).await;
+    Join::new(&mut state).on(tasks, State::completion).await;
 }
 
 fn main() {

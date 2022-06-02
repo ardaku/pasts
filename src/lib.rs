@@ -56,13 +56,15 @@
 extern crate alloc;
 
 mod exec;
+mod join;
 mod noti;
-mod race;
 
-pub use exec::{block_on, BlockOn, Executor};
-pub use noti::{Loop, Notifier, PollNextFn, Task};
-use prelude::*;
-pub use race::Race;
+use self::prelude::*;
+pub use self::{
+    exec::{block_on, BlockOn, Executor},
+    join::Join,
+    noti::{Loop, Notifier, PollNextFn, Task},
+};
 
 /// An owned dynamically typed [`Notifier`] for use in cases where you can't
 /// statically type your result or need to add some indirection.

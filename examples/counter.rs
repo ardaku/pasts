@@ -1,7 +1,7 @@
 use core::time::Duration;
 
 use async_std::task::sleep;
-use pasts::{prelude::*, Loop, Race};
+use pasts::{prelude::*, Join, Loop};
 
 // Exit type for State.
 type Exit = ();
@@ -33,7 +33,7 @@ async fn run() {
     let two = &mut Loop::new(|| sleep(2.0));
     let mut state = State { counter: 0 };
 
-    Race::new(&mut state).on(one, State::one).on(two, State::two).await;
+    Join::new(&mut state).on(one, State::one).on(two, State::two).await;
 }
 
 fn main() {

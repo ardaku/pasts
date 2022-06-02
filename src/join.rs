@@ -42,45 +42,44 @@ impl<S, T> Stateful<S, T> for Never<'_, S> {
 /// ```
 ///
 #[derive(Debug)]
-pub struct Race<S: Unpin, T, F: Stateful<S, T>> {
+pub struct Join<S: Unpin, T, F: Stateful<S, T>> {
     other: F,
     _phantom: core::marker::PhantomData<(S, T)>,
 }
 
-impl<'a, S: Unpin, T> Race<S, T, Never<'a, S>> {
+impl<'a, S: Unpin, T> Join<S, T, Never<'a, S>> {
     /// Create an empty event loop.
 
     pub fn new(state: &'a mut S) -> Self {
         let other = Never(state);
         let _phantom = core::marker::PhantomData;
 
-        Race { other, _phantom }
+        Join { other, _phantom }
     }
 }
 
-impl<S: Unpin, T, F: Stateful<S, T>> Race<S, T, F> {
+impl<S: Unpin, T, F: Stateful<S, T>> Join<S, T, F> {
     /// Register an event handler.
     pub fn on<N>(
         self,
         past: N,
         then: fn(&mut S, N::Event) -> Poll<T>,
-    ) -> Race<S, T, impl Stateful<S, T>>
+    ) -> Join<S, T, impl Stateful<S, T>>
     where
         N: Notifier + Unpin,
     {
         let other = self.other;
         let _phantom = core::marker::PhantomData;
-        let other = Join { other, past, then };
+        let other = Joiner { other, past, then };
 
-        Race { other, _phantom }
+        Join { other, _phantom }
     }
 }
 
-impl<S: Unpin, T: Unpin, F: Stateful<S, T>> Future for Race<S, T, F> {
+impl<S: Unpin, T: Unpin, F: Stateful<S, T>> Future for Join<S, T, F> {
     type Output = T;
 
     #[inline]
-
     fn poll(mut self: Pin<&mut Self>, cx: &mut TaskCx<'_>) -> Poll<T> {
         while let Ready(output) = Pin::new(&mut self.other).poll(cx) {
             if let Ready(output) = output {
@@ -92,13 +91,13 @@ impl<S: Unpin, T: Unpin, F: Stateful<S, T>> Future for Race<S, T, F> {
     }
 }
 
-struct Join<S, T, E, F: Stateful<S, T>, N: Notifier<Event = E>> {
+struct Joiner<S, T, E, F: Stateful<S, T>, N: Notifier<Event = E>> {
     other: F,
     past: N,
     then: fn(&mut S, E) -> Poll<T>,
 }
 
-impl<S, T, E, F, N> Stateful<S, T> for Join<S, T, E, F, N>
+impl<S, T, E, F, N> Stateful<S, T> for Joiner<S, T, E, F, N>
 where
     F: Stateful<S, T>,
     N: Notifier<Event = E> + Unpin,
