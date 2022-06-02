@@ -1,6 +1,4 @@
-use core::iter;
-
-use pasts::{prelude::*, AsyncIter, Loop};
+use pasts::{prelude::*, BoxTask, Race, Task};
 
 enum Exit {
     /// Task has completed, remove it
@@ -10,13 +8,7 @@ enum Exit {
 struct State {}
 
 impl State {
-    fn completion(
-        &mut self,
-        next: Option<(usize, Option<&str>)>,
-    ) -> Poll<Exit> {
-        let (id, val) = next.unwrap();
-        let val = val.unwrap();
-
+    fn completion(&mut self, (id, val): (usize, &str)) -> Poll<Exit> {
         println!("Received message from completed task: {val}");
 
         Ready(Exit::Remove(id))
@@ -25,15 +17,14 @@ impl State {
 
 async fn run() {
     let mut state = State {};
-    let mut tasks: Vec<BoxAsyncIterator<'static, &str>> = vec![
-        Box::pin(AsyncIter::from(iter::once(Box::pin(async { "Hello" })))),
-        Box::pin(AsyncIter::from(iter::once(Box::pin(async { "World" })))),
+
+    let mut tasks: Vec<BoxTask<&str>> = vec![
+        Task::new(async { "Hello" }).into(),
+        Task::new(async { "World" }).into(),
     ];
 
     while !tasks.is_empty() {
-        match Loop::new(&mut state)
-            .on(&mut tasks[..], State::completion)
-            .await
+        match Race::new(&mut state).on(&mut tasks[..], State::completion).await
         {
             Exit::Remove(index) => {
                 tasks.swap_remove(index);

@@ -7,12 +7,12 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use crate::{prelude::*, AsyncIterator};
+use crate::{prelude::*, Notifier};
 
 pub trait Stateful<S, T>: Unpin {
     fn state(&mut self) -> &mut S;
 
-    fn poll(&mut self, _cx: &mut TaskCx<'_>) -> Poll<Poll<T>> {
+    fn poll(&mut self, _: &mut TaskCx<'_>) -> Poll<Poll<T>> {
         Pending
     }
 }
@@ -34,52 +34,53 @@ impl<S, T> Stateful<S, T> for Never<'_, S> {
 /// ```rust
 #[doc = include_str!("../examples/slices.rs")]
 /// ```
-///
+/// 
 /// # Task spawning
 /// Spawns tasks in a [`Vec`], and removes them as they complete.
-///
 /// ```rust
 #[doc = include_str!("../examples/tasks.rs")]
 /// ```
 ///
 #[derive(Debug)]
-pub struct Loop<S: Unpin, T, F: Stateful<S, T>> {
+pub struct Race<S: Unpin, T, F: Stateful<S, T>> {
     other: F,
     _phantom: core::marker::PhantomData<(S, T)>,
 }
 
-impl<'a, S: Unpin, T> Loop<S, T, Never<'a, S>> {
+impl<'a, S: Unpin, T> Race<S, T, Never<'a, S>> {
     /// Create an empty event loop.
+
     pub fn new(state: &'a mut S) -> Self {
         let other = Never(state);
         let _phantom = core::marker::PhantomData;
 
-        Loop { other, _phantom }
+        Race { other, _phantom }
     }
 }
 
-impl<S: Unpin, T, F: Stateful<S, T>> Loop<S, T, F> {
+impl<S: Unpin, T, F: Stateful<S, T>> Race<S, T, F> {
     /// Register an event handler.
-    pub fn on<I>(
+    pub fn on<N>(
         self,
-        past: I,
-        then: fn(&mut S, Option<I::Item>) -> Poll<T>,
-    ) -> Loop<S, T, impl Stateful<S, T>>
+        past: N,
+        then: fn(&mut S, N::Event) -> Poll<T>,
+    ) -> Race<S, T, impl Stateful<S, T>>
     where
-        I: AsyncIterator + Unpin,
+        N: Notifier + Unpin,
     {
         let other = self.other;
         let _phantom = core::marker::PhantomData;
         let other = Join { other, past, then };
 
-        Loop { other, _phantom }
+        Race { other, _phantom }
     }
 }
 
-impl<S: Unpin, T: Unpin, F: Stateful<S, T>> Future for Loop<S, T, F> {
+impl<S: Unpin, T: Unpin, F: Stateful<S, T>> Future for Race<S, T, F> {
     type Output = T;
 
     #[inline]
+
     fn poll(mut self: Pin<&mut Self>, cx: &mut TaskCx<'_>) -> Poll<T> {
         while let Ready(output) = Pin::new(&mut self.other).poll(cx) {
             if let Ready(output) = output {
@@ -91,16 +92,16 @@ impl<S: Unpin, T: Unpin, F: Stateful<S, T>> Future for Loop<S, T, F> {
     }
 }
 
-struct Join<S, T, O, F: Stateful<S, T>, I: AsyncIterator<Item = O>> {
+struct Join<S, T, E, F: Stateful<S, T>, N: Notifier<Event = E>> {
     other: F,
-    past: I,
-    then: fn(&mut S, Option<O>) -> Poll<T>,
+    past: N,
+    then: fn(&mut S, E) -> Poll<T>,
 }
 
-impl<S, T, O, F, I> Stateful<S, T> for Join<S, T, O, F, I>
+impl<S, T, E, F, N> Stateful<S, T> for Join<S, T, E, F, N>
 where
     F: Stateful<S, T>,
-    I: AsyncIterator<Item = O> + Unpin,
+    N: Notifier<Event = E> + Unpin,
 {
     #[inline]
     fn state(&mut self) -> &mut S {
@@ -110,6 +111,7 @@ where
     #[inline]
     fn poll(&mut self, cx: &mut TaskCx<'_>) -> Poll<Poll<T>> {
         let poll = Pin::new(&mut self.past).poll_next(cx);
+
         if let Ready(out) = poll.map(|x| (self.then)(self.other.state(), x)) {
             Ready(out)
         } else {

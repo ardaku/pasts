@@ -12,6 +12,7 @@ use alloc::{boxed::Box, sync::Arc, task::Wake};
 use crate::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
+
 thread_local! {
     static FUT: (
         std::cell::RefCell<Pin<Box<dyn Future<Output = ()>>>>,
@@ -39,6 +40,7 @@ impl<E: Executor> Wake for Woke<E> {
 }
 
 /// Trait for implementing custom executors.  Useful when targetting no-std.
+
 pub trait Executor: Send + Sync + 'static {
     /// The sleep routine; should put the processor or thread to sleep in order
     /// to save CPU cycles and power, until the hardware tells it to wake up.
@@ -68,10 +70,13 @@ pub trait BlockOn: Sized + Executor {
         {
             // Pin the future.
             let mut f = future;
+
             // Put the executor on the heap.
             let executor = Arc::new(Woke(self));
+
             // Convert executor into a waker.
             let waker = executor.clone().into();
+
             // Create a context from the waker.
             let cx = &mut TaskCx::from_waker(&waker);
 
@@ -81,6 +86,7 @@ pub trait BlockOn: Sized + Executor {
                 if let Ready(it) = Pin::new(&mut f).poll(cx) {
                     break it;
                 }
+
                 // Next, wait for wake up completes before polling again.
                 executor.0.sleep();
             }
@@ -94,6 +100,7 @@ pub trait BlockOn: Sized + Executor {
         #[cfg(target_arch = "wasm32")]
         let _ = FUT.with(move |(f, e)| {
             *f.borrow_mut() = Box::pin(future);
+
             f.borrow_mut().as_mut().poll(&mut TaskCx::from_waker(&e))
         });
 
@@ -116,7 +123,7 @@ impl Executor for Exec {
     fn sleep(&self) {
         // On std, park the current thread, without std do nothing.
         #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-        while self.0 .1.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        while self.0.1.swap(true, std::sync::atomic::Ordering::SeqCst) {
             std::thread::park();
         }
     }
@@ -130,8 +137,8 @@ impl Executor for Exec {
 
         // On std, unpark the current thread, setting the awake? flag if needed.
         #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-        if self.0 .1.swap(false, std::sync::atomic::Ordering::SeqCst) {
-            self.0 .0.unpark();
+        if self.0.1.swap(false, std::sync::atomic::Ordering::SeqCst) {
+            self.0.0.unpark();
         }
     }
 }
@@ -150,10 +157,7 @@ pub fn block_on<F: Future<Output = ()> + 'static>(future: F) {
     // On std, associate the current thread.
     Exec(
         #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-        (
-            std::thread::current(),
-            std::sync::atomic::AtomicBool::new(true),
-        ),
+        (std::thread::current(), std::sync::atomic::AtomicBool::new(true)),
     )
     .block_on(future)
 }

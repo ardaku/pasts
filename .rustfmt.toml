@@ -1,7 +1,15 @@
-# Don't deviate too much, just reduce columns and extra organization enforcement
+# Don't deviate too much, just reduce columns and stricter enforcement
 edition = "2021"
 unstable_features = true
 max_width = 80
 reorder_impl_items = true
 group_imports = "StdExternalCrate"
 imports_granularity = "Crate"
+newline_style = "Unix"
+normalize_comments = true
+normalize_doc_attributes = true
+overflow_delimited_expr = true
+use_try_shorthand = true
+version = "Two"
+wrap_comments = true
+use_small_heuristics = "Max"

@@ -56,21 +56,43 @@
 extern crate alloc;
 
 mod exec;
-mod iter;
-mod r#loop;
+mod noti;
+mod race;
 
 pub use exec::{block_on, BlockOn, Executor};
-pub use iter::{AsyncIter, AsyncIterator};
-pub use r#loop::Loop;
+pub use noti::{Loop, Notifier, PollNextFn, Task};
+use prelude::*;
+pub use race::Race;
+
+/// An owned dynamically typed [`Notifier`] for use in cases where you can't
+/// statically type your result or need to add some indirection.
+///
+/// Requires non-ZST allocator.
+pub type BoxNotifier<'a, T> =
+    Pin<Box<dyn Notifier<Event = T> + Unpin + Send + 'a>>;
+
+/// [`BoxNotifier`], but without the [`Send`] requirement.
+///
+/// Requires non-ZST allocator.
+pub type LocalNotifier<'a, T> = Pin<Box<dyn Notifier<Event = T> + Unpin + 'a>>;
+
+/// An owned dynamically typed [`Task`] for use in cases where you can't
+/// statically type your result or need to add some indirection.
+///
+/// Requires non-ZST allocator.
+pub type BoxTask<'a, T> = Task<dyn Future<Output = T> + Send + 'a>;
+
+/// [`BoxTask`], but without the [`Send`] requirement.
+///
+/// Requires non-ZST allocator.
+pub type LocalTask<'a, T> = Task<dyn Future<Output = T> + 'a>;
 
 pub mod prelude {
     //! Items that are almost always needed.
-    //!
-    //! Includes [`Poll`], [`Poll::Pending`], and [`Poll::Ready`].  As well as
-    //! [`AsyncIterator`], [`BoxAsyncIterator`], [`LocalBoxAsyncIterator`],
-    //! [`Context`], [`Pin`], and [`Future`].
 
-    use alloc::boxed::Box;
+    #[doc(no_inline)]
+    pub use alloc::boxed::Box;
+    #[doc(no_inline)]
     pub use core::{
         future::Future,
         pin::Pin,
@@ -80,18 +102,6 @@ pub mod prelude {
         },
     };
 
-    pub use crate::AsyncIterator;
-
-    /// An owned dynamically typed [`AsyncIterator`] for use in cases where you
-    /// can't statically type your result or need to add some indirection.
-    ///
-    /// Requires non-ZST allocator.
-    pub type BoxAsyncIterator<'a, T> =
-        Pin<Box<dyn AsyncIterator<Item = T> + Unpin + Send + 'a>>;
-
-    /// [`BoxAsyncIterator`], but without the [`Send`] requirement.
-    ///
-    /// Requires non-ZST allocator.
-    pub type LocalBoxAsyncIterator<'a, T> =
-        Pin<Box<dyn AsyncIterator<Item = T> + Unpin + 'a>>;
+    #[doc(no_inline)]
+    pub use crate::{BoxNotifier, LocalNotifier, Notifier};
 }
