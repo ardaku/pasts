@@ -69,9 +69,6 @@ impl<T: 'static + Sleep + Wake + Send + Sync> SpawnLocal for T {
         while Pin::new(&mut future).poll(&mut cx).is_pending() {
             self.sleep();
         }
-
-        // Embedded devices should never stop the running program.
-        unreachable!()
     }
 
     // Add to the task queue on std
@@ -201,7 +198,7 @@ mod std {
 mod web {
     use super::*;
 
-    #[derive(Debug)]
+    #[derive(Debug, Copy, Clone)]
     pub struct WebExecutor;
 
     impl SpawnLocal for WebExecutor {
@@ -224,7 +221,7 @@ mod web {
 mod none {
     use super::*;
 
-    #[derive(Debug)]
+    #[derive(Debug, Copy, Clone)]
     pub struct InefficientExecutor;
 
     impl Sleep for InefficientExecutor {
