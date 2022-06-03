@@ -201,7 +201,8 @@ mod std {
 mod web {
     use super::*;
 
-    struct WebExecutor;
+    #[derive(Debug)]
+    pub struct WebExecutor;
 
     impl SpawnLocal for WebExecutor {
         fn spawn_local<F>(self: &Arc<Self>, future: F)
@@ -223,7 +224,8 @@ mod web {
 mod none {
     use super::*;
 
-    struct InefficientExecutor;
+    #[derive(Debug)]
+    pub struct InefficientExecutor;
 
     impl Sleep for InefficientExecutor {
         // Never sleep, stay up all night
