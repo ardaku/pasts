@@ -20,6 +20,7 @@ keywords = ["futures", "platform-agnostic", "cross-platform", "io", "executor"]
 categories = ["asynchronous", "embedded", "no-std", "rust-patterns", "wasm"]
 readme = "README.md"
 edition = "2021"
+autobins = false
 
 [dependencies.wasm-bindgen-futures]
 version = "0.4"

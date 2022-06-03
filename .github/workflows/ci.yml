@@ -9,7 +9,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         tc: [stable, beta, nightly]
-        ar: [--all --no-default-features, --all --all-features]
+        ar: [--all --no-default-features, --all --features=std]
     steps:
     - uses: actions/checkout@v2
     - uses: actions-rs/toolchain@v1
@@ -33,7 +33,7 @@ jobs:
         - i686-pc-windows-gnu
         - i686-unknown-freebsd
         - i686-unknown-linux-gnu
-        - wasm32-unknown-unknown
+        - wasm32-wasi
         - x86_64-apple-darwin
         - x86_64-unknown-redox
     steps:
@@ -47,7 +47,7 @@ jobs:
     - uses: actions-rs/cargo@v1
       with:
         command: build
-        args: --all-features --target=${{ matrix.cc }}
+        args: --features=std --target=${{ matrix.cc }}
   cross-compile-ios:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -66,4 +66,23 @@ jobs:
     - uses: actions-rs/cargo@v1
       with:
         command: build
-        args: --all-features --target=${{ matrix.cc }}
+        args: --features=std --target=${{ matrix.cc }}
+  cross-compile-web:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        tc: [stable, beta, nightly]
+        cc: [wasm32-unknown-unknown]
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: ${{ matrix.tc }}
+        target: ${{ matrix.cc }}
+        override: true
+    - uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --features=std --features=web --target=${{ matrix.cc }}

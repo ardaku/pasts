@@ -29,7 +29,7 @@ impl State<'_> {
     }
 }
 
-async fn run() {
+async fn main() {
     let sleep = |seconds| sleep(Duration::from_secs_f64(seconds));
     let one = &mut Loop::pin(|| sleep(1.0));
     let two = &mut Loop::pin(|| sleep(2.0));
@@ -40,8 +40,4 @@ async fn run() {
         .on(|s| s.one, State::one)
         .on(|s| s.two, State::two)
         .await;
-}
-
-fn main() {
-    pasts::Executor::default().spawn(Box::pin(run()))
 }

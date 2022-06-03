@@ -10,18 +10,45 @@
 //! Minimal and simpler alternative to the futures crate.
 //!
 //! # Optional Features
-//! The `std` feature is enabled by default, disable it to use on no-std.
+//! The *`std`* feature is enabled by default, disable it to use on no-std.
 //!
-//! The `web` feature is disabled by default, enable it to use pasts within the
-//! javascript DOM.
+//! The *`web`* feature is disabled by default, enable it to use pasts within
+//! the javascript DOM.
 //!
 //! # Getting Started
 //!
-//! Add the following to your *Cargo.toml*:
+//! Add the following to your **`./Cargo.toml`**:
 //! ```toml
+//! autobins = false
+//!
+//! [[bin]]
+//! name = "app"
+//! path = "app/main.rs"
+//!
 //! [dependencies]
 //! pasts = "0.11"
 //! aysnc-std = "1.11"
+//! ```
+//!
+//! Create **`./app/main.rs`**:
+//! ```rust,no_run
+//! // Shim for providing async main
+//! #[allow(unused_imports)]
+//! use self::main::*;
+//!
+//! mod main {
+//!     include!("../src/main.rs");
+//!
+//!     pub(super) mod main {
+//!         pub(in crate) async fn main() {
+//!             super::main().await
+//!         }
+//!     }
+//! }
+//!
+//! fn main() {
+//!     pasts::Executor::default().spawn(Box::pin(self::main::main::main()));
+//! }
 //! ```
 //!
 //! ## Multi-Tasking On Multiple Iterators of Futures
@@ -31,7 +58,22 @@
 //! "one" or "two" because they trigger at the same time.
 //!
 //! ```rust,no_run
-#![doc = include_str!("../examples/counter.rs")]
+//! # #[allow(unused_imports)]
+//! # use self::main::*;
+//! # mod main {
+//! #
+#![doc = include_str!("main.rs")]
+//! #
+//! #     pub(super) mod main {
+//! #         pub(in crate) async fn main() {
+//! #             super::main().await
+//! #         }
+//! #     }
+//! # }
+//! #
+//! # fn main() {
+//! #     pasts::Executor::default().spawn(Box::pin(self::main::main::main()));
+//! # }
 //! ```
 #![cfg_attr(not(feature = "std"), no_std)]
 #![doc(
