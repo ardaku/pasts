@@ -28,5 +28,5 @@ async fn run() {
 }
 
 fn main() {
-    pasts::block_on(run());
+    pasts::Executor::default().spawn(Box::pin(run()));
 }

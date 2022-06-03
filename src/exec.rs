@@ -7,156 +7,274 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use alloc::{boxed::Box, sync::Arc, task::Wake};
+use alloc::{sync::Arc, task::Wake};
+
+#[cfg(all(feature = "std", not(feature = "web")))]
+use ::std::{cell::Cell, task::Waker};
 
 use crate::prelude::*;
+#[cfg(all(feature = "std", not(feature = "web")))]
+use crate::{Join, LocalTask, Task};
 
-#[cfg(target_arch = "wasm32")]
-
+// Spawned task queue
+#[cfg(all(feature = "std", not(feature = "web")))]
 thread_local! {
-    static FUT: (
-        std::cell::RefCell<Pin<Box<dyn Future<Output = ()>>>>,
-        std::task::Waker,
-    ) = (
-        std::cell::RefCell::new(Box::pin(std::future::pending())),
-        Arc::new(Woke(Exec())).into(),
-    );
+    // Thread local tasks
+    static TASKS: Cell<Vec<LocalTask<'static, ()>>> = Cell::new(Vec::new());
+
+    // Task spawning waker
+    static WAKER: Cell<Option<Waker>> = Cell::new(None);
 }
 
-// Internal waker type.
-struct Woke<E: Executor>(E);
-
-// Always call executor's wake() method.
-impl<E: Executor> Wake for Woke<E> {
-    #[inline(always)]
-    fn wake(self: Arc<Self>) {
-        self.0.wake()
-    }
-
-    #[inline(always)]
-    fn wake_by_ref(self: &Arc<Self>) {
-        self.0.wake()
-    }
-}
-
-/// Trait for implementing custom executors.  Useful when targetting no-std.
-pub trait Executor: Send + Sync + 'static {
+/// The implementation of sleeping for an [`Executor`].
+///
+/// This trait can be used in conjunction with [`Wake`] to create an
+/// [`Executor`].
+///
+/// # Example
+/// ```rust
+#[doc = include_str!("../examples/executor.rs")]
+/// ```
+pub trait Sleep {
     /// The sleep routine; should put the processor or thread to sleep in order
     /// to save CPU cycles and power, until the hardware tells it to wake up.
     fn sleep(&self);
-
-    /// The wake routine; should wake the processor or thread.  If the hardware
-    /// is already waked up automatically, this doesn't need to be implemented.
-    #[inline(always)]
-    fn wake(&self) {}
 }
 
-impl<T> BlockOn for T where T: Sized + Executor {}
-
-/// Trait that implements `block_on()` and `block_on_pinned()` methods for an
-/// [`Executor`]
-pub trait BlockOn: Sized + Executor {
-    /// Block on an unpin future on the current thread.
-    #[inline(always)]
-    fn block_on_pinned<F>(self, future: F)
+/// The implementation of spawning tasks locally for an [`Executor`].
+pub trait SpawnLocal {
+    /// Spawn a [`Future`] on the current thread.
+    fn spawn_local<F>(self: &Arc<Self>, future: F)
     where
-        F: Future<Output = ()> + Unpin + 'static,
+        F: 'static + Future<Output = ()> + Unpin;
+
+    /// Implementation for yielding to the executor.
+    ///
+    /// The default implementation does nothing.
+    fn executor_yield(self: &Arc<Self>) {}
+}
+
+impl<T: 'static + Sleep + Wake + Send + Sync> SpawnLocal for T {
+    // No std can only spawn one task, so block on it.
+    #[cfg(any(not(feature = "std"), feature = "web"))]
+    fn spawn_local<F>(self: &Arc<Self>, mut future: F)
+    where
+        F: 'static + Future<Output = ()> + Unpin,
     {
-        #[cfg(target_arch = "wasm32")]
-        self.block_on(future);
+        // Set up the waker and context.
+        let waker = self.clone().into();
+        let mut cx = TaskCx::from_waker(&waker);
 
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            // Pin the future.
-            let mut f = future;
+        // Run the future to completion.
+        while Pin::new(&mut future).poll(&mut cx).is_pending() {
+            self.sleep();
+        }
 
-            // Put the executor on the heap.
-            let executor = Arc::new(Woke(self));
+        // Embedded devices should never stop the running program.
+        unreachable!()
+    }
 
-            // Convert executor into a waker.
-            let waker = executor.clone().into();
+    // Add to the task queue on std
+    #[cfg(all(feature = "std", not(feature = "web")))]
+    fn spawn_local<F>(self: &Arc<Self>, future: F)
+    where
+        F: 'static + Future<Output = ()> + Unpin,
+    {
+        TASKS.with(|t| {
+            let mut tasks = t.take();
+            tasks.push(Task::new(future).into());
+            t.set(tasks);
+        });
+        WAKER.with(|w| w.take().map(|w| w.wake()));
+    }
 
-            // Create a context from the waker.
-            let cx = &mut TaskCx::from_waker(&waker);
+    // Go through task queue on std
+    #[cfg(all(feature = "std", not(feature = "web")))]
+    fn executor_yield(self: &Arc<Self>) {
+        struct Tasks(Vec<LocalTask<'static, ()>>, Spawner);
 
-            // If blocking is allowed, loop while blocking.
-            loop {
-                // First, poll
-                if let Ready(it) = Pin::new(&mut f).poll(cx) {
-                    break it;
-                }
+        struct Spawner;
 
-                // Next, wait for wake up completes before polling again.
-                executor.0.sleep();
+        impl Notifier for Spawner {
+            type Event = LocalTask<'static, ()>;
+
+            fn poll_next(
+                self: Pin<&mut Self>,
+                cx: &mut TaskCx<'_>,
+            ) -> Poll<Self::Event> {
+                WAKER.with(|w| w.set(Some(cx.waker().clone())));
+                TASKS.with(|t| {
+                    let mut tasks = t.take();
+                    let output = tasks.pop();
+                    t.set(tasks);
+                    if let Some(task) = output {
+                        return Ready(task);
+                    }
+                    Pending
+                })
+            }
+        }
+
+        fn spawn(tasks: &mut Tasks, task: LocalTask<'static, ()>) -> Poll<()> {
+            tasks.0.push(task);
+            Pending
+        }
+
+        fn done(tasks: &mut Tasks, (id, ()): (usize, ())) -> Poll<()> {
+            tasks.0.swap_remove(id);
+            if tasks.0.is_empty() { Ready(()) } else { Pending }
+        }
+
+        // Set up the future
+        let tasks = &mut Tasks(Vec::new(), Spawner);
+        let mut fut =
+            Join::new(tasks).on(|s| &mut s.1, spawn).on(|s| &mut s.0[..], done);
+
+        // Set up the waker and context.
+        let waker = self.clone().into();
+        let mut cx = TaskCx::from_waker(&waker);
+
+        // Run the future to completion.
+        while Pin::new(&mut fut).poll(&mut cx).is_pending() {
+            self.sleep();
+        }
+    }
+}
+
+/// An executor.
+///
+/// Executors drive [`Future`]s.
+#[derive(Debug)]
+pub struct Executor<I: 'static + SpawnLocal + Send + Sync>(Arc<I>);
+
+impl<I: 'static + SpawnLocal + Send + Sync> Drop for Executor<I> {
+    fn drop(&mut self) {
+        self.0.executor_yield();
+    }
+}
+
+#[cfg(all(feature = "std", not(feature = "web")))]
+mod std {
+    use ::std::{
+        sync::atomic::{AtomicBool, Ordering},
+        thread::{self, Thread},
+    };
+
+    use super::*;
+
+    #[derive(Debug)]
+    pub struct StdExecutor(Thread, AtomicBool);
+
+    impl Sleep for StdExecutor {
+        #[inline]
+        fn sleep(&self) {
+            // Park the current thread.
+            while self.1.swap(true, Ordering::SeqCst) {
+                std::thread::park();
             }
         }
     }
 
-    /// Block on a future on the current thread (puts the future on the heap).
-    #[inline(always)]
-    fn block_on<F: Future<Output = ()> + 'static>(self, future: F) {
-        // WebAssembly can't block, so poll once, then return.
-        #[cfg(target_arch = "wasm32")]
-        let _ = FUT.with(move |(f, e)| {
-            *f.borrow_mut() = Box::pin(future);
+    impl Wake for StdExecutor {
+        #[inline]
+        fn wake_by_ref(self: &Arc<Self>) {
+            // Unpark the current thread, set the awake? flag if needed.
+            if self.1.swap(false, Ordering::SeqCst) {
+                self.0.unpark();
+            }
+        }
 
-            f.borrow_mut().as_mut().poll(&mut TaskCx::from_waker(&e))
-        });
-
-        // Pin and block on the future.
-        #[cfg(not(target_arch = "wasm32"))]
-        self.block_on_pinned(Box::pin(future));
-    }
-}
-
-// Default executor implementation.
-#[derive(Debug)]
-struct Exec(
-    // On std, store which thread, as well as an "awake?" flag.
-    #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-    (std::thread::Thread, std::sync::atomic::AtomicBool),
-);
-
-impl Executor for Exec {
-    #[inline(always)]
-    fn sleep(&self) {
-        // On std, park the current thread, without std do nothing.
-        #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-        while self.0.1.swap(true, std::sync::atomic::Ordering::SeqCst) {
-            std::thread::park();
+        #[inline]
+        fn wake(self: Arc<Self>) {
+            self.wake_by_ref()
         }
     }
 
-    #[inline(always)]
-    fn wake(&self) {
-        #[cfg(target_arch = "wasm32")]
-        let _ = FUT.with(move |(f, e)| {
-            f.borrow_mut().as_mut().poll(&mut TaskCx::from_waker(&e))
-        });
-
-        // On std, unpark the current thread, setting the awake? flag if needed.
-        #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-        if self.0.1.swap(false, std::sync::atomic::Ordering::SeqCst) {
-            self.0.0.unpark();
+    impl Default for Executor<StdExecutor> {
+        fn default() -> Self {
+            Self::new(StdExecutor(thread::current(), AtomicBool::new(true)))
         }
     }
 }
 
-/// Run a future to completion on the current thread.
-///
-/// # Platform-Specific Behavior
-/// On WebAssembly, this function returns immediately instead of blocking
-/// because you're not supposed to block in a web browser.
-///
-/// # Example
-/// ```rust,no_run
-#[doc = include_str!("../examples/timer.rs")]
-/// ```
-pub fn block_on<F: Future<Output = ()> + 'static>(future: F) {
-    // On std, associate the current thread.
-    Exec(
-        #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
-        (std::thread::current(), std::sync::atomic::AtomicBool::new(true)),
-    )
-    .block_on(future)
+#[cfg(all(feature = "std", feature = "web"))]
+mod web {
+    use super::*;
+
+    struct WebExecutor;
+
+    impl SpawnLocal for WebExecutor {
+        fn spawn_local<F>(self: &Arc<Self>, future: F)
+        where
+            F: Future<Output = ()> + 'static,
+        {
+            wasm_bindgen_futures::spawn_local(future);
+        }
+    }
+
+    impl Default for Executor<WebExecutor> {
+        fn default() -> Self {
+            Self::new(WebExecutor)
+        }
+    }
+}
+
+#[cfg(not(feature = "std"))]
+mod none {
+    use super::*;
+
+    struct InefficientExecutor;
+
+    impl Sleep for InefficientExecutor {
+        // Never sleep, stay up all night
+        #[inline]
+        fn sleep(&self) {}
+    }
+
+    impl Wake for InefficientExecutor {
+        // If you don't sleep, you never wake up
+        #[inline]
+        fn wake(self: Arc<Self>) {}
+    }
+
+    impl Default for Executor<InefficientExecutor> {
+        fn default() -> Self {
+            Self::new(InefficientExecutor)
+        }
+    }
+}
+
+impl<I: 'static + SpawnLocal + Send + Sync> Executor<I> {
+    /// Create a new executor from something implementing both [`SpawnLocal`].
+    ///
+    /// # Platform-Specific Behavior
+    /// If you create an `Executor` in thread-local storage, then the executor
+    /// might exit without ever driving the futures spawned on it.  This is
+    /// because execution of futures may happen on [`Drop`], which is not
+    /// guaranteed for thread local storage.
+    ///
+    /// **TLDR** If you need to share an executor, wrap it in an [`Arc`],
+    /// avoiding thread-local.
+    #[inline]
+    pub fn new(implementation: I) -> Self {
+        Self(Arc::new(implementation))
+    }
+
+    /// Spawn an [`Unpin`] future on this executor.
+    ///
+    /// The program will exit once all spawned futures have completed.
+    ///
+    /// # Platform-Specific Behavior
+    /// On no-std, spawning a future will immediately block on that future,
+    /// suspending any currently executing future until the spawned future
+    /// finishes.
+    ///
+    /// # Example
+    /// ```rust,no_run
+    #[doc = include_str!("../examples/timer.rs")]
+    /// ```
+    #[inline]
+    pub fn spawn(&self, fut: impl Future<Output = ()> + Unpin + 'static) {
+        self.0.spawn_local(fut);
+    }
 }

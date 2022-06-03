@@ -10,7 +10,10 @@
 //! Minimal and simpler alternative to the futures crate.
 //!
 //! # Optional Features
-//! The **std** feature is enabled by default, disable it to use on `no_std`.
+//! The `std` feature is enabled by default, disable it to use on no-std.
+//!
+//! The `web` feature is disabled by default, enable it to use pasts within the
+//! javascript DOM.
 //!
 //! # Getting Started
 //!
@@ -18,7 +21,7 @@
 //! ```toml
 //! [dependencies]
 //! pasts = "0.11"
-//! aysnc-std = "1.0"
+//! aysnc-std = "1.11"
 //! ```
 //!
 //! ## Multi-Tasking On Multiple Iterators of Futures
@@ -61,7 +64,7 @@ mod noti;
 
 use self::prelude::*;
 pub use self::{
-    exec::{block_on, BlockOn, Executor},
+    exec::{Executor, Sleep, SpawnLocal},
     join::Join,
     noti::{Loop, Notifier, PollNextFn, Task},
 };
