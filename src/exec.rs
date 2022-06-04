@@ -220,7 +220,7 @@ mod web {
     pub struct WebExecutor;
 
     impl Spawn for WebExecutor {
-        fn spawn_local<F>(self: &Arc<Self>, future: F)
+        fn spawn<F>(self: &Arc<Self>, future: F)
         where
             F: Future<Output = ()> + 'static,
         {
