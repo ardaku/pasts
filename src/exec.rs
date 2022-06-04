@@ -273,8 +273,9 @@ mod none {
     }
 }
 
-impl<I: 'static + Spawn + Send + Sync> Executor<I> {
-    /// Create a new executor from something implementing [`Spawn`].
+impl<I: 'static + Wake + Sleep + Send + Sync> Executor<I> {
+    /// Create a new executor from something implementing both [`Wake`] and
+    /// [`Sleep`].
     ///
     /// # Platform-Specific Behavior
     /// Execution of futures happens on [`Drop`] of the original (not cloned)
@@ -283,7 +284,9 @@ impl<I: 'static + Spawn + Send + Sync> Executor<I> {
     pub fn new(implementation: I) -> Self {
         Self(Arc::new(implementation), false)
     }
+}
 
+impl<I: 'static + Spawn + Send + Sync> Executor<I> {
     /// Spawn an [`Unpin`] future on this executor.
     ///
     /// The program will exit once all spawned futures have completed.
@@ -295,7 +298,21 @@ impl<I: 'static + Spawn + Send + Sync> Executor<I> {
     ///
     /// # Example
     /// ```rust,no_run
-    #[doc = include_str!("../examples/timer.rs")]
+    /// # extern crate alloc;
+    /// # #[allow(unused_imports)]
+    /// # use self::main::*;
+    /// # mod main {
+    #[doc = include_str!("../examples/spawn/src/main.rs")]
+    /// #     pub(super) mod main {
+    /// #         pub(in crate) async fn main(executor: pasts::Executor) {
+    /// #             super::main(&executor).await
+    /// #         }
+    /// #     }
+    /// # }
+    /// # fn main() {
+    /// #     let executor = pasts::Executor::default();
+    /// #     executor.spawn(Box::pin(self::main::main::main(executor.clone())));
+    /// # }
     /// ```
     #[inline]
     pub fn spawn(&self, fut: impl Future<Output = ()> + Unpin + 'static) {

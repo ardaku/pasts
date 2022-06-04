@@ -101,7 +101,7 @@ mod noti;
 
 use self::prelude::*;
 pub use self::{
-    exec::{Executor, Sleep, Spawn},
+    exec::{Executor, Sleep},
     join::Join,
     noti::{Loop, Notifier, PollNextFn, Task},
 };
@@ -153,7 +153,7 @@ pub mod prelude {
     //! Items that are almost always needed.
 
     #[doc(no_inline)]
-    pub use alloc::{boxed::Box, sync::Arc};
+    pub use alloc::boxed::Box;
     #[doc(no_inline)]
     pub use core::{
         future::Future,
