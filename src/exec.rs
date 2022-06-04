@@ -144,13 +144,18 @@ impl<I: 'static + Spawn + Send + Sync> Drop for Executor<I> {
 
         fn done(tasks: &mut Tasks, (id, ()): (usize, ())) -> Poll<()> {
             tasks.0.swap_remove(id);
-            if tasks.0.is_empty() { Ready(()) } else { Pending }
+            if tasks.0.is_empty() {
+                Ready(())
+            } else {
+                Pending
+            }
         }
 
         // Set up the future
         let tasks = &mut Tasks(Vec::new(), Spawner);
-        let mut fut =
-            Join::new(tasks).on(|s| &mut s.1, spawn).on(|s| &mut s.0[..], done);
+        let mut fut = Join::new(tasks)
+            .on(|s| &mut s.1, spawn)
+            .on(|s| &mut s.0[..], done);
 
         // Set up the waker and context.
         let waker = exec.clone().into();

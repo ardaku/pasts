@@ -9,7 +9,7 @@ mod main {
 
     #[allow(clippy::module_inception)]
     pub(super) mod main {
-        pub(crate) async fn main(executor: pasts::Executor) {
+        pub(in super::super) async fn main(executor: pasts::Executor) {
             super::main(&executor).await
         }
     }

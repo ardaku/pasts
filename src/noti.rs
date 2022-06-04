@@ -163,8 +163,11 @@ impl<F: Future> Task<F> {
 }
 
 impl<F: Future + Send + 'static> From<Task<F>> for BoxTask<'_, F::Output> {
-    fn from(other: Task<F>) -> Self {
-        Task(other.0.map(|x| -> Pin<Box<dyn Future<Output = _> + Send>> { x }))
+    fn from(t: Task<F>) -> Self {
+        let t =
+            t.0.map(|x| -> Pin<Box<dyn Future<Output = _> + Send>> { x });
+
+        Task(t)
     }
 }
 
