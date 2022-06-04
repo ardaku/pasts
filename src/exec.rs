@@ -60,29 +60,24 @@ pub trait Spawn {
 impl<T: 'static + Sleep + Wake + Send + Sync> Spawn for T {
     // No std can only spawn one task, so block on it.
     #[cfg(any(not(feature = "std"), feature = "web"))]
-    fn spawn<F>(self: &Arc<Self>, mut future: F)
-    where
-        F: 'static + Future<Output = ()> + Unpin,
-    {
+    fn spawn<F: 'static + Future<Output = ()> + Unpin>(self: &Arc<T>, fut: F) {
         // Set up the waker and context.
         let waker = self.clone().into();
         let mut cx = TaskCx::from_waker(&waker);
 
         // Run the future to completion.
-        while Pin::new(&mut future).poll(&mut cx).is_pending() {
+        let mut fut = fut;
+        while Pin::new(&mut fut).poll(&mut cx).is_pending() {
             self.sleep();
         }
     }
 
     // Add to the task queue on std
     #[cfg(all(feature = "std", not(feature = "web")))]
-    fn spawn<F>(self: &Arc<Self>, future: F)
-    where
-        F: 'static + Future<Output = ()> + Unpin,
-    {
+    fn spawn<F: 'static + Future<Output = ()> + Unpin>(self: &Arc<T>, fut: F) {
         TASKS.with(|t| {
             let mut tasks = t.take();
-            tasks.push(Task::new(future).into());
+            tasks.push(Task::new(fut).into());
             t.set(tasks);
         });
         WAKER.with(|w| w.take().map(|w| w.wake()));
@@ -229,17 +224,14 @@ mod web {
     pub struct WebExecutor;
 
     impl Spawn for WebExecutor {
-        fn spawn<F>(self: &Arc<Self>, future: F)
-        where
-            F: Future<Output = ()> + 'static,
-        {
-            wasm_bindgen_futures::spawn_local(future);
+        fn spawn<F: Future<Output = ()> + 'static>(self: &Arc<Self>, fut: F) {
+            wasm_bindgen_futures::spawn_local(fut);
         }
     }
 
     impl Default for Executor<WebExecutor> {
         fn default() -> Self {
-            Self::new(WebExecutor)
+            Self(Arc::new(WebExecutor), false)
         }
     }
 }
