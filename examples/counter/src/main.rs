@@ -29,7 +29,7 @@ impl State<'_> {
     }
 }
 
-async fn main(_executor: &Weak<Executor>) {
+async fn main(_executor: &Executor) {
     let sleep = |seconds| sleep(Duration::from_secs_f64(seconds));
     let one = &mut Loop::pin(|| sleep(1.0));
     let two = &mut Loop::pin(|| sleep(2.0));

@@ -55,16 +55,14 @@
 //! # mod main {
 #![doc = include_str!("../examples/counter/src/main.rs")]
 //! #     pub(super) mod main {
-//! #         pub(in crate) async fn main(e:alloc::sync::Weak<pasts::Executor>){
-//! #             super::main(&e).await
+//! #         pub(in crate) async fn main(executor: pasts::Executor) {
+//! #             super::main(&executor).await
 //! #         }
 //! #     }
 //! # }
 //! # fn main() {
-//! #     let executor = alloc::sync::Arc::new(pasts::Executor::default());
-//! #     executor.spawn(Box::pin(self::main::main::main(
-//! #         alloc::sync::Arc::downgrade(&executor)
-//! #     )));
+//! #     let executor = pasts::Executor::default();
+//! #     executor.spawn(Box::pin(self::main::main::main(executor.clone())));
 //! # }
 //! ```
 //! 
@@ -155,10 +153,7 @@ pub mod prelude {
     //! Items that are almost always needed.
 
     #[doc(no_inline)]
-    pub use alloc::{
-        boxed::Box,
-        sync::{Arc, Weak},
-    };
+    pub use alloc::{boxed::Box, sync::Arc};
     #[doc(no_inline)]
     pub use core::{
         future::Future,

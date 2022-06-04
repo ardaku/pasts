@@ -9,8 +9,8 @@ mod main {
 
     #[allow(clippy::module_inception)]
     pub(super) mod main {
-        pub(crate) async fn main(e: alloc::sync::Weak<pasts::Executor>) {
-            super::main(&e).await
+        pub(crate) async fn main(executor: pasts::Executor) {
+            super::main(&executor).await
         }
     }
 }
@@ -20,8 +20,6 @@ mod main {
     wasm_bindgen(start)
 )]
 pub fn main() {
-    let executor = alloc::sync::Arc::new(pasts::Executor::default());
-    executor.spawn(Box::pin(self::main::main::main(
-        alloc::sync::Arc::downgrade(&executor),
-    )));
+    let executor = pasts::Executor::default();
+    executor.spawn(Box::pin(self::main::main::main(executor.clone())));
 }

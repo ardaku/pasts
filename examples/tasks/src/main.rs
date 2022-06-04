@@ -16,7 +16,7 @@ impl State {
     }
 }
 
-async fn main(_executor: &Weak<Executor>) {
+async fn main(_executor: &Executor) {
     let mut state = State {
         tasks: vec![
             Task::new(async { "Hello" }).into(),

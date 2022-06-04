@@ -98,19 +98,28 @@ impl<T: 'static + Sleep + Wake + Send + Sync> Spawn for T {
 /// <script>hljs.highlightAll();</script>
 /// <style> code.hljs { background-color: #000B; } </style>
 #[derive(Debug)]
-pub struct Executor<I: 'static + Spawn + Send + Sync = Exec>(Arc<I>);
+pub struct Executor<I: 'static + Spawn + Send + Sync = Exec>(Arc<I>, bool);
+
+impl<I: 'static + Spawn + Send + Sync> Clone for Executor<I> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone(), true)
+    }
+}
 
 // Wait for task queue on std when dropping.
 #[cfg(all(feature = "std", not(feature = "web")))]
 impl<I: 'static + Spawn + Send + Sync> Drop for Executor<I> {
     fn drop(&mut self) {
-        // Only run this drop impl if on `StdExecutor`.
+        // Only run this drop impl if on `StdExecutor` and if original.
         use core::any::Any;
         let exec: Arc<dyn Any + Send + Sync + 'static> = self.0.clone();
         let exec: Arc<Exec> = match exec.downcast() {
             Ok(exec) => exec,
             Err(_) => return,
         };
+        if self.1 {
+            return;
+        }
 
         struct Tasks(Vec<LocalTask<'static, ()>>, Spawner);
 
@@ -268,16 +277,11 @@ impl<I: 'static + Spawn + Send + Sync> Executor<I> {
     /// Create a new executor from something implementing [`Spawn`].
     ///
     /// # Platform-Specific Behavior
-    /// If you create an `Executor` in thread-local storage, then the executor
-    /// might exit without ever driving the futures spawned on it.  This is
-    /// because execution of futures may happen on [`Drop`], which is not
-    /// guaranteed for thread local storage.
-    ///
-    /// **TLDR** If you need to share an executor, wrap it in an [`Arc`],
-    /// avoiding thread-local.
+    /// Execution of futures happens on [`Drop`] of the original (not cloned)
+    /// `Executor` when *`std`* is enabled, and *`web`* is not.
     #[inline]
     pub fn new(implementation: I) -> Self {
-        Self(Arc::new(implementation))
+        Self(Arc::new(implementation), false)
     }
 
     /// Spawn an [`Unpin`] future on this executor.

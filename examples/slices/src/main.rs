@@ -14,7 +14,7 @@ impl State<'_> {
     }
 }
 
-async fn main(_executor: &Weak<Executor>) {
+async fn main(_executor: &Executor) {
     let tasks = &mut [
         Task::new(async { "Hello" }).into(),
         Task::new(async { "World" }).into(),

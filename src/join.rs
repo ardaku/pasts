@@ -38,16 +38,14 @@ impl<S, T> Stateful<S, T> for Never<'_, S> {
 /// # mod main {
 #[doc = include_str!("../examples/slices/src/main.rs")]
 /// #     pub(super) mod main {
-/// #         pub(in crate) async fn main(e:alloc::sync::Weak<pasts::Executor>){
-/// #             super::main(&e).await
+/// #         pub(in crate) async fn main(executor: pasts::Executor){
+/// #             super::main(&executor).await
 /// #         }
 /// #     }
 /// # }
 /// # fn main() {
-/// #     let executor = alloc::sync::Arc::new(pasts::Executor::default());
-/// #     executor.spawn(Box::pin(self::main::main::main(
-/// #         alloc::sync::Arc::downgrade(&executor)
-/// #     )));
+/// #     let executor = pasts::Executor::default();
+/// #     executor.spawn(Box::pin(self::main::main::main(executor.clone())));
 /// # }
 /// ```
 /// 
@@ -60,16 +58,14 @@ impl<S, T> Stateful<S, T> for Never<'_, S> {
 /// # mod main {
 #[doc = include_str!("../examples/tasks/src/main.rs")]
 /// #     pub(super) mod main {
-/// #         pub(in crate) async fn main(e:alloc::sync::Weak<pasts::Executor>){
-/// #             super::main(&e).await
+/// #         pub(in crate) async fn main(executor: pasts::Executor){
+/// #             super::main(&executor).await
 /// #         }
 /// #     }
 /// # }
 /// # fn main() {
-/// #     let executor = alloc::sync::Arc::new(pasts::Executor::default());
-/// #     executor.spawn(Box::pin(self::main::main::main(
-/// #         alloc::sync::Arc::downgrade(&executor)
-/// #     )));
+/// #     let executor = pasts::Executor::default();
+/// #     executor.spawn(Box::pin(self::main::main::main(executor.clone())));
 /// # }
 /// ```
 /// 

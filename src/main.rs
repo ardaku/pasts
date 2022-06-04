@@ -1,2 +1,2 @@
 // dummy main.rs
-async fn main(_: &alloc::sync::Weak<pasts::Executor>) {}
+async fn main(_: &pasts::Executor) {}
