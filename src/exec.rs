@@ -272,7 +272,6 @@ impl<I: 'static + Wake + Sleep + Send + Sync> Executor<I> {
     /// # Platform-Specific Behavior
     /// Execution of futures happens on [`Drop`] of the original (not cloned)
     /// `Executor` when *`std`* is enabled, and *`web`* is not.
-    #[inline]
     pub fn new(implementation: I) -> Self {
         Self(Arc::new(implementation), false)
     }
@@ -306,7 +305,6 @@ impl<I: 'static + Spawn + Send + Sync> Executor<I> {
     /// #     executor.spawn(Box::pin(self::main::main::main(executor.clone())));
     /// # }
     /// ```
-    #[inline]
     pub fn spawn(&self, fut: impl Future<Output = ()> + Unpin + 'static) {
         self.0.spawn(fut);
     }

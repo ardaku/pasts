@@ -81,7 +81,6 @@ pub struct Join<S: Unpin, T, F: Stateful<S, T>> {
 
 impl<'a, S: Unpin, T> Join<S, T, Never<'a, S>> {
     /// Create an empty event loop.
-
     pub fn new(state: &'a mut S) -> Self {
         let other = Never(state);
         let _phantom = core::marker::PhantomData;
@@ -92,15 +91,11 @@ impl<'a, S: Unpin, T> Join<S, T, Never<'a, S>> {
 
 impl<S: Unpin, T, F: Stateful<S, T>> Join<S, T, F> {
     /// Register an event handler.
-    pub fn on<N, P>(
+    pub fn on<N: Notifier + Unpin + ?Sized>(
         self,
-        past: P,
+        past: impl for<'a> FnMut(&'a mut S) -> &'a mut N + Unpin,
         then: fn(&mut S, N::Event) -> Poll<T>,
-    ) -> Join<S, T, impl Stateful<S, T>>
-    where
-        N: Notifier + Unpin + ?Sized,
-        P: for<'a> FnMut(&'a mut S) -> &'a mut N + Unpin,
-    {
+    ) -> Join<S, T, impl Stateful<S, T>> {
         let other = self.other;
         let _phantom = core::marker::PhantomData;
         let other = Joiner { other, past, then };
