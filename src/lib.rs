@@ -28,6 +28,8 @@
 //!
 //! [dependencies]
 //! pasts = "0.11"
+//! ## This example uses async-std for a sleep future, but async-std is *not*
+//! ## required to use pasts.
 //! async-std = "1.11"
 //!
 //! ## Use web feature when compiling to wasm32-unknown-unknown
@@ -101,7 +103,7 @@ mod noti;
 
 use self::prelude::*;
 pub use self::{
-    exec::{Executor, Sleep, SpawnLocal},
+    exec::{Executor, Sleep, Spawn},
     join::Join,
     noti::{Loop, Notifier, PollNextFn, Task},
 };

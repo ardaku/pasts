@@ -46,28 +46,21 @@ pub trait Sleep {
     fn sleep(&self);
 }
 
-/// The implementation of spawning tasks locally for an [`Executor`].
+/// The implementation of spawning tasks on an [`Executor`].
 ///
 /// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
 /// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
 /// <script>hljs.highlightAll();</script>
 /// <style> code.hljs { background-color: #000B; } </style>
-pub trait SpawnLocal {
+pub trait Spawn {
     /// Spawn a [`Future`] on the current thread.
-    fn spawn_local<F>(self: &Arc<Self>, future: F)
-    where
-        F: 'static + Future<Output = ()> + Unpin;
-
-    /// Implementation for yielding to the executor.
-    ///
-    /// The default implementation does nothing.
-    fn executor_yield(self: &Arc<Self>) {}
+    fn spawn<F: 'static + Future<Output = ()> + Unpin>(self: &Arc<Self>, f: F);
 }
 
-impl<T: 'static + Sleep + Wake + Send + Sync> SpawnLocal for T {
+impl<T: 'static + Sleep + Wake + Send + Sync> Spawn for T {
     // No std can only spawn one task, so block on it.
     #[cfg(any(not(feature = "std"), feature = "web"))]
-    fn spawn_local<F>(self: &Arc<Self>, mut future: F)
+    fn spawn<F>(self: &Arc<Self>, mut future: F)
     where
         F: 'static + Future<Output = ()> + Unpin,
     {
@@ -83,7 +76,7 @@ impl<T: 'static + Sleep + Wake + Send + Sync> SpawnLocal for T {
 
     // Add to the task queue on std
     #[cfg(all(feature = "std", not(feature = "web")))]
-    fn spawn_local<F>(self: &Arc<Self>, future: F)
+    fn spawn<F>(self: &Arc<Self>, future: F)
     where
         F: 'static + Future<Output = ()> + Unpin,
     {
@@ -94,10 +87,31 @@ impl<T: 'static + Sleep + Wake + Send + Sync> SpawnLocal for T {
         });
         WAKER.with(|w| w.take().map(|w| w.wake()));
     }
+}
 
-    // Go through task queue on std
-    #[cfg(all(feature = "std", not(feature = "web")))]
-    fn executor_yield(self: &Arc<Self>) {
+/// An executor.
+///
+/// Executors drive [`Future`]s.
+///
+/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
+/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+/// <script>hljs.highlightAll();</script>
+/// <style> code.hljs { background-color: #000B; } </style>
+#[derive(Debug)]
+pub struct Executor<I: 'static + Spawn + Send + Sync = Exec>(Arc<I>);
+
+// Wait for task queue on std when dropping.
+#[cfg(all(feature = "std", not(feature = "web")))]
+impl<I: 'static + Spawn + Send + Sync> Drop for Executor<I> {
+    fn drop(&mut self) {
+        // Only run this drop impl if on `StdExecutor`.
+        use core::any::Any;
+        let exec: Arc<dyn Any + Send + Sync + 'static> = self.0.clone();
+        let exec: Arc<Exec> = match exec.downcast() {
+            Ok(exec) => exec,
+            Err(_) => return,
+        };
+
         struct Tasks(Vec<LocalTask<'static, ()>>, Spawner);
 
         struct Spawner;
@@ -138,30 +152,13 @@ impl<T: 'static + Sleep + Wake + Send + Sync> SpawnLocal for T {
             Join::new(tasks).on(|s| &mut s.1, spawn).on(|s| &mut s.0[..], done);
 
         // Set up the waker and context.
-        let waker = self.clone().into();
+        let waker = exec.clone().into();
         let mut cx = TaskCx::from_waker(&waker);
 
         // Run the future to completion.
         while Pin::new(&mut fut).poll(&mut cx).is_pending() {
-            self.sleep();
+            exec.sleep();
         }
-    }
-}
-
-/// An executor.
-///
-/// Executors drive [`Future`]s.
-///
-/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
-/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
-/// <script>hljs.highlightAll();</script>
-/// <style> code.hljs { background-color: #000B; } </style>
-#[derive(Debug)]
-pub struct Executor<I: 'static + SpawnLocal + Send + Sync = Exec>(Arc<I>);
-
-impl<I: 'static + SpawnLocal + Send + Sync> Drop for Executor<I> {
-    fn drop(&mut self) {
-        self.0.executor_yield();
     }
 }
 
@@ -222,7 +219,7 @@ mod web {
     #[derive(Debug, Copy, Clone)]
     pub struct WebExecutor;
 
-    impl SpawnLocal for WebExecutor {
+    impl Spawn for WebExecutor {
         fn spawn_local<F>(self: &Arc<Self>, future: F)
         where
             F: Future<Output = ()> + 'static,
@@ -267,8 +264,8 @@ mod none {
     }
 }
 
-impl<I: 'static + SpawnLocal + Send + Sync> Executor<I> {
-    /// Create a new executor from something implementing [`SpawnLocal`].
+impl<I: 'static + Spawn + Send + Sync> Executor<I> {
+    /// Create a new executor from something implementing [`Spawn`].
     ///
     /// # Platform-Specific Behavior
     /// If you create an `Executor` in thread-local storage, then the executor
@@ -298,6 +295,6 @@ impl<I: 'static + SpawnLocal + Send + Sync> Executor<I> {
     /// ```
     #[inline]
     pub fn spawn(&self, fut: impl Future<Output = ()> + Unpin + 'static) {
-        self.0.spawn_local(fut);
+        self.0.spawn(fut);
     }
 }

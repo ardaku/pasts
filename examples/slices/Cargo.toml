@@ -10,7 +10,6 @@ path = "app/main.rs"
 
 [dependencies]
 pasts = { path = "../../" }
-async-std = "1.11"
  
 # Use web feature when compiling to wasm32-unknown-unknown
 [target.'cfg(all(target_arch="wasm32",target_os="unknown"))'.dependencies]
