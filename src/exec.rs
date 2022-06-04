@@ -123,10 +123,7 @@ impl<I: 'static + Spawn + Send + Sync> Drop for Executor<I> {
         impl Notifier for Spawner {
             type Event = LocalTask<'static, ()>;
 
-            fn poll_next(
-                self: Pin<&mut Self>,
-                cx: &mut TaskCx<'_>,
-            ) -> Poll<Self::Event> {
+            fn poll_next(&mut self, cx: &mut TaskCx<'_>) -> Poll<Self::Event> {
                 WAKER.with(|w| w.set(Some(cx.waker().clone())));
                 TASKS.with(|t| {
                     let mut tasks = t.take();
