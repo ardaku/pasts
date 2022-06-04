@@ -16,7 +16,7 @@ impl State {
     }
 }
 
-async fn run() {
+async fn main(_executor: &Weak<Executor>) {
     let mut state = State {
         tasks: vec![
             Task::new(async { "Hello" }).into(),
@@ -25,8 +25,4 @@ async fn run() {
     };
 
     Join::new(&mut state).on(|s| &mut s.tasks[..], State::completion).await;
-}
-
-fn main() {
-    pasts::Executor::default().spawn(Box::pin(run()));
 }

@@ -14,6 +14,11 @@ use crate::{prelude::*, BoxTask, LocalTask};
 /// Trait for asynchronous event notification.
 ///
 /// Similar to [`AsyncIterator`](core::async_iter::AsyncIterator), but infinite.
+///
+/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
+/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+/// <script>hljs.highlightAll();</script>
+/// <style> code.hljs { background-color: #000B; } </style>
 pub trait Notifier {
     /// The event produced by this notifier
     type Event;
@@ -134,6 +139,11 @@ impl<N: Notifier + Unpin> Future for EventFuture<'_, N> {
 }
 
 /// A [`Notifier`] created from a function returning [`Poll`].
+///
+/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
+/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+/// <script>hljs.highlightAll();</script>
+/// <style> code.hljs { background-color: #000B; } </style>
 #[derive(Debug)]
 pub struct PollNextFn<T, F: FnMut(&mut TaskCx<'_>) -> Poll<T> + Unpin>(F);
 
@@ -160,6 +170,11 @@ where
 /// The asynchronous equivalent of a thread.
 ///
 /// Requires non-ZST allocator.
+///
+/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
+/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+/// <script>hljs.highlightAll();</script>
+/// <style> code.hljs { background-color: #000B; } </style>
 #[derive(Debug)]
 pub struct Task<F: Future + ?Sized>(Option<Pin<Box<F>>>);
 
@@ -226,6 +241,11 @@ impl<F: Future + Unpin> Looper<F> for F {
 /// A [`Notifier`] created from a function returning [`Future`]s.
 ///
 /// A repeating [`Task`].
+///
+/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
+/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+/// <script>hljs.highlightAll();</script>
+/// <style> code.hljs { background-color: #000B; } </style>
 #[derive(Debug)]
 pub struct Loop<F: Future, L: FnMut() -> F + Unpin, S>(S, L);
 

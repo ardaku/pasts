@@ -7,6 +7,7 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 //
+
 //! Minimal and simpler alternative to the futures crate.
 //!
 //! # Optional Features
@@ -27,54 +28,48 @@
 //!
 //! [dependencies]
 //! pasts = "0.11"
-//! aysnc-std = "1.11"
+//! async-std = "1.11"
+//!
+//! ## Use web feature when compiling to wasm32-unknown-unknown
+//! [target.'cfg(all(target_arch="wasm32",target_os="unknown"))'.dependencies]
+//! pasts = { version = "0.11", features = ["web"] }
+//! wasm-bindgen = "0.2"
 //! ```
 //!
 //! Create **`./app/main.rs`**:
 //! ```rust,no_run
-//! // Shim for providing async main
-//! #[allow(unused_imports)]
-//! use self::main::*;
-//!
-//! mod main {
-//!     include!("../src/main.rs");
-//!
-//!     pub(super) mod main {
-//!         pub(in crate) async fn main() {
-//!             super::main().await
-//!         }
-//!     }
-//! }
-//!
-//! fn main() {
-//!     pasts::Executor::default().spawn(Box::pin(self::main::main::main()));
-//! }
+#![doc = include_str!("../examples/counter/app/main.rs")]
 //! ```
-//!
+//! 
 //! ## Multi-Tasking On Multiple Iterators of Futures
 //! This example runs two timers in parallel using the `async-std` crate
 //! counting from 0 to 6.  The "one" task will always be run for count 6 and
 //! stop the program, although which task will run for count 5 may be either
 //! "one" or "two" because they trigger at the same time.
-//!
 //! ```rust,no_run
+//! # extern crate alloc;
 //! # #[allow(unused_imports)]
 //! # use self::main::*;
 //! # mod main {
-//! #
-#![doc = include_str!("main.rs")]
-//! #
+#![doc = include_str!("../examples/counter/src/main.rs")]
 //! #     pub(super) mod main {
-//! #         pub(in crate) async fn main() {
-//! #             super::main().await
+//! #         pub(in crate) async fn main(e:alloc::sync::Weak<pasts::Executor>){
+//! #             super::main(&e).await
 //! #         }
 //! #     }
 //! # }
-//! #
 //! # fn main() {
-//! #     pasts::Executor::default().spawn(Box::pin(self::main::main::main()));
+//! #     let executor = alloc::sync::Arc::new(pasts::Executor::default());
+//! #     executor.spawn(Box::pin(self::main::main::main(
+//! #         alloc::sync::Arc::downgrade(&executor)
+//! #     )));
 //! # }
 //! ```
+//! 
+//! <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
+//! <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+//! <script>hljs.highlightAll();</script>
+//! <style> code.hljs { background-color: #000B; } </style>
 #![cfg_attr(not(feature = "std"), no_std)]
 #![doc(
     html_logo_url = "https://ardaku.github.io/mm/logo.svg",
@@ -115,30 +110,53 @@ pub use self::{
 /// statically type your result or need to add some indirection.
 ///
 /// Requires non-ZST allocator.
+///
+/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
+/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+/// <script>hljs.highlightAll();</script>
+/// <style> code.hljs { background-color: #000B; } </style>
 pub type BoxNotifier<'a, T> =
     Pin<Box<dyn Notifier<Event = T> + Unpin + Send + 'a>>;
 
 /// [`BoxNotifier`], but without the [`Send`] requirement.
 ///
 /// Requires non-ZST allocator.
+///
+/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
+/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+/// <script>hljs.highlightAll();</script>
+/// <style> code.hljs { background-color: #000B; } </style>
 pub type LocalNotifier<'a, T> = Pin<Box<dyn Notifier<Event = T> + Unpin + 'a>>;
 
 /// An owned dynamically typed [`Task`] for use in cases where you can't
 /// statically type your result or need to add some indirection.
 ///
 /// Requires non-ZST allocator.
+///
+/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
+/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+/// <script>hljs.highlightAll();</script>
+/// <style> code.hljs { background-color: #000B; } </style>
 pub type BoxTask<'a, T> = Task<dyn Future<Output = T> + Send + 'a>;
 
 /// [`BoxTask`], but without the [`Send`] requirement.
 ///
 /// Requires non-ZST allocator.
+///
+/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
+/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+/// <script>hljs.highlightAll();</script>
+/// <style> code.hljs { background-color: #000B; } </style>
 pub type LocalTask<'a, T> = Task<dyn Future<Output = T> + 'a>;
 
 pub mod prelude {
     //! Items that are almost always needed.
 
     #[doc(no_inline)]
-    pub use alloc::boxed::Box;
+    pub use alloc::{
+        boxed::Box,
+        sync::{Arc, Weak},
+    };
     #[doc(no_inline)]
     pub use core::{
         future::Future,
@@ -150,5 +168,5 @@ pub mod prelude {
     };
 
     #[doc(no_inline)]
-    pub use crate::{BoxNotifier, LocalNotifier, Notifier};
+    pub use crate::{BoxNotifier, Executor, LocalNotifier, Notifier};
 }

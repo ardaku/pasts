@@ -14,7 +14,7 @@ impl State<'_> {
     }
 }
 
-async fn run() {
+async fn main(_executor: &Weak<Executor>) {
     let tasks = &mut [
         Task::new(async { "Hello" }).into(),
         Task::new(async { "World" }).into(),
@@ -23,8 +23,4 @@ async fn run() {
 
     // First task will complete first.
     Join::new(&mut state).on(|s| s.tasks, State::completion).await;
-}
-
-fn main() {
-    pasts::Executor::default().spawn(Box::pin(run()))
 }

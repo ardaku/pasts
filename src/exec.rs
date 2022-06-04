@@ -35,6 +35,11 @@ thread_local! {
 /// ```rust
 #[doc = include_str!("../examples/executor.rs")]
 /// ```
+/// 
+/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
+/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+/// <script>hljs.highlightAll();</script>
+/// <style> code.hljs { background-color: #000B; } </style>
 pub trait Sleep {
     /// The sleep routine; should put the processor or thread to sleep in order
     /// to save CPU cycles and power, until the hardware tells it to wake up.
@@ -42,6 +47,11 @@ pub trait Sleep {
 }
 
 /// The implementation of spawning tasks locally for an [`Executor`].
+///
+/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
+/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+/// <script>hljs.highlightAll();</script>
+/// <style> code.hljs { background-color: #000B; } </style>
 pub trait SpawnLocal {
     /// Spawn a [`Future`] on the current thread.
     fn spawn_local<F>(self: &Arc<Self>, future: F)
@@ -141,14 +151,22 @@ impl<T: 'static + Sleep + Wake + Send + Sync> SpawnLocal for T {
 /// An executor.
 ///
 /// Executors drive [`Future`]s.
+///
+/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
+/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+/// <script>hljs.highlightAll();</script>
+/// <style> code.hljs { background-color: #000B; } </style>
 #[derive(Debug)]
-pub struct Executor<I: 'static + SpawnLocal + Send + Sync>(Arc<I>);
+pub struct Executor<I: 'static + SpawnLocal + Send + Sync = Exec>(Arc<I>);
 
 impl<I: 'static + SpawnLocal + Send + Sync> Drop for Executor<I> {
     fn drop(&mut self) {
         self.0.executor_yield();
     }
 }
+
+#[cfg(all(feature = "std", not(feature = "web")))]
+use self::std::StdExecutor as Exec;
 
 #[cfg(all(feature = "std", not(feature = "web")))]
 mod std {
@@ -195,6 +213,9 @@ mod std {
 }
 
 #[cfg(all(feature = "std", feature = "web"))]
+use self::web::WebExecutor as Exec;
+
+#[cfg(all(feature = "std", feature = "web"))]
 mod web {
     use super::*;
 
@@ -216,6 +237,9 @@ mod web {
         }
     }
 }
+
+#[cfg(not(feature = "std"))]
+use self::none::InefficientExecutor as Exec;
 
 #[cfg(not(feature = "std"))]
 mod none {
@@ -244,7 +268,7 @@ mod none {
 }
 
 impl<I: 'static + SpawnLocal + Send + Sync> Executor<I> {
-    /// Create a new executor from something implementing both [`SpawnLocal`].
+    /// Create a new executor from something implementing [`SpawnLocal`].
     ///
     /// # Platform-Specific Behavior
     /// If you create an `Executor` in thread-local storage, then the executor

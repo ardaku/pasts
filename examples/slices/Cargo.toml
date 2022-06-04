@@ -1,0 +1,18 @@
+[package]
+name = "slices"
+version = "0.1.0"
+edition = "2021"
+autobins = false
+
+[[bin]]
+name = "app"
+path = "app/main.rs"
+
+[dependencies]
+pasts = { path = "../../" }
+async-std = "1.11"
+ 
+# Use web feature when compiling to wasm32-unknown-unknown
+[target.'cfg(all(target_arch="wasm32",target_os="unknown"))'.dependencies]
+pasts = { path = "../../", features = ["web"] }
+wasm-bindgen = "0.2"

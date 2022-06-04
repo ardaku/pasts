@@ -32,15 +32,51 @@ impl<S, T> Stateful<S, T> for Never<'_, S> {
 /// Select first completed future.
 ///
 /// ```rust
-#[doc = include_str!("../examples/slices.rs")]
+/// # extern crate alloc;
+/// # #[allow(unused_imports)]
+/// # use self::main::*;
+/// # mod main {
+#[doc = include_str!("../examples/slices/src/main.rs")]
+/// #     pub(super) mod main {
+/// #         pub(in crate) async fn main(e:alloc::sync::Weak<pasts::Executor>){
+/// #             super::main(&e).await
+/// #         }
+/// #     }
+/// # }
+/// # fn main() {
+/// #     let executor = alloc::sync::Arc::new(pasts::Executor::default());
+/// #     executor.spawn(Box::pin(self::main::main::main(
+/// #         alloc::sync::Arc::downgrade(&executor)
+/// #     )));
+/// # }
 /// ```
 /// 
 /// # Task spawning
 /// Spawns tasks in a [`Vec`], and removes them as they complete.
 /// ```rust
-#[doc = include_str!("../examples/tasks.rs")]
+/// # extern crate alloc;
+/// # #[allow(unused_imports)]
+/// # use self::main::*;
+/// # mod main {
+#[doc = include_str!("../examples/tasks/src/main.rs")]
+/// #     pub(super) mod main {
+/// #         pub(in crate) async fn main(e:alloc::sync::Weak<pasts::Executor>){
+/// #             super::main(&e).await
+/// #         }
+/// #     }
+/// # }
+/// # fn main() {
+/// #     let executor = alloc::sync::Arc::new(pasts::Executor::default());
+/// #     executor.spawn(Box::pin(self::main::main::main(
+/// #         alloc::sync::Arc::downgrade(&executor)
+/// #     )));
+/// # }
 /// ```
-///
+/// 
+/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
+/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+/// <script>hljs.highlightAll();</script>
+/// <style> code.hljs { background-color: #000B; } </style>
 #[derive(Debug)]
 pub struct Join<S: Unpin, T, F: Stateful<S, T>> {
     other: F,

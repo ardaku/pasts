@@ -37,3 +37,11 @@ std = []
 
 # Target the DOM via javascript APIs exposed by wasm-bindgen.
 web = ["wasm-bindgen-futures"]
+
+[workspace]
+members = [
+    ".",
+    "examples/counter/",
+    "examples/slices/",
+    "examples/tasks/",
+]
