@@ -30,11 +30,6 @@ thread_local! {
 ///
 /// This trait can be used in conjunction with [`Wake`] to create an
 /// [`Executor`].
-///
-/// # Example
-/// ```rust
-#[doc = include_str!("../examples/executor.rs")]
-/// ```
 /// 
 /// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
 /// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
@@ -87,6 +82,11 @@ impl<T: 'static + Sleep + Wake + Send + Sync> Spawn for T {
 /// An executor.
 ///
 /// Executors drive [`Future`]s.
+///
+/// # Example
+/// ```rust,no_run
+#[doc = include_str!("../examples/timer.rs")]
+/// ```
 ///
 /// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
 /// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
@@ -274,6 +274,11 @@ impl<I: 'static + Wake + Sleep + Send + Sync> Executor<I> {
     /// # Platform-Specific Behavior
     /// Execution of futures happens on [`Drop`] of the original (not cloned)
     /// `Executor` when *`std`* is enabled, and *`web`* is not.
+    ///
+    /// # Example
+    /// ```rust
+    #[doc = include_str!("../examples/executor.rs")]
+    /// ```
     pub fn new(implementation: I) -> Self {
         Self(Arc::new(implementation), false)
     }
