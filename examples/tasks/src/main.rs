@@ -1,9 +1,9 @@
-use pasts::{prelude::*, BoxTask, Join, Task};
+use pasts::{prelude::*, Join, Fuse};
 
 struct Exit;
 
 struct State {
-    tasks: Vec<BoxTask<'static, &'static str>>,
+    tasks: Vec<Fuse<Task<'static, &'static str>>>,
 }
 
 impl State {
@@ -19,8 +19,8 @@ impl State {
 async fn main(_executor: &Executor) {
     let mut state = State {
         tasks: vec![
-            Task::new(async { "Hello" }).into(),
-            Task::new(async { "World" }).into(),
+            Fuse::from(Box::pin(async { "Hello" }) as Task<'static, _>),
+            Fuse::from(Box::pin(async { "World" }) as Task<'static, _>),
         ],
     };
 

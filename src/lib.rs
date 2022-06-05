@@ -76,7 +76,7 @@
     html_favicon_url = "https://ardaku.github.io/mm/icon.svg",
     html_root_url = "https://docs.rs/pasts"
 )]
-#![forbid(unsafe_code)]
+#![deny(unsafe_code)]
 #![warn(
     anonymous_parameters,
     missing_copy_implementations,
@@ -103,51 +103,29 @@ use self::prelude::*;
 pub use self::{
     exec::{Executor, Sleep},
     join::Join,
-    noti::{Loop, Notifier, PollNextFn, Task},
+    noti::{Fuse, Loop, Notifier, PollNextFn},
 };
 
-/// An owned dynamically typed [`Notifier`] for use in cases where you can't
+/// An owned dynamically typed [`Future`] for use in cases where you can’t
 /// statically type your result or need to add some indirection.
 ///
-/// Requires non-ZST allocator.
+/// Requires a non-ZST allocator.
 ///
 /// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
 /// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
 /// <script>hljs.highlightAll();</script>
 /// <style> code.hljs { background-color: #000B; } </style>
-pub type BoxNotifier<'a, T> =
-    Pin<Box<dyn Notifier<Event = T> + Unpin + Send + 'a>>;
+pub type Task<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
-/// [`BoxNotifier`], but without the [`Send`] requirement.
+/// [`Task`] without the [`Send`] requirement.
 ///
-/// Requires non-ZST allocator.
-///
-/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
-/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
-/// <script>hljs.highlightAll();</script>
-/// <style> code.hljs { background-color: #000B; } </style>
-pub type LocalNotifier<'a, T> = Pin<Box<dyn Notifier<Event = T> + Unpin + 'a>>;
-
-/// An owned dynamically typed [`Task`] for use in cases where you can't
-/// statically type your result or need to add some indirection.
-///
-/// Requires non-ZST allocator.
+/// Requires a non-ZST allocator.
 ///
 /// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
 /// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
 /// <script>hljs.highlightAll();</script>
 /// <style> code.hljs { background-color: #000B; } </style>
-pub type BoxTask<'a, T> = Task<dyn Future<Output = T> + Send + 'a>;
-
-/// [`BoxTask`], but without the [`Send`] requirement.
-///
-/// Requires non-ZST allocator.
-///
-/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
-/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
-/// <script>hljs.highlightAll();</script>
-/// <style> code.hljs { background-color: #000B; } </style>
-pub type LocalTask<'a, T> = Task<dyn Future<Output = T> + 'a>;
+pub type Local<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
 pub mod prelude {
     //! Items that are almost always needed.
@@ -165,5 +143,5 @@ pub mod prelude {
     };
 
     #[doc(no_inline)]
-    pub use crate::{BoxNotifier, Executor, LocalNotifier, Notifier};
+    pub use crate::{Executor, Local, Notifier, Task};
 }

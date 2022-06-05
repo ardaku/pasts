@@ -7,7 +7,7 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use crate::{prelude::*, BoxTask, LocalTask};
+use crate::prelude::*;
 
 /// Trait for asynchronous event notification.
 ///
@@ -81,11 +81,11 @@ pub trait Notifier {
     }
 }
 
-impl<N: Notifier + ?Sized> Notifier for &mut N {
+impl<T: core::ops::DerefMut<Target = N>, N: Notifier + ?Sized> Notifier for T {
     type Event = N::Event;
 
     #[inline]
-    fn poll_next(&mut self, cx: &mut TaskCx<'_>) -> Poll<Self::Event> {
+    fn poll_next(&mut self, cx: &mut TaskCx<'_>) -> Poll<N::Event> {
         (**self).poll_next(cx)
     }
 }
@@ -137,59 +137,52 @@ impl<T, F: FnMut(&mut TaskCx<'_>) -> Poll<T>> Notifier for PollNextFn<T, F> {
     type Event = T;
 
     #[inline]
-    fn poll_next(&mut self, cx: &mut TaskCx<'_>) -> Poll<Self::Event> {
+    fn poll_next(&mut self, cx: &mut TaskCx<'_>) -> Poll<T> {
         self.0(cx)
     }
 }
 
-/// A [`Notifier`] created from a [`Future`].
+/// A fused [`Future`].
 ///
-/// The asynchronous equivalent of a thread.
+/// A fused future is guaranteed to return [`Pending`] after the first
+/// [`Ready`].
 ///
-/// Requires non-ZST allocator.
+/// Fused [`Future`]s also implement [`Notifier`], sending a single event upon
+/// completion.
 ///
 /// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
 /// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
 /// <script>hljs.highlightAll();</script>
 /// <style> code.hljs { background-color: #000B; } </style>
 #[derive(Debug)]
-pub struct Task<F: Future + ?Sized>(Option<Pin<Box<F>>>);
+pub struct Fuse<F: Future + Unpin>(Option<F>);
 
-impl<F: Future> Task<F> {
-    /// Create a fused [`Notifier`] from a [`Future`]
-    pub fn new(future: F) -> Self {
-        Self(Some(Box::pin(future)))
+impl<F: Future + Unpin> From<F> for Fuse<F> {
+    fn from(other: F) -> Self {
+        Self(other.into())
     }
 }
 
-impl<F: Future + Send + 'static> From<Task<F>> for BoxTask<'_, F::Output> {
-    fn from(t: Task<F>) -> Self {
-        let t =
-            t.0.map(|x| -> Pin<Box<dyn Future<Output = _> + Send>> { x });
+impl<F: Future + Unpin> Future for Fuse<F> {
+    type Output = F::Output;
 
-        Task(t)
+    #[inline]
+    fn poll(self: Pin<&mut Self>, cx: &mut TaskCx<'_>) -> Poll<F::Output> {
+        self.get_mut().poll_next(cx)
     }
 }
 
-impl<F: Future + 'static> From<Task<F>> for LocalTask<'_, F::Output> {
-    fn from(other: Task<F>) -> Self {
-        Task(other.0.map(|x| -> Pin<Box<dyn Future<Output = _>>> { x }))
-    }
-}
-
-impl<F: Future + ?Sized> Notifier for Task<F> {
+impl<F: Future + Unpin> Notifier for Fuse<F> {
     type Event = F::Output;
 
     #[inline]
     fn poll_next(&mut self, cx: &mut TaskCx<'_>) -> Poll<F::Output> {
         if let Some(ref mut future) = self.0 {
-            return Pin::new(future).poll(cx).map(|event| {
-                self.0 = None;
-                event
-            });
+            future.poll(cx)
+        } else {
+            self.0 = None;
+            Pending
         }
-
-        Pending
     }
 }
 
@@ -253,7 +246,7 @@ impl<F: Future, L: FnMut() -> F, S: Looper<F>> Notifier for Loop<F, L, S> {
     type Event = F::Output;
 
     #[inline]
-    fn poll_next(&mut self, cx: &mut TaskCx<'_>) -> Poll<Self::Event> {
+    fn poll_next(&mut self, cx: &mut TaskCx<'_>) -> Poll<F::Output> {
         let poll = Pin::new(&mut self.0).poll(cx);
 
         if poll.is_ready() {
@@ -266,19 +259,16 @@ impl<F: Future, L: FnMut() -> F, S: Looper<F>> Notifier for Loop<F, L, S> {
 
 /// A notifier returned from [`Notifier::map()`].
 #[derive(Debug)]
-pub struct Map<I, F> {
-    noti: I,
+pub struct Map<N, F> {
+    noti: N,
     f: F,
 }
 
-impl<E, N: Notifier, F> Notifier for Map<N, F>
-where
-    F: FnMut(N::Event) -> E,
-{
+impl<E, N: Notifier, F: FnMut(N::Event) -> E> Notifier for Map<N, F> {
     type Event = E;
 
     #[inline]
-    fn poll_next(&mut self, cx: &mut TaskCx<'_>) -> Poll<Self::Event> {
+    fn poll_next(&mut self, cx: &mut TaskCx<'_>) -> Poll<E> {
         self.noti.poll_next(cx).map(&mut self.f)
     }
 }
