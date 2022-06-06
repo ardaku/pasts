@@ -124,16 +124,16 @@ impl<N: Notifier> Future for EventFuture<'_, N> {
 /// <script>hljs.highlightAll();</script>
 /// <style> code.hljs { background-color: #000B; } </style>
 #[derive(Debug)]
-pub struct PollNextFn<T, F: FnMut(&mut TaskCx<'_>) -> Poll<T>>(F);
+pub struct Noti<T, F: FnMut(&mut TaskCx<'_>) -> Poll<T>>(F);
 
-impl<T, F: FnMut(&mut TaskCx<'_>) -> Poll<T>> PollNextFn<T, F> {
+impl<T, F: FnMut(&mut TaskCx<'_>) -> Poll<T>> Noti<T, F> {
     /// Create a new [`Notifier`] from a function returning [`Poll`].
     pub fn new(f: F) -> Self {
         Self(f)
     }
 }
 
-impl<T, F: FnMut(&mut TaskCx<'_>) -> Poll<T>> Notifier for PollNextFn<T, F> {
+impl<T, F: FnMut(&mut TaskCx<'_>) -> Poll<T>> Notifier for Noti<T, F> {
     type Event = T;
 
     #[inline]

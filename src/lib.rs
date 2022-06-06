@@ -103,7 +103,7 @@ use self::prelude::*;
 pub use self::{
     exec::{Executor, Sleep},
     join::Join,
-    noti::{Fuse, Loop, Notifier, PollNextFn},
+    noti::{Fuse, Loop, Noti, Notifier},
 };
 
 /// An owned dynamically typed [`Future`] for use in cases where you can’t
