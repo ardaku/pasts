@@ -16,6 +16,9 @@
 //! The *`web`* feature is disabled by default, enable it to use pasts within
 //! the javascript DOM.
 //!
+//! The *`pin`* feature is disabled by default, enable it to use the [`Fuse`]
+//! api.
+//!
 //! # Getting Started
 //!
 //! Add the following to your **`./Cargo.toml`**:
@@ -137,7 +140,7 @@ pub mod prelude {
         future::Future,
         pin::Pin,
         task::{
-            Context as TaskCx,
+            Context as Exec,
             Poll::{self, Pending, Ready},
         },
     };

@@ -58,11 +58,11 @@ impl<T: 'static + Sleep + Wake + Send + Sync> Spawn for T {
     fn spawn<F: 'static + Future<Output = ()> + Unpin>(self: &Arc<T>, fut: F) {
         // Set up the waker and context.
         let waker = self.clone().into();
-        let mut cx = TaskCx::from_waker(&waker);
+        let mut exec = Exec::from_waker(&waker);
 
         // Run the future to completion.
         let mut fut = fut;
-        while Pin::new(&mut fut).poll(&mut cx).is_pending() {
+        while Pin::new(&mut fut).poll(&mut exec).is_pending() {
             self.sleep();
         }
     }
@@ -94,7 +94,7 @@ impl<T: 'static + Sleep + Wake + Send + Sync> Spawn for T {
 /// <script>hljs.highlightAll();</script>
 /// <style> code.hljs { background-color: #000B; } </style>
 #[derive(Debug)]
-pub struct Executor<I: 'static + Spawn + Send + Sync = Exec>(Arc<I>, bool);
+pub struct Executor<I: 'static + Spawn + Send + Sync = MainExec>(Arc<I>, bool);
 
 impl<I: 'static + Spawn + Send + Sync> Clone for Executor<I> {
     fn clone(&self) -> Self {
@@ -109,7 +109,7 @@ impl<I: 'static + Spawn + Send + Sync> Drop for Executor<I> {
         // Only run this drop impl if on `StdExecutor` and if original.
         use core::any::Any;
         let exec: Arc<dyn Any + Send + Sync + 'static> = self.0.clone();
-        let exec: Arc<Exec> = match exec.downcast() {
+        let exec: Arc<MainExec> = match exec.downcast() {
             Ok(exec) => exec,
             Err(_) => return,
         };
@@ -124,8 +124,11 @@ impl<I: 'static + Spawn + Send + Sync> Drop for Executor<I> {
         impl Notifier for Spawner {
             type Event = Fuse<Local<'static, ()>>;
 
-            fn poll_next(&mut self, cx: &mut TaskCx<'_>) -> Poll<Self::Event> {
-                WAKER.with(|w| w.set(Some(cx.waker().clone())));
+            fn poll_next(
+                self: Pin<&mut Self>,
+                e: &mut Exec<'_>,
+            ) -> Poll<Self::Event> {
+                WAKER.with(|w| w.set(Some(e.waker().clone())));
                 TASKS.with(|t| {
                     let mut tasks = t.take();
                     let output = tasks.pop();
@@ -160,17 +163,17 @@ impl<I: 'static + Spawn + Send + Sync> Drop for Executor<I> {
 
         // Set up the waker and context.
         let waker = exec.clone().into();
-        let mut cx = TaskCx::from_waker(&waker);
+        let mut e = Exec::from_waker(&waker);
 
         // Run the future to completion.
-        while Pin::new(&mut fut).poll(&mut cx).is_pending() {
+        while Pin::new(&mut fut).poll(&mut e).is_pending() {
             exec.sleep();
         }
     }
 }
 
 #[cfg(all(feature = "std", not(feature = "web")))]
-use self::std::StdExecutor as Exec;
+use self::std::StdExecutor as MainExec;
 
 #[cfg(all(feature = "std", not(feature = "web")))]
 mod std {
@@ -217,7 +220,7 @@ mod std {
 }
 
 #[cfg(all(feature = "std", feature = "web"))]
-use self::web::WebExecutor as Exec;
+use self::web::WebExecutor as MainExec;
 
 #[cfg(all(feature = "std", feature = "web"))]
 mod web {
@@ -240,7 +243,7 @@ mod web {
 }
 
 #[cfg(not(feature = "std"))]
-use self::none::InefficientExecutor as Exec;
+use self::none::InefficientExecutor as MainExec;
 
 #[cfg(not(feature = "std"))]
 mod none {
