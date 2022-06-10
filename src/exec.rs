@@ -41,16 +41,16 @@ pub trait Sleep {
     fn sleep(&self);
 }
 
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", not(feature = "web")))]
 pub trait Spawner: Wake + Sleep {}
 
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", not(feature = "web")))]
 impl<T: Wake + Sleep> Spawner for T {}
 
-#[cfg(not(feature = "std"))]
+#[cfg(any(not(feature = "std"), feature = "web"))]
 pub trait Spawner {}
 
-#[cfg(not(feature = "std"))]
+#[cfg(any(not(feature = "std"), feature = "web"))]
 impl<T> Spawner for T {}
 
 /// The implementation of spawning tasks on an [`Executor`].
