@@ -102,7 +102,7 @@ use self::prelude::*;
 pub use self::{
     exec::{Executor, Sleep},
     join::Join,
-    noti::{Fuse, Loop, Noti, Notifier},
+    noti::{Fuse, Loop, Poller, Notifier},
 };
 
 /// An owned dynamically typed [`Notifier`] for use in cases where you can’t
