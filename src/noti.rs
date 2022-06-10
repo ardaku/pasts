@@ -7,8 +7,6 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use core::ops::DerefMut;
-
 use crate::prelude::*;
 
 /// Trait for asynchronous event notification.
@@ -86,10 +84,27 @@ pub trait Notifier {
     }
 }
 
-impl<T, N: Notifier + Unpin + ?Sized> Notifier for T
+impl<N: Notifier + ?Sized> Notifier for Box<N> {
+    type Event = N::Event;
+
+    #[inline]
+    fn poll_next(self: Pin<&mut Self>, e: &mut Exec<'_>) -> Poll<N::Event> {
+        Pin::new(&mut self.get_mut()).poll_next(e)
+    }
+}
+
+impl<N: Notifier + ?Sized, P> Notifier for Pin<P>
 where
-    T: DerefMut<Target = N> + Unpin,
+    P: core::ops::DerefMut<Target = N> + Unpin,
 {
+    type Event = N::Event;
+
+    fn poll_next(self: Pin<&mut Self>, e: &mut Exec<'_>) -> Poll<Self::Event> {
+        Pin::get_mut(self).as_mut().poll_next(e)
+    }
+}
+
+impl<N: Notifier + Unpin + ?Sized> Notifier for &mut N {
     type Event = N::Event;
 
     #[inline]
@@ -150,46 +165,36 @@ impl<T, F: FnMut(&mut Exec<'_>) -> Poll<T> + Unpin> Notifier for Noti<T, F> {
     }
 }
 
-/// A fused [`Future`].
-///
-/// A fused future is guaranteed to return [`Pending`] after the first
-/// [`Ready`].
-///
-/// Fused [`Future`]s also implement [`Notifier`], sending a single event upon
-/// completion.
+/// Trait for "fusing" a [`Future`] (conversion to a [`Notifier`]).
 ///
 /// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
 /// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
 /// <script>hljs.highlightAll();</script>
 /// <style> code.hljs { background-color: #000B; } </style>
-#[derive(Debug)]
-pub struct Fuse<F: Future + Unpin>(Option<F>);
+pub trait Fuse: Sized {
+    /// Fuse the [`Future`]
+    fn fuse(self) -> Option<Self>;
+}
 
-impl<F: Future + Unpin> From<F> for Fuse<F> {
-    fn from(other: F) -> Self {
-        Self(other.into())
+impl<F: Future> Fuse for F {
+    fn fuse(self) -> Option<Self> {
+        self.into()
     }
 }
 
-impl<F: Future + Unpin> Future for Fuse<F> {
-    type Output = F::Output;
-
-    #[inline]
-    fn poll(self: Pin<&mut Self>, e: &mut Exec<'_>) -> Poll<F::Output> {
-        Pin::new(self.get_mut()).poll_next(e)
-    }
-}
-
-impl<F: Future + Unpin> Notifier for Fuse<F> {
+impl<F: Future> Notifier for Option<F> {
     type Event = F::Output;
 
     #[inline]
     fn poll_next(self: Pin<&mut Self>, e: &mut Exec<'_>) -> Poll<F::Output> {
-        let this = self.get_mut();
-        if let Some(ref mut future) = this.0 {
-            Pin::new(future).poll(e)
+        let mut this = self;
+        if let Some(f) = this.as_mut().as_pin_mut() {
+            let output = f.poll(e);
+            if output.is_ready() {
+                this.set(None);
+            }
+            output
         } else {
-            this.0 = None;
             Pending
         }
     }

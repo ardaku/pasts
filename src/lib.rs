@@ -7,7 +7,6 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 //
-
 //! Minimal and simpler alternative to the futures crate.
 //!
 //! # Optional Features
@@ -15,9 +14,6 @@
 //!
 //! The *`web`* feature is disabled by default, enable it to use pasts within
 //! the javascript DOM.
-//!
-//! The *`pin`* feature is disabled by default, enable it to use the [`Fuse`]
-//! api.
 //!
 //! # Getting Started
 //!
@@ -79,7 +75,7 @@
     html_favicon_url = "https://ardaku.github.io/mm/icon.svg",
     html_root_url = "https://docs.rs/pasts"
 )]
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 #![warn(
     anonymous_parameters,
     missing_copy_implementations,
@@ -109,7 +105,7 @@ pub use self::{
     noti::{Fuse, Loop, Noti, Notifier},
 };
 
-/// An owned dynamically typed [`Future`] for use in cases where you can’t
+/// An owned dynamically typed [`Notifier`] for use in cases where you can’t
 /// statically type your result or need to add some indirection.
 ///
 /// Requires a non-ZST allocator.
@@ -118,7 +114,7 @@ pub use self::{
 /// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
 /// <script>hljs.highlightAll();</script>
 /// <style> code.hljs { background-color: #000B; } </style>
-pub type Task<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+pub type Task<'a, T> = Pin<Box<dyn Notifier<Event = T> + Send + 'a>>;
 
 /// [`Task`] without the [`Send`] requirement.
 ///
@@ -128,7 +124,7 @@ pub type Task<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 /// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
 /// <script>hljs.highlightAll();</script>
 /// <style> code.hljs { background-color: #000B; } </style>
-pub type Local<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
+pub type Local<'a, T> = Pin<Box<dyn Notifier<Event = T> + 'a>>;
 
 pub mod prelude {
     //! Items that are almost always needed.
@@ -146,5 +142,5 @@ pub mod prelude {
     };
 
     #[doc(no_inline)]
-    pub use crate::{Executor, Local, Notifier, Task};
+    pub use crate::{Executor, Fuse, Local, Notifier, Task};
 }

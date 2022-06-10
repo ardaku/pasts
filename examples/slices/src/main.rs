@@ -1,9 +1,9 @@
-use pasts::{prelude::*, Join, Fuse};
+use pasts::{prelude::*, Join};
 
 struct Exit;
 
 struct State<'a> {
-    tasks: &'a mut [Fuse<Task<'static, &'static str>>],
+    tasks: &'a mut [Task<'static, &'static str>],
 }
 
 impl State<'_> {
@@ -15,9 +15,9 @@ impl State<'_> {
 }
 
 async fn main(_executor: &Executor) {
-    let tasks = &mut [
-        Fuse::from(Box::pin(async { "Hello" }) as Task<'static, _>),
-        Fuse::from(Box::pin(async { "World" }) as Task<'static, _>),
+    let tasks: &mut [Task<'_, _>] = &mut [
+        Box::pin(async { "Hello" }.fuse()),
+        Box::pin(async { "World" }.fuse()),
     ];
     let mut state = State { tasks };
 

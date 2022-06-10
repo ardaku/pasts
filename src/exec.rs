@@ -14,13 +14,13 @@ use ::std::{cell::Cell, task::Waker};
 
 use crate::prelude::*;
 #[cfg(all(feature = "std", not(feature = "web")))]
-use crate::{Fuse, Join};
+use crate::Join;
 
 // Spawned task queue
 #[cfg(all(feature = "std", not(feature = "web")))]
 thread_local! {
     // Thread local tasks
-    static TASKS: Cell<Vec<Fuse<Local<'static, ()>>>> = Cell::new(Vec::new());
+    static TASKS: Cell<Vec<Local<'static, ()>>> = Cell::new(Vec::new());
 
     // Task spawning waker
     static WAKER: Cell<Option<Waker>> = Cell::new(None);
@@ -72,8 +72,7 @@ impl<T: 'static + Sleep + Wake + Send + Sync> Spawn for T {
     fn spawn<F: 'static + Future<Output = ()> + Unpin>(self: &Arc<T>, fut: F) {
         TASKS.with(|t| {
             let mut tasks = t.take();
-            let task: Box<dyn Future<Output = _>> = Box::new(fut);
-            tasks.push(Fuse::from(Pin::from(task)));
+            tasks.push(Box::pin(fut.fuse()));
             t.set(tasks);
         });
         WAKER.with(|w| w.take().map(|w| w.wake()));
@@ -117,12 +116,12 @@ impl<I: 'static + Spawn + Send + Sync> Drop for Executor<I> {
             return;
         }
 
-        struct Tasks(Vec<Fuse<Local<'static, ()>>>, Spawner);
+        struct Tasks(Vec<Local<'static, ()>>, Spawner);
 
         struct Spawner;
 
         impl Notifier for Spawner {
-            type Event = Fuse<Local<'static, ()>>;
+            type Event = Local<'static, ()>;
 
             fn poll_next(
                 self: Pin<&mut Self>,
@@ -141,7 +140,7 @@ impl<I: 'static + Spawn + Send + Sync> Drop for Executor<I> {
             }
         }
 
-        fn spawn(cx: &mut Tasks, task: Fuse<Local<'static, ()>>) -> Poll<()> {
+        fn spawn(cx: &mut Tasks, task: Local<'static, ()>) -> Poll<()> {
             cx.0.push(task);
             Pending
         }

@@ -26,10 +26,6 @@ autobins = false
 version = "0.4"
 optional = true
 
-[dependencies.projections]
-version = "0.1"
-optional = true
-
 [dev-dependencies]
 async-std = "1.11"
 
@@ -41,9 +37,6 @@ std = []
 
 # Target the DOM via javascript APIs exposed by wasm-bindgen.
 web = ["wasm-bindgen-futures"]
-
-# Enable pinning projection APIs via the projections crate
-pin = ["projections"]
 
 [workspace]
 members = [
