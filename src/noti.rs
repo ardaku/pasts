@@ -187,16 +187,12 @@ impl<F: Future> Notifier for Option<F> {
 
     #[inline]
     fn poll_next(self: Pin<&mut Self>, e: &mut Exec<'_>) -> Poll<F::Output> {
-        let mut this = self;
-        if let Some(f) = this.as_mut().as_pin_mut() {
-            let output = f.poll(e);
-            if output.is_ready() {
-                this.set(None);
-            }
-            output
-        } else {
-            Pending
+        let mut s = self;
+        let out = s.as_mut().as_pin_mut().map(|f| f.poll(e));
+        if matches!(out, Some(Ready(_))) {
+            s.set(None);
         }
+        out.unwrap_or(Pending)
     }
 }
 

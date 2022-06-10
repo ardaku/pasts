@@ -41,13 +41,25 @@ pub trait Sleep {
     fn sleep(&self);
 }
 
+#[cfg(feature = "std")]
+pub trait Spawner: Wake + Sleep {}
+
+#[cfg(feature = "std")]
+impl<T: Wake + Sleep> Spawner for T {}
+
+#[cfg(not(feature = "std"))]
+pub trait Spawner {}
+
+#[cfg(not(feature = "std"))]
+impl<T> Spawner for T {}
+
 /// The implementation of spawning tasks on an [`Executor`].
 ///
 /// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
 /// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
 /// <script>hljs.highlightAll();</script>
 /// <style> code.hljs { background-color: #000B; } </style>
-pub trait Spawn {
+pub trait Spawn: Spawner {
     /// Spawn a [`Future`] on the current thread.
     fn spawn<F: 'static + Future<Output = ()> + Unpin>(self: &Arc<Self>, f: F);
 }
@@ -105,13 +117,7 @@ impl<I: 'static + Spawn + Send + Sync> Clone for Executor<I> {
 #[cfg(all(feature = "std", not(feature = "web")))]
 impl<I: 'static + Spawn + Send + Sync> Drop for Executor<I> {
     fn drop(&mut self) {
-        // Only run this drop impl if on `StdExecutor` and if original.
-        use core::any::Any;
-        let exec: Arc<dyn Any + Send + Sync + 'static> = self.0.clone();
-        let exec: Arc<MainExec> = match exec.downcast() {
-            Ok(exec) => exec,
-            Err(_) => return,
-        };
+        // Only run this drop impl if on std feature and if original.
         if self.1 {
             return;
         }
@@ -161,12 +167,12 @@ impl<I: 'static + Spawn + Send + Sync> Drop for Executor<I> {
             .on(|s| &mut s.0[..], done);
 
         // Set up the waker and context.
-        let waker = exec.clone().into();
+        let waker = self.0.clone().into();
         let mut e = Exec::from_waker(&waker);
 
         // Run the future to completion.
         while Pin::new(&mut fut).poll(&mut e).is_pending() {
-            exec.sleep();
+            self.0.sleep();
         }
     }
 }
