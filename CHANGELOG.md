@@ -4,6 +4,32 @@ All notable changes to `pasts` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
+## [0.11.0] - 2022-06-10
+### Added
+ - `Sleep` trait for implementing custom executors
+ - `Notifier` trait (like `AsyncIterator`, but infinite)
+ - `Poller` struct for compatibility with futures
+ - `Fuse` trait for turning `Future`s into `Notifier`s
+ - `Executor` struct for custom executors
+ - `Loop` struct for a notifier created from future producers
+ - `Box`, `Future`, `Pin`, `Exec` (alias to `core::task::Context`), `Executor`,
+   `Fuse`, `Local`, `Task` and `Notifier` to prelude.
+ - `Local` type alias for `!Send` boxed `Notifier`s
+ - `Task` type alias for `Send` boxed `Notifier`s
+
+### Changed
+ - `Loop` renamed to `Join`
+ - `Join::on()` now takes a closure for the notifier
+ - `Task` got split into many different specialized types 
+
+### Removed
+ - `poll_next_fn()` in favor of new `Poller` type
+ - `block_on()` - all futures must be spawned locally now (this change was made
+   to support the same behavior on web assembly as other platforms)
+ - `BlockOn` trait in favor of new `Executor` struct
+ - `Executor` trait in favor of using new `Sleep` trait in combination with the
+   `Wake` trait from the std library.
+
 ## [0.10.0] - 2022-05-07
 ### Added
  - More documentation

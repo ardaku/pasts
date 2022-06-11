@@ -309,7 +309,7 @@ impl<I: 'static + Spawn + Send + Sync> Executor<I> {
     /// # #[allow(unused_imports)]
     /// # use self::main::*;
     /// # mod main {
-    #[doc = include_str!("../examples/spawn/src/main.rs")]
+    #[doc = include_str!("doc/spawn.rs")]
     /// #     pub(super) mod main {
     /// #         pub(in crate) async fn main(executor: pasts::Executor) {
     /// #             super::main(&executor).await

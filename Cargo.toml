@@ -15,7 +15,7 @@ description = "Minimal and simpler alternative to the futures crate."
 repository = "https://github.com/ardaku/pasts"
 documentation = "https://docs.rs/pasts"
 homepage = "https://github.com/ardaku/pasts/blob/stable/CHANGELOG.md"
-include = ["Cargo.toml", "src/", "examples/", "README.md"]
+include = ["/src/", "/examples/**", "/README.md"]
 keywords = ["futures", "platform-agnostic", "cross-platform", "io", "executor"]
 categories = ["asynchronous", "embedded", "no-std", "rust-patterns", "wasm"]
 readme = "README.md"
@@ -45,4 +45,5 @@ members = [
     "examples/slices/",
     "examples/tasks/",
     "examples/spawn/",
+    "docs/",
 ]

@@ -36,7 +36,7 @@ impl<S, T> Stateful<S, T> for Never<'_, S> {
 /// # #[allow(unused_imports)]
 /// # use self::main::*;
 /// # mod main {
-#[doc = include_str!("../examples/slices/src/main.rs")]
+#[doc = include_str!("doc/slices.rs")]
 /// #     pub(super) mod main {
 /// #         pub(in crate) async fn main(executor: pasts::Executor){
 /// #             super::main(&executor).await
@@ -56,7 +56,7 @@ impl<S, T> Stateful<S, T> for Never<'_, S> {
 /// # #[allow(unused_imports)]
 /// # use self::main::*;
 /// # mod main {
-#[doc = include_str!("../examples/tasks/src/main.rs")]
+#[doc = include_str!("doc/tasks.rs")]
 /// #     pub(super) mod main {
 /// #         pub(in crate) async fn main(executor: pasts::Executor){
 /// #             super::main(&executor).await
@@ -93,12 +93,12 @@ impl<S: Unpin, T, F: Stateful<S, T>> Join<S, T, F> {
     /// Register an event handler.
     pub fn on<N: Notifier + Unpin + ?Sized>(
         self,
-        past: impl for<'a> FnMut(&'a mut S) -> &'a mut N + Unpin,
+        noti: impl for<'a> FnMut(&'a mut S) -> &'a mut N + Unpin,
         then: fn(&mut S, N::Event) -> Poll<T>,
     ) -> Join<S, T, impl Stateful<S, T>> {
         let other = self.other;
         let _phantom = core::marker::PhantomData;
-        let other = Joiner { other, past, then };
+        let other = Joiner { other, noti, then };
 
         Join { other, _phantom }
     }
@@ -121,7 +121,7 @@ impl<S: Unpin, T: Unpin, F: Stateful<S, T>> Future for Join<S, T, F> {
 
 struct Joiner<S, T, E, F: Stateful<S, T>, P> {
     other: F,
-    past: P,
+    noti: P,
     then: fn(&mut S, E) -> Poll<T>,
 }
 
@@ -139,7 +139,7 @@ where
     #[inline]
     fn poll(&mut self, e: &mut Exec<'_>) -> Poll<Poll<T>> {
         let state = self.other.state();
-        let poll = Pin::new((self.past)(state)).poll_next(e);
+        let poll = Pin::new((self.noti)(state)).poll_next(e);
 
         if let Ready(out) = poll.map(|x| (self.then)(state, x)) {
             Ready(out)

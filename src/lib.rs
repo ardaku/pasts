@@ -39,7 +39,7 @@
 //!
 //! Create **`./app/main.rs`**:
 //! ```rust,no_run
-#![doc = include_str!("../examples/counter/app/main.rs")]
+#![doc = include_str!("doc/app.rs")]
 //! ```
 //! 
 //! ## Multi-Tasking On Multiple Iterators of Futures
@@ -52,7 +52,7 @@
 //! # #[allow(unused_imports)]
 //! # use self::main::*;
 //! # mod main {
-#![doc = include_str!("../examples/counter/src/main.rs")]
+#![doc = include_str!("doc/counter.rs")]
 //! #     pub(super) mod main {
 //! #         pub(in crate) async fn main(executor: pasts::Executor) {
 //! #             super::main(&executor).await
