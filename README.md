@@ -22,7 +22,8 @@ Check out the [documentation][0] for examples.
 
 # Goals
  - No unsafe (safe and sound)
- - No required std (only ZST allocator required)
+ - No required std (only a single allocation required - see
+   [one_alloc](https://docs.rs/one_alloc))
  - No macros (fast compile times)
  - No dependencies (bloat-free)
  - No cost (true zero-cost abstractions)

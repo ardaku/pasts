@@ -237,16 +237,16 @@ impl<F: Future + Unpin> Rep<F> for F {
 pub struct Loop<F: Future, L: FnMut() -> F, S>(S, L);
 
 impl<F: Future + Unpin, L: FnMut() -> F> Loop<F, L, F> {
-    /// Create a fused [`Notifier`] from an [`Unpin`] [`Future`]
+    /// Create a fused [`Notifier`] from an [`Unpin`] [`Future`] producer.
     pub fn new(mut looper: L) -> Self {
         Self(looper(), looper)
     }
 }
 
 impl<F: Future, L: FnMut() -> F> Loop<F, L, Pin<Box<F>>> {
-    /// Create a fused [`Notifier`] from a `!Unpin` [`Future`]
+    /// Create a fused [`Notifier`] from a `!Unpin` [`Future`] producer.
     ///
-    /// Requires non-ZST allocator.
+    /// **Doesn't work with `one_alloc`**.
     pub fn pin(mut looper: L) -> Self {
         Self(Box::pin(looper()), looper)
     }

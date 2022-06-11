@@ -102,13 +102,13 @@ use self::prelude::*;
 pub use self::{
     exec::{Executor, Sleep},
     join::Join,
-    noti::{Fuse, Loop, Poller, Notifier},
+    noti::{Fuse, Loop, Notifier, Poller},
 };
 
 /// An owned dynamically typed [`Notifier`] for use in cases where you can’t
 /// statically type your result or need to add some indirection.
 ///
-/// Requires a non-ZST allocator.
+/// **Doesn't work with `one_alloc`**.
 ///
 /// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
 /// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
@@ -118,7 +118,7 @@ pub type Task<'a, T> = Pin<Box<dyn Notifier<Event = T> + Send + 'a>>;
 
 /// [`Task`] without the [`Send`] requirement.
 ///
-/// Requires a non-ZST allocator.
+/// **Doesn't work with `one_alloc`**.
 ///
 /// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
 /// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>

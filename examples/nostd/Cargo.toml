@@ -1,0 +1,22 @@
+[package]
+name = "nostd"
+version = "0.1.0"
+edition = "2021"
+autobins = false
+
+[[bin]]
+name = "app"
+path = "app/main.rs"
+
+[dependencies]
+one_alloc = "0.1"
+pasts = { path = "../../", default-features = false }
+
+# Can't be included because it requires nightly
+[workspace]
+
+[profile.dev]                                                                    
+panic = "abort"                                                                  
+                                                                                 
+[profile.release]                                                                
+panic = "abort"
