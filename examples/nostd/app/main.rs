@@ -5,38 +5,19 @@
 #![feature(lang_items)]
 #![feature(default_alloc_error_handler)]
 #![feature(core_c_str)]
+#![feature(pin_macro)]
 
-// Logging mechanism
-mod log {
-    #[link(name = "c")]
-    extern "C" {
-        fn puts(s: *const ()) -> i32;
-    }
-
-    pub fn println(text: &core::ffi::CStr) {
-        unsafe {
-            puts(text.as_ptr().cast());
-        }
-    }
-}
+//// typical no-std boilerplate ////
 
 mod __ {
-    use core::ffi::CStr;
-
-    use one_alloc::Allocator;
-
-    use super::log;
-
-    const INNER_ARC_SIZE: usize = core::mem::size_of::<usize>() * 2;
+    const INNER_ARC_SIZE: usize = ::core::mem::size_of::<usize>() * 2;
 
     #[global_allocator]
-    static ALLOCATOR: Allocator<INNER_ARC_SIZE> = Allocator::new();
-
-    use core::panic::PanicInfo;
+    static ALLOCATOR: ::one_alloc::Allocator<INNER_ARC_SIZE> =
+        ::one_alloc::Allocator::new();
 
     #[panic_handler]
-    fn panic(_panic: &PanicInfo<'_>) -> ! {
-        log::println(CStr::from_bytes_with_nul(b"panicked!\0").unwrap());
+    fn panic(_panic: &::core::panic::PanicInfo<'_>) -> ! {
         loop {}
     }
 
@@ -45,13 +26,13 @@ mod __ {
 
     #[no_mangle]
     extern "C" fn main() -> ! {
-        loop {
-            let executor = pasts::Executor::default();
-            executor.spawn(super::main::main::main(executor.clone()));
-            log::println(CStr::from_bytes_with_nul(b"main exited!\0").unwrap());
-        }
+        super::main::main::main();
+        crate::log::log("main exited!\0");
+        unreachable!()
     }
 }
+
+//// optional async main shim ////
 
 #[allow(unused_imports)]
 use self::main::*;
@@ -61,10 +42,15 @@ mod main {
 
     #[allow(clippy::module_inception)]
     pub(super) mod main {
-        pub(in super::super) fn main(
-            executor: pasts::Executor,
-        ) -> impl core::future::Future<Output = ()> + Unpin {
-            super::main(&executor)
+        pub(in super::super) fn main() {
+            let mut join = super::main();
+
+            // unsafe: Sound because main() is around for 'static
+            let join: *mut _ = &mut join;
+            let join: &'static mut _ = unsafe { &mut *join };
+
+            ::pasts::Executor::default()
+                .spawn(::core::pin::Pin::static_mut(join));
         }
     }
 }
