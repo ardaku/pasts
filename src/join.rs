@@ -36,7 +36,7 @@ impl<S, T> Stateful<S, T> for Never<'_, S> {
 /// # #[allow(unused_imports)]
 /// # use self::main::*;
 /// # mod main {
-#[doc = include_str!("doc/slices.rs")]
+#[doc = include_str!("../gen-docs/slices.rs")]
 /// #     pub(super) mod main {
 /// #         pub(in crate) async fn main(executor: pasts::Executor){
 /// #             super::main(&executor).await
@@ -56,7 +56,7 @@ impl<S, T> Stateful<S, T> for Never<'_, S> {
 /// # #[allow(unused_imports)]
 /// # use self::main::*;
 /// # mod main {
-#[doc = include_str!("doc/tasks.rs")]
+#[doc = include_str!("../gen-docs/tasks.rs")]
 /// #     pub(super) mod main {
 /// #         pub(in crate) async fn main(executor: pasts::Executor){
 /// #             super::main(&executor).await
