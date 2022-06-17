@@ -288,8 +288,8 @@ impl<I: 'static + Wake + Sleep + Send + Sync> Executor<I> {
     /// ```rust
     #[doc = include_str!("../examples/executor.rs")]
     /// ```
-    pub fn new(implementation: I) -> Self {
-        Self(Arc::new(implementation), false)
+    pub fn new(implementation: impl Into<Arc<I>>) -> Self {
+        Self(implementation.into(), false)
     }
 }
 

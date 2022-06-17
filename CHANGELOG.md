@@ -4,6 +4,10 @@ All notable changes to `pasts` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
+## [0.12.0] - Unreleased
+### Changed
+ - `Executor::new()` now takes `impl Into<Arc<I>>` instead of `I`
+
 ## [0.11.0] - 2022-06-10
 ### Added
  - `Sleep` trait for implementing custom executors
