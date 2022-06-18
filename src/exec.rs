@@ -7,14 +7,15 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use alloc::{sync::Arc, task::Wake};
-
 #[cfg(all(feature = "std", not(feature = "web")))]
 use ::std::{cell::Cell, task::Waker};
 
-use crate::prelude::*;
 #[cfg(all(feature = "std", not(feature = "web")))]
 use crate::Join;
+use crate::{
+    alloc_impl::{sync::Arc, task::Wake},
+    prelude::*,
+};
 
 // Spawned task queue
 #[cfg(all(feature = "std", not(feature = "web")))]
@@ -61,27 +62,27 @@ impl<T> Spawner for T {}
 /// <style> code.hljs { background-color: #000B; } </style>
 pub trait Spawn: Spawner {
     /// Spawn a [`Future`] on the current thread.
-    fn spawn<F: 'static + Future<Output = ()> + Unpin>(self: &Arc<Self>, f: F);
+    fn spawn<F: 'static + Future<Output = ()> + Unpin>(this: &Arc<Self>, f: F);
 }
 
 impl<T: 'static + Sleep + Wake + Send + Sync> Spawn for T {
     // No std can only spawn one task, so block on it.
     #[cfg(any(not(feature = "std"), feature = "web"))]
-    fn spawn<F: 'static + Future<Output = ()> + Unpin>(self: &Arc<T>, fut: F) {
+    fn spawn<F: 'static + Future<Output = ()> + Unpin>(this: &Arc<T>, fut: F) {
         // Set up the waker and context.
-        let waker = self.clone().into();
+        let waker = this.clone().into();
         let mut exec = Exec::from_waker(&waker);
 
         // Run the future to completion.
         let mut fut = fut;
         while Pin::new(&mut fut).poll(&mut exec).is_pending() {
-            self.sleep();
+            this.sleep();
         }
     }
 
     // Add to the task queue on std
     #[cfg(all(feature = "std", not(feature = "web")))]
-    fn spawn<F: 'static + Future<Output = ()> + Unpin>(self: &Arc<T>, fut: F) {
+    fn spawn<F: 'static + Future<Output = ()> + Unpin>(_: &Arc<T>, fut: F) {
         TASKS.with(|t| {
             let mut tasks = t.take();
             tasks.push(Box::pin(fut.fuse()));
@@ -235,7 +236,7 @@ mod web {
     pub struct WebExecutor;
 
     impl Spawn for WebExecutor {
-        fn spawn<F: Future<Output = ()> + 'static>(self: &Arc<Self>, fut: F) {
+        fn spawn<F: Future<Output = ()> + 'static>(_: &Arc<Self>, fut: F) {
             wasm_bindgen_futures::spawn_local(fut);
         }
     }
@@ -265,12 +266,23 @@ mod none {
 
     impl Wake for InefficientExecutor {
         // If you don't sleep, you never wake up
-        #[inline]
+        #[cfg(feature = "faux_alloc")]
+        fn wake(_: Arc<Self>) {}
+
+        #[cfg(not(feature = "faux_alloc"))]
         fn wake(self: Arc<Self>) {}
     }
 
     impl Default for Executor<InefficientExecutor> {
         fn default() -> Self {
+            #[cfg(feature = "faux_alloc")]
+            {
+                static STORE: faux_alloc::ArcStore<InefficientExecutor> =
+                    faux_alloc::ArcStore::new();
+                Self::new(STORE.alloc(InefficientExecutor).unwrap())
+            }
+
+            #[cfg(not(feature = "faux_alloc"))]
             Self::new(InefficientExecutor)
         }
     }
@@ -322,6 +334,6 @@ impl<I: 'static + Spawn + Send + Sync> Executor<I> {
     /// # }
     /// ```
     pub fn spawn(&self, fut: impl Future<Output = ()> + Unpin + 'static) {
-        self.0.spawn(fut);
+        Spawn::spawn(&self.0, fut);
     }
 }

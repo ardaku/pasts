@@ -26,8 +26,19 @@ autobins = false
 version = "0.4"
 optional = true
 
+[dependencies.faux_alloc]
+version = "0.1"
+optional = true
+path = "../faux_alloc/"
+
 [dev-dependencies]
 async-std = "1.11"
+
+[profile.dev]                                                                    
+panic = "abort"                                                                  
+                                                                                 
+[profile.release]                                                                
+panic = "abort"
 
 [features]
 default = ["std"]
@@ -37,6 +48,13 @@ std = []
 
 # Target the DOM via javascript APIs exposed by wasm-bindgen.
 web = ["wasm-bindgen-futures"]
+
+# Target no-std using faux_alloc
+no_alloc = ["faux_alloc"]
+
+[[example]]
+name = "nostd"
+required-features = ["no_alloc"]
 
 [workspace]
 members = [

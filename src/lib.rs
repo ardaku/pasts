@@ -15,6 +15,10 @@
 //! The *`web`* feature is disabled by default, enable it to use pasts within
 //! the javascript DOM.
 //!
+//! The *`no_alloc`* feature is disabled by default, enable it to use pasts on
+//! no-std without a global allocator (pulls in
+//! [`faux_alloc`](https://crates.io/crates/faux_alloc)).
+//!
 //! # Getting Started
 //!
 //! Add the following to your **`./Cargo.toml`**:
@@ -92,7 +96,14 @@
     variant_size_differences
 )]
 
+#[cfg(not(feature = "no_alloc"))]
 extern crate alloc;
+
+#[cfg(not(feature = "no_alloc"))]
+use alloc as alloc_impl;
+
+#[cfg(feature = "no_alloc")]
+use faux_alloc as alloc_impl;
 
 mod exec;
 mod join;
@@ -130,8 +141,6 @@ pub mod prelude {
     //! Items that are almost always needed.
 
     #[doc(no_inline)]
-    pub use alloc::boxed::Box;
-    #[doc(no_inline)]
     pub use core::{
         future::Future,
         pin::Pin,
@@ -141,6 +150,8 @@ pub mod prelude {
         },
     };
 
+    #[doc(no_inline)]
+    pub use crate::alloc_impl::boxed::Box;
     #[doc(no_inline)]
     pub use crate::{Executor, Fuse, Local, Notifier, Task};
 }
