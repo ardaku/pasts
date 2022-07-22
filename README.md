@@ -56,6 +56,13 @@ licensed as described above, without any additional terms or conditions.
 If you want help using or contributing to this library, feel free to send me an
 email at [aldaronlau@gmail.com][13].
 
+## Related Projects
+Since pasts is not an all-in-one async runtime solution, here's a list of crates
+that were designed to work with pasts:
+
+ - [Whisk](https://docs.rs/whisk/latest/whisk/) - A no-std-compatible MPMC
+   (multi-producer/multiple-consumer) asynchronous channel implementation
+
 [0]: https://docs.rs/pasts
 [1]: https://crates.io/crates/pasts
 [2]: https://github.com/ardaku/pasts/actions?query=workflow%3Atests
