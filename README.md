@@ -60,7 +60,7 @@ email at [aldaronlau@gmail.com][13].
 Since pasts is not an all-in-one async runtime solution, here's a list of crates
 that were designed to work with pasts:
 
- - [Whisk](https://docs.rs/whisk/latest/whisk/) - A no-std-compatible MPMC
+ - [Whisk](https://docs.rs/crate/whisk/latest) - A no-std-compatible MPMC
    (multi-producer/multiple-consumer) asynchronous channel implementation
 
 [0]: https://docs.rs/pasts
