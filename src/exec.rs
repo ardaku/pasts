@@ -9,9 +9,8 @@
 
 use alloc::{sync::Arc, task::Wake};
 
-use crate::prelude::*;
-
 use self::internal::MainExec;
+use crate::prelude::*;
 
 // Spawned task queue
 #[cfg(all(not(feature = "no-std"), not(feature = "web")))]
@@ -34,7 +33,7 @@ thread_local! {
 /// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
 /// <script>hljs.highlightAll();</script>
 /// <style> code.hljs { background-color: #000B; } </style>
-pub trait Sleep {
+pub trait Sleep: Send + Sync + 'static {
     /// The sleep routine; should put the processor or thread to sleep in order
     /// to save CPU cycles and power, until the hardware tells it to wake up.
     fn sleep(&self);
@@ -63,7 +62,7 @@ pub trait Spawn: Spawner {
     fn spawn<F: 'static + Future<Output = ()>>(self: &Arc<Self>, f: F);
 }
 
-impl<T: 'static + Sleep + Wake + Send + Sync> Spawn for T {
+impl<T: Sleep + Wake> Spawn for T {
     // No std can only spawn one task, so block on it.
     #[cfg(any(feature = "no-std", feature = "web"))]
     fn spawn<F: 'static + Future<Output = ()>>(self: &Arc<T>, fut: F) {
@@ -109,9 +108,9 @@ impl<T: 'static + Sleep + Wake + Send + Sync> Spawn for T {
 /// <script>hljs.highlightAll();</script>
 /// <style> code.hljs { background-color: #000B; } </style>
 #[derive(Debug)]
-pub struct Executor<I: 'static + Spawn + Send + Sync = MainExec>(Arc<I>, bool);
+pub struct Executor<I: Spawn = MainExec>(Arc<I>, bool);
 
-impl<I: 'static + Spawn + Send + Sync> Clone for Executor<I> {
+impl<I: Spawn> Clone for Executor<I> {
     fn clone(&self) -> Self {
         Self(self.0.clone(), true)
     }
@@ -119,7 +118,7 @@ impl<I: 'static + Spawn + Send + Sync> Clone for Executor<I> {
 
 // Wait for task queue on std when dropping.
 #[cfg(all(not(feature = "no-std"), not(feature = "web")))]
-impl<I: 'static + Spawn + Send + Sync> Drop for Executor<I> {
+impl<I: Spawn> Drop for Executor<I> {
     fn drop(&mut self) {
         // Only run this drop impl if on std feature and if original.
         if self.1 {
@@ -271,7 +270,7 @@ mod internal {
     }
 }
 
-impl<I: 'static + Wake + Sleep + Send + Sync> Executor<I> {
+impl<I: Wake + Sleep> Executor<I> {
     /// Create a new executor from something implementing both [`Wake`] and
     /// [`Sleep`].
     ///
@@ -288,7 +287,7 @@ impl<I: 'static + Wake + Sleep + Send + Sync> Executor<I> {
     }
 }
 
-impl<I: 'static + Spawn + Send + Sync> Executor<I> {
+impl<I: Spawn> Executor<I> {
     /// Spawn a future on this executor.
     ///
     /// The program will exit once all spawned futures have completed.
