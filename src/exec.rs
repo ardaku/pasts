@@ -293,21 +293,7 @@ impl<I: Spawn> Executor<I> {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # extern crate alloc;
-    /// # #[allow(unused_imports)]
-    /// # use self::main::*;
-    /// # mod main {
     #[doc = include_str!("../gen-docs/spawn.rs")]
-    /// #     pub(super) mod main {
-    /// #         pub(in crate) async fn main(executor: pasts::Executor) {
-    /// #             super::main(&executor).await
-    /// #         }
-    /// #     }
-    /// # }
-    /// # fn main() {
-    /// #     let executor = pasts::Executor::default();
-    /// #     executor.spawn(self::main::main::main(executor.clone()));
-    /// # }
     /// ```
     pub fn spawn(&self, fut: impl Future<Output = ()> + 'static) {
         self.0.spawn(fut);

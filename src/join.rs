@@ -32,41 +32,13 @@ impl<S, T> Stateful<S, T> for Never<'_, S> {
 /// Select first completed future.
 ///
 /// ```rust
-/// # extern crate alloc;
-/// # #[allow(unused_imports)]
-/// # use self::main::*;
-/// # mod main {
 #[doc = include_str!("../gen-docs/slices.rs")]
-/// #     pub(super) mod main {
-/// #         pub(in crate) async fn main(executor: pasts::Executor){
-/// #             super::main(&executor).await
-/// #         }
-/// #     }
-/// # }
-/// # fn main() {
-/// #     let executor = pasts::Executor::default();
-/// #     executor.spawn(self::main::main::main(executor.clone()));
-/// # }
 /// ```
 /// 
 /// # Task spawning
 /// Spawns tasks in a [`Vec`], and removes them as they complete.
 /// ```rust
-/// # extern crate alloc;
-/// # #[allow(unused_imports)]
-/// # use self::main::*;
-/// # mod main {
 #[doc = include_str!("../gen-docs/tasks.rs")]
-/// #     pub(super) mod main {
-/// #         pub(in crate) async fn main(executor: pasts::Executor){
-/// #             super::main(&executor).await
-/// #         }
-/// #     }
-/// # }
-/// # fn main() {
-/// #     let executor = pasts::Executor::default();
-/// #     executor.spawn(self::main::main::main(executor.clone()));
-/// # }
 /// ```
 /// 
 /// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">

@@ -44,8 +44,5 @@ web = ["dep:wasm-bindgen-futures"]
 members = [
     ".",
     "examples/counter/",
-    "examples/slices/",
-    "examples/tasks/",
-    "examples/spawn/",
     "docs/",
 ]

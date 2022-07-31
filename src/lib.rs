@@ -19,12 +19,6 @@
 //!
 //! Add the following to your **`./Cargo.toml`**:
 //! ```toml
-//! autobins = false
-//!
-//! [[bin]]
-//! name = "app"
-//! path = "app/main.rs"
-//!
 //! [dependencies]
 //! pasts = "0.11"
 //! ## This example uses async-std for a sleep future, but async-std is *not*
@@ -37,9 +31,9 @@
 //! wasm-bindgen = "0.2"
 //! ```
 //!
-//! Create **`./app/main.rs`**:
+//! Create **`./build.rs`**:
 //! ```rust,no_run
-#![doc = include_str!("../gen-docs/app.rs")]
+#![doc = include_str!("../gen-docs/build.rs")]
 //! ```
 //! 
 //! ## Multi-Tasking On Multiple Iterators of Futures
@@ -48,21 +42,7 @@
 //! stop the program, although which task will run for count 5 may be either
 //! "one" or "two" because they trigger at the same time.
 //! ```rust,no_run
-//! # extern crate alloc;
-//! # #[allow(unused_imports)]
-//! # use self::main::*;
-//! # mod main {
 #![doc = include_str!("../gen-docs/counter.rs")]
-//! #     pub(super) mod main {
-//! #         pub(in crate) async fn main(executor: pasts::Executor) {
-//! #             super::main(&executor).await
-//! #         }
-//! #     }
-//! # }
-//! # fn main() {
-//! #     let executor = pasts::Executor::default();
-//! #     executor.spawn(self::main::main::main(executor.clone()));
-//! # }
 //! ```
 //! 
 //! <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">

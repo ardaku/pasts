@@ -2,11 +2,6 @@
 name = "counter"
 version = "0.1.0"
 edition = "2021"
-autobins = false
-
-[[bin]]
-name = "app"
-path = "app/main.rs"
 
 [dependencies]
 pasts = { path = "../../" }
