@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
  - `Executor::new()` now takes `impl Into<Arc<I>>` instead of `I`
  - `Executor::spawn()` no longer requires `Unpin` futures
  - `Sleep` trait now requires `Send + Sync + 'static`
+ - Started using `core::hint::spin_loop()` for default no-std executor
 
 ### Removed
  - **`std`** feature - to use pasts on no-std environments use the new

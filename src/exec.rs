@@ -110,6 +110,12 @@ impl<T: Sleep + Wake> Spawn for T {
 #[derive(Debug)]
 pub struct Executor<I: Spawn = MainExec>(Arc<I>, bool);
 
+impl Default for Executor {
+    fn default() -> Self {
+        Self(MainExec::default().into(), false)
+    }
+}
+
 impl<I: Spawn> Clone for Executor<I> {
     fn clone(&self) -> Self {
         Self(self.0.clone(), true)
@@ -217,9 +223,9 @@ mod internal {
         }
     }
 
-    impl Default for Executor<MainExec> {
+    impl Default for MainExec {
         fn default() -> Self {
-            Self::new(MainExec(thread::current(), AtomicBool::new(true)))
+            Self(thread::current(), AtomicBool::new(true))
         }
     }
 }
@@ -228,18 +234,12 @@ mod internal {
 mod internal {
     use super::*;
 
-    #[derive(Debug, Copy, Clone)]
+    #[derive(Debug, Copy, Clone, Default)]
     pub struct MainExec;
 
     impl Spawn for MainExec {
         fn spawn<F: Future<Output = ()> + 'static>(self: &Arc<Self>, fut: F) {
             wasm_bindgen_futures::spawn_local(fut);
-        }
-    }
-
-    impl Default for Executor<MainExec> {
-        fn default() -> Self {
-            Self(Arc::new(MainExec), false)
         }
     }
 }
@@ -248,25 +248,19 @@ mod internal {
 mod internal {
     use super::*;
 
-    #[derive(Debug, Copy, Clone)]
+    #[derive(Debug, Copy, Clone, Default)]
     pub struct MainExec;
 
     impl Sleep for MainExec {
         // Never sleep, stay up all night
-        #[inline]
-        fn sleep(&self) {}
+        fn sleep(&self) {
+            core::hint::spin_loop();
+        }
     }
 
     impl Wake for MainExec {
         // If you don't sleep, you never wake up
-        #[inline]
         fn wake(self: Arc<Self>) {}
-    }
-
-    impl Default for Executor<MainExec> {
-        fn default() -> Self {
-            Self::new(MainExec)
-        }
     }
 }
 
