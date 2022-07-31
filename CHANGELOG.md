@@ -5,8 +5,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
 ## [0.12.0] - Unreleased
+### Added
+ - **`no-std`** feature
+
 ### Changed
  - `Executor::new()` now takes `impl Into<Arc<I>>` instead of `I`
+ - `Executor::spawn()` no longer requires `Unpin` futures
+
+### Removed
+ - **`std`** feature - to use pasts on no-std environments use the new
+   **`no-std`** feature instead
 
 ## [0.11.0] - 2022-06-10
 ### Added

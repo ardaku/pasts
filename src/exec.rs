@@ -9,21 +9,20 @@
 
 use alloc::{sync::Arc, task::Wake};
 
-#[cfg(all(not(feature = "no-std"), not(feature = "web")))]
-use ::std::{cell::Cell, task::Waker};
-
 use crate::prelude::*;
-#[cfg(all(not(feature = "no-std"), not(feature = "web")))]
-use crate::Join;
+
+use self::internal::MainExec;
 
 // Spawned task queue
 #[cfg(all(not(feature = "no-std"), not(feature = "web")))]
 thread_local! {
     // Thread local tasks
-    static TASKS: Cell<Vec<Local<'static, ()>>> = Cell::new(Vec::new());
+    static TASKS: std::cell::Cell<Vec<Local<'static, ()>>>
+        = std::cell::Cell::new(Vec::new());
 
     // Task spawning waker
-    static WAKER: Cell<Option<Waker>> = Cell::new(None);
+    static WAKER: std::cell::Cell<Option<std::task::Waker>>
+        = std::cell::Cell::new(None);
 }
 
 /// The implementation of sleeping for an [`Executor`].
@@ -61,19 +60,24 @@ impl<T> Spawner for T {}
 /// <style> code.hljs { background-color: #000B; } </style>
 pub trait Spawn: Spawner {
     /// Spawn a [`Future`] on the current thread.
-    fn spawn<F: 'static + Future<Output = ()> + Unpin>(self: &Arc<Self>, f: F);
+    fn spawn<F: 'static + Future<Output = ()>>(self: &Arc<Self>, f: F);
 }
 
 impl<T: 'static + Sleep + Wake + Send + Sync> Spawn for T {
     // No std can only spawn one task, so block on it.
     #[cfg(any(feature = "no-std", feature = "web"))]
-    fn spawn<F: 'static + Future<Output = ()> + Unpin>(self: &Arc<T>, fut: F) {
+    fn spawn<F: 'static + Future<Output = ()>>(self: &Arc<T>, fut: F) {
         // Set up the waker and context.
         let waker = self.clone().into();
         let mut exec = Exec::from_waker(&waker);
 
+        #[cfg(feature = "no-std")]
+        pin_utils::pin_mut!(fut);
+
+        #[cfg(feature = "web")]
+        let mut fut = Box::pin(fut);
+
         // Run the future to completion.
-        let mut fut = fut;
         while Pin::new(&mut fut).poll(&mut exec).is_pending() {
             self.sleep();
         }
@@ -81,7 +85,7 @@ impl<T: 'static + Sleep + Wake + Send + Sync> Spawn for T {
 
     // Add to the task queue on std
     #[cfg(all(not(feature = "no-std"), not(feature = "web")))]
-    fn spawn<F: 'static + Future<Output = ()> + Unpin>(self: &Arc<T>, fut: F) {
+    fn spawn<F: 'static + Future<Output = ()>>(self: &Arc<T>, fut: F) {
         TASKS.with(|t| {
             let mut tasks = t.take();
             tasks.push(Box::pin(fut.fuse()));
@@ -162,7 +166,7 @@ impl<I: 'static + Spawn + Send + Sync> Drop for Executor<I> {
 
         // Set up the future
         let tasks = &mut Tasks(Vec::new(), Spawner);
-        let mut fut = Join::new(tasks)
+        let mut fut = crate::Join::new(tasks)
             .on(|s| &mut s.1, spawn)
             .on(|s| &mut s.0[..], done);
 
@@ -178,10 +182,7 @@ impl<I: 'static + Spawn + Send + Sync> Drop for Executor<I> {
 }
 
 #[cfg(all(not(feature = "no-std"), not(feature = "web")))]
-use self::std::StdExecutor as MainExec;
-
-#[cfg(all(not(feature = "no-std"), not(feature = "web")))]
-mod std {
+mod internal {
     use ::std::{
         sync::atomic::{AtomicBool, Ordering},
         thread::{self, Thread},
@@ -190,9 +191,9 @@ mod std {
     use super::*;
 
     #[derive(Debug)]
-    pub struct StdExecutor(Thread, AtomicBool);
+    pub struct MainExec(Thread, AtomicBool);
 
-    impl Sleep for StdExecutor {
+    impl Sleep for MainExec {
         #[inline]
         fn sleep(&self) {
             // Park the current thread.
@@ -202,7 +203,7 @@ mod std {
         }
     }
 
-    impl Wake for StdExecutor {
+    impl Wake for MainExec {
         #[inline]
         fn wake_by_ref(self: &Arc<Self>) {
             // Unpark the current thread, set the awake? flag if needed.
@@ -217,61 +218,55 @@ mod std {
         }
     }
 
-    impl Default for Executor<StdExecutor> {
+    impl Default for Executor<MainExec> {
         fn default() -> Self {
-            Self::new(StdExecutor(thread::current(), AtomicBool::new(true)))
+            Self::new(MainExec(thread::current(), AtomicBool::new(true)))
         }
     }
 }
 
 #[cfg(all(not(feature = "no-std"), feature = "web"))]
-use self::web::WebExecutor as MainExec;
-
-#[cfg(all(not(feature = "no-std"), feature = "web"))]
-mod web {
+mod internal {
     use super::*;
 
     #[derive(Debug, Copy, Clone)]
-    pub struct WebExecutor;
+    pub struct MainExec;
 
-    impl Spawn for WebExecutor {
+    impl Spawn for MainExec {
         fn spawn<F: Future<Output = ()> + 'static>(self: &Arc<Self>, fut: F) {
             wasm_bindgen_futures::spawn_local(fut);
         }
     }
 
-    impl Default for Executor<WebExecutor> {
+    impl Default for Executor<MainExec> {
         fn default() -> Self {
-            Self(Arc::new(WebExecutor), false)
+            Self(Arc::new(MainExec), false)
         }
     }
 }
 
 #[cfg(feature = "no-std")]
-use self::none::InefficientExecutor as MainExec;
-
-#[cfg(feature = "no-std")]
-mod none {
+mod internal {
     use super::*;
 
     #[derive(Debug, Copy, Clone)]
-    pub struct InefficientExecutor;
+    pub struct MainExec;
 
-    impl Sleep for InefficientExecutor {
+    impl Sleep for MainExec {
         // Never sleep, stay up all night
         #[inline]
         fn sleep(&self) {}
     }
 
-    impl Wake for InefficientExecutor {
+    impl Wake for MainExec {
         // If you don't sleep, you never wake up
         #[inline]
         fn wake(self: Arc<Self>) {}
     }
 
-    impl Default for Executor<InefficientExecutor> {
+    impl Default for Executor<MainExec> {
         fn default() -> Self {
-            Self::new(InefficientExecutor)
+            Self::new(MainExec)
         }
     }
 }
@@ -294,7 +289,7 @@ impl<I: 'static + Wake + Sleep + Send + Sync> Executor<I> {
 }
 
 impl<I: 'static + Spawn + Send + Sync> Executor<I> {
-    /// Spawn an [`Unpin`] future on this executor.
+    /// Spawn a future on this executor.
     ///
     /// The program will exit once all spawned futures have completed.
     ///
@@ -321,7 +316,7 @@ impl<I: 'static + Spawn + Send + Sync> Executor<I> {
     /// #     executor.spawn(Box::pin(self::main::main::main(executor.clone())));
     /// # }
     /// ```
-    pub fn spawn(&self, fut: impl Future<Output = ()> + Unpin + 'static) {
+    pub fn spawn(&self, fut: impl Future<Output = ()> + 'static) {
         self.0.spawn(fut);
     }
 }
