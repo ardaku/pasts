@@ -25,7 +25,7 @@ Check out the [documentation][0] for examples.
  - No required std (only a single allocation required - see
    [one_alloc](https://docs.rs/one_alloc))
  - No macros (fast compile times)
- - No dependencies (bloat-free)
+ - No dependencies[^1] (bloat-free)
  - No cost (true zero-cost abstractions)
  - No pain (API super easy to learn & use)
  - No platform-specific API differences (code works everywhere).
@@ -62,6 +62,9 @@ that were designed to work with pasts:
 
  - [Whisk](https://docs.rs/crate/whisk/latest) - A no-std-compatible MPMC
    (multi-producer/multiple-consumer) asynchronous channel implementation
+
+[^1]: Some features require a platform integration dependency, for instance:
+     - **`web`** pulls in [`wasm-bindgen-futures`](https://docs.rs/crate/wasm-bindgen-futures/latest)
 
 [0]: https://docs.rs/pasts
 [1]: https://crates.io/crates/pasts
