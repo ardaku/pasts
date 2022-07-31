@@ -14,7 +14,11 @@ impl App {
 
         self.tasks.swap_remove(id);
 
-        if self.tasks.is_empty() { Ready(Exit) } else { Pending }
+        if self.tasks.is_empty() {
+            Ready(Exit)
+        } else {
+            Pending
+        }
     }
 
     async fn main(_executor: Executor) {
@@ -25,6 +29,8 @@ impl App {
             ],
         };
 
-        Join::new(&mut app).on(|s| &mut s.tasks[..], App::completion).await;
+        Join::new(&mut app)
+            .on(|s| &mut s.tasks[..], App::completion)
+            .await;
     }
 }

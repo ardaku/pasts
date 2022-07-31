@@ -1,10 +1,9 @@
+include!(concat!(env!("OUT_DIR"), "/main.rs"));
+
 use core::time::Duration;
 
 use async_std::task::sleep;
 use pasts::{prelude::*, Join, Loop};
-
-// Async main shim
-include!(concat!(env!("OUT_DIR"), "/main.rs"));
 
 // Exit type for App.
 struct Exit;
@@ -21,7 +20,11 @@ impl App<'_> {
         println!("One {}", self.counter);
         self.counter += 1;
 
-        if self.counter > 6 { Ready(Exit) } else { Pending }
+        if self.counter > 6 {
+            Ready(Exit)
+        } else {
+            Pending
+        }
     }
 
     fn two(&mut self, _: ()) -> Poll<Exit> {

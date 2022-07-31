@@ -1,10 +1,9 @@
+include!(concat!(env!("OUT_DIR"), "/main.rs"));
+
 use core::time::Duration;
 
 use async_std::task::sleep;
 use pasts::{prelude::*, Join, Loop};
-
-// Async main shim
-include!(concat!(env!("OUT_DIR"), "/main.rs"));
 
 // Exit type for App.
 struct Exit;

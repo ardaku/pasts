@@ -1,8 +1,8 @@
+include!(concat!(env!("OUT_DIR"), "/main.rs"));
+
 use core::time::Duration;
 
 use pasts::prelude::*;
-
-include!(concat!(env!("OUT_DIR"), "/main.rs"));
 
 struct App;
 
