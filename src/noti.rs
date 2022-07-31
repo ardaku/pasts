@@ -63,7 +63,7 @@ pub trait Notifier {
     ///     assert_eq!(count, 3);
     /// }
     ///
-    /// pasts::Executor::default().spawn(Box::pin(run()));
+    /// pasts::Executor::default().spawn(run());
     /// ```
     #[inline]
     fn next(&mut self) -> EventFuture<'_, Self>

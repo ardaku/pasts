@@ -9,7 +9,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         tc: [stable, beta, nightly]
-        ar: [--all --no-default-features, --all --features=std]
+        ar: [--all, --all --features=no-std]
     steps:
     - uses: actions/checkout@v2
     - uses: actions-rs/toolchain@v1
@@ -47,7 +47,7 @@ jobs:
     - uses: actions-rs/cargo@v1
       with:
         command: build
-        args: --features=std --target=${{ matrix.cc }}
+        args: --features=no-std --target=${{ matrix.cc }}
   cross-compile-ios:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -66,7 +66,7 @@ jobs:
     - uses: actions-rs/cargo@v1
       with:
         command: build
-        args: --features=std --target=${{ matrix.cc }}
+        args: --features=no-std --target=${{ matrix.cc }}
   cross-compile-web:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -85,4 +85,4 @@ jobs:
     - uses: actions-rs/cargo@v1
       with:
         command: build
-        args: --features=std --features=web --target=${{ matrix.cc }}
+        args: --features=web --target=${{ matrix.cc }}

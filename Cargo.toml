@@ -26,17 +26,19 @@ autobins = false
 version = "0.4"
 optional = true
 
+[dependencies.pin-utils]
+version = "0.1"
+optional = true
+
 [dev-dependencies]
 async-std = "1.11"
 
 [features]
-default = ["std"]
-
-# Take advantage of the std library for the default executor implementation.
-std = []
+# Target a no-std environment
+no-std = ["dep:pin-utils"]
 
 # Target the DOM via javascript APIs exposed by wasm-bindgen.
-web = ["wasm-bindgen-futures"]
+web = ["dep:wasm-bindgen-futures"]
 
 [workspace]
 members = [

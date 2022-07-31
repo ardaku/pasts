@@ -64,7 +64,8 @@ that were designed to work with pasts:
    (multi-producer/multiple-consumer) asynchronous channel implementation
 
 [^1]: Some features require a platform integration dependency, for instance:
-     - **`web`** pulls in [`wasm-bindgen-futures`](https://docs.rs/crate/wasm-bindgen-futures/latest)
+      - **`web`** pulls in [`wasm-bindgen-futures`][14]
+      - **`no-std`** pulls in [`pin-utils`][15]
 
 [0]: https://docs.rs/pasts
 [1]: https://crates.io/crates/pasts
@@ -80,3 +81,5 @@ that were designed to work with pasts:
 [11]: https://github.com/ardaku/pasts/blob/stable/LICENSE_BOOST_1_0.txt
 [12]: https://www.boost.org/LICENSE_1_0.txt
 [13]: mailto:aldaronlau@gmail.com
+[14]: https://docs.rs/crate/wasm-bindgen-futures/latest
+[15]: https://docs.rs/crate/pin-utils/latest
