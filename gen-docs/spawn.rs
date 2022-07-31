@@ -7,18 +7,18 @@ async fn sleep(seconds: f64) {
 }
 
 async fn main(executor: &Executor) {
-    executor.spawn(Box::pin(async {
+    executor.spawn(async {
         sleep(1.0).await;
         println!("1 second");
-    }));
-    executor.spawn(Box::pin(async {
+    });
+    executor.spawn(async {
         sleep(2.0).await;
         println!("2 seconds");
-    }));
-    executor.spawn(Box::pin(async {
+    });
+    executor.spawn(async {
         sleep(3.0).await;
         println!("3 seconds");
-    }));
+    });
     sleep(0.5).await;
     println!("½ second");
 }

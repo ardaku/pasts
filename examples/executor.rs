@@ -4,7 +4,7 @@ use std::{
     thread::{self, Thread},
 };
 
-use pasts::{prelude::*, Executor, Sleep};
+use pasts::{prelude::*, Sleep};
 
 /// A waker that wakes up the current thread when called.
 struct ThreadExecutor(Thread);
@@ -26,7 +26,7 @@ fn main() {
     let executor = Executor::new(ThreadExecutor(thread::current()));
 
     // Spawn the future
-    executor.spawn(Box::pin(async {
+    executor.spawn(async {
         println!("Hi from inside a future!");
-    }));
+    });
 }

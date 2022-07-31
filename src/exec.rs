@@ -313,7 +313,7 @@ impl<I: 'static + Spawn + Send + Sync> Executor<I> {
     /// # }
     /// # fn main() {
     /// #     let executor = pasts::Executor::default();
-    /// #     executor.spawn(Box::pin(self::main::main::main(executor.clone())));
+    /// #     executor.spawn(self::main::main::main(executor.clone()));
     /// # }
     /// ```
     pub fn spawn(&self, fut: impl Future<Output = ()> + 'static) {
