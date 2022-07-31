@@ -9,15 +9,15 @@
 
 use alloc::{sync::Arc, task::Wake};
 
-#[cfg(all(feature = "std", not(feature = "web")))]
+#[cfg(all(not(feature = "no-std"), not(feature = "web")))]
 use ::std::{cell::Cell, task::Waker};
 
 use crate::prelude::*;
-#[cfg(all(feature = "std", not(feature = "web")))]
+#[cfg(all(not(feature = "no-std"), not(feature = "web")))]
 use crate::Join;
 
 // Spawned task queue
-#[cfg(all(feature = "std", not(feature = "web")))]
+#[cfg(all(not(feature = "no-std"), not(feature = "web")))]
 thread_local! {
     // Thread local tasks
     static TASKS: Cell<Vec<Local<'static, ()>>> = Cell::new(Vec::new());
@@ -41,16 +41,16 @@ pub trait Sleep {
     fn sleep(&self);
 }
 
-#[cfg(all(feature = "std", not(feature = "web")))]
+#[cfg(all(not(feature = "no-std"), not(feature = "web")))]
 pub trait Spawner: Wake + Sleep {}
 
-#[cfg(all(feature = "std", not(feature = "web")))]
+#[cfg(all(not(feature = "no-std"), not(feature = "web")))]
 impl<T: Wake + Sleep> Spawner for T {}
 
-#[cfg(any(not(feature = "std"), feature = "web"))]
+#[cfg(any(feature = "no-std", feature = "web"))]
 pub trait Spawner {}
 
-#[cfg(any(not(feature = "std"), feature = "web"))]
+#[cfg(any(feature = "no-std", feature = "web"))]
 impl<T> Spawner for T {}
 
 /// The implementation of spawning tasks on an [`Executor`].
@@ -66,7 +66,7 @@ pub trait Spawn: Spawner {
 
 impl<T: 'static + Sleep + Wake + Send + Sync> Spawn for T {
     // No std can only spawn one task, so block on it.
-    #[cfg(any(not(feature = "std"), feature = "web"))]
+    #[cfg(any(feature = "no-std", feature = "web"))]
     fn spawn<F: 'static + Future<Output = ()> + Unpin>(self: &Arc<T>, fut: F) {
         // Set up the waker and context.
         let waker = self.clone().into();
@@ -80,7 +80,7 @@ impl<T: 'static + Sleep + Wake + Send + Sync> Spawn for T {
     }
 
     // Add to the task queue on std
-    #[cfg(all(feature = "std", not(feature = "web")))]
+    #[cfg(all(not(feature = "no-std"), not(feature = "web")))]
     fn spawn<F: 'static + Future<Output = ()> + Unpin>(self: &Arc<T>, fut: F) {
         TASKS.with(|t| {
             let mut tasks = t.take();
@@ -114,7 +114,7 @@ impl<I: 'static + Spawn + Send + Sync> Clone for Executor<I> {
 }
 
 // Wait for task queue on std when dropping.
-#[cfg(all(feature = "std", not(feature = "web")))]
+#[cfg(all(not(feature = "no-std"), not(feature = "web")))]
 impl<I: 'static + Spawn + Send + Sync> Drop for Executor<I> {
     fn drop(&mut self) {
         // Only run this drop impl if on std feature and if original.
@@ -177,10 +177,10 @@ impl<I: 'static + Spawn + Send + Sync> Drop for Executor<I> {
     }
 }
 
-#[cfg(all(feature = "std", not(feature = "web")))]
+#[cfg(all(not(feature = "no-std"), not(feature = "web")))]
 use self::std::StdExecutor as MainExec;
 
-#[cfg(all(feature = "std", not(feature = "web")))]
+#[cfg(all(not(feature = "no-std"), not(feature = "web")))]
 mod std {
     use ::std::{
         sync::atomic::{AtomicBool, Ordering},
@@ -224,10 +224,10 @@ mod std {
     }
 }
 
-#[cfg(all(feature = "std", feature = "web"))]
+#[cfg(all(not(feature = "no-std"), feature = "web"))]
 use self::web::WebExecutor as MainExec;
 
-#[cfg(all(feature = "std", feature = "web"))]
+#[cfg(all(not(feature = "no-std"), feature = "web"))]
 mod web {
     use super::*;
 
@@ -247,10 +247,10 @@ mod web {
     }
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(feature = "no-std")]
 use self::none::InefficientExecutor as MainExec;
 
-#[cfg(not(feature = "std"))]
+#[cfg(feature = "no-std")]
 mod none {
     use super::*;
 

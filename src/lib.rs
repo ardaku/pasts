@@ -10,10 +10,10 @@
 //! Minimal and simpler alternative to the futures crate.
 //!
 //! # Optional Features
-//! The *`std`* feature is enabled by default, disable it to use on no-std.
+//! All features are disabled by default
 //!
-//! The *`web`* feature is disabled by default, enable it to use pasts within
-//! the javascript DOM.
+//!  - Enable *`no-std`* to use pasts without the standard library.
+//!  - Enable *`web`* to use pasts within the javascript DOM.
 //!
 //! # Getting Started
 //!
@@ -69,7 +69,7 @@
 //! <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
 //! <script>hljs.highlightAll();</script>
 //! <style> code.hljs { background-color: #000B; } </style>
-#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(feature = "no-std", no_std)]
 #![doc(
     html_logo_url = "https://ardaku.github.io/mm/logo.svg",
     html_favicon_url = "https://ardaku.github.io/mm/icon.svg",
