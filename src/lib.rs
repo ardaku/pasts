@@ -117,10 +117,14 @@ pub mod prelude {
         pin::Pin,
         task::{
             Context as Exec,
-            Poll::{self, Pending, Ready},
+            Poll::{Pending, Ready},
         },
     };
 
     #[doc(no_inline)]
     pub use crate::{Executor, Fuse, Local, Notifier, Task};
+
+    /// Indicates whether a value is available or if the current task has been
+    /// scheduled to receive a wakeup instead.
+    pub type Poll<T = ()> = core::task::Poll<T>;
 }
