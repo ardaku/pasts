@@ -20,14 +20,14 @@
 //! Add the following to your **`./Cargo.toml`**:
 //! ```toml
 //! [dependencies]
-//! pasts = "0.11"
+//! pasts = "0.13"
 //! ## This example uses async-std for a sleep future, but async-std is *not*
 //! ## required to use pasts.
 //! async-std = "1.11"
 //!
 //! ## Use web feature when compiling to wasm32-unknown-unknown
 //! [target.'cfg(all(target_arch="wasm32",target_os="unknown"))'.dependencies]
-//! pasts = { version = "0.11", features = ["web"] }
+//! pasts = { version = "0.13", features = ["web"] }
 //! wasm-bindgen = "0.2"
 //! ```
 //!
