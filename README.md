@@ -62,6 +62,8 @@ that are designed to work with pasts:
 
  - [Whisk](https://docs.rs/crate/whisk/latest) - A no-std-compatible MPMC
    (multi-producer/multiple-consumer) asynchronous channel implementation
+ - [Smelling Salts](https://docs.rs/crate/smelling_salts/latest) - Abstraction
+   over OS APIs to handle asynchronous device waking by implementing `Notifier`
 
 [^1]: Some features require a platform integration dependency, for instance:
       - **`web`** pulls in [`wasm-bindgen-futures`][14]
