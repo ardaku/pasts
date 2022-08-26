@@ -94,7 +94,7 @@ pub use self::{
 /// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
 /// <script>hljs.highlightAll();</script>
 /// <style> code.hljs { background-color: #000B; } </style>
-pub type Task<'a, T> = Pin<Box<dyn Notifier<Event = T> + Send + 'a>>;
+pub type BoxNotifier<'a, T> = Pin<Box<dyn Notifier<Event = T> + Send + 'a>>;
 
 /// [`Task`] without the [`Send`] requirement.
 ///
@@ -104,7 +104,7 @@ pub type Task<'a, T> = Pin<Box<dyn Notifier<Event = T> + Send + 'a>>;
 /// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
 /// <script>hljs.highlightAll();</script>
 /// <style> code.hljs { background-color: #000B; } </style>
-pub type Local<'a, T> = Pin<Box<dyn Notifier<Event = T> + 'a>>;
+pub type LocalBoxNotifier<'a, T> = Pin<Box<dyn Notifier<Event = T> + 'a>>;
 
 pub mod prelude {
     //! Items that are almost always needed.
