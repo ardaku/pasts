@@ -147,15 +147,15 @@ impl<I: Spawn> Drop for Executor<I> {
                     let mut tasks = t.take();
                     let output = tasks.pop();
                     t.set(tasks);
-                    if let Some(BoxNotifier) = output {
-                        return Ready(BoxNotifier);
+                    if let Some(task) = output {
+                        return Ready(task);
                     }
                     Pending
                 })
             }
         }
 
-        fn spawn(cx: &mut Tasks, BoxNotifier: LocalBoxNotifier<'static, ()>) -> Poll<()> {
+        fn spawn(cx: &mut Tasks, task: LocalBoxNotifier<'static, ()>) -> Poll<()> {
             cx.0.push(BoxNotifier);
             Pending
         }
