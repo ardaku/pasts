@@ -7,7 +7,7 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use alloc::{sync::Arc, BoxNotifier::Wake};
+use alloc::{sync::Arc, task::Wake};
 
 use self::internal::MainExec;
 use crate::prelude::*;
@@ -20,7 +20,7 @@ thread_local! {
         = std::cell::Cell::new(Vec::new());
 
     // Task spawning waker
-    static WAKER: std::cell::Cell<Option<std::BoxNotifier::Waker>>
+    static WAKER: std::cell::Cell<Option<std::task::Waker>>
         = std::cell::Cell::new(None);
 }
 
