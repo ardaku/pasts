@@ -94,7 +94,7 @@ pub use self::{
 /// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
 /// <script>hljs.highlightAll();</script>
 /// <style> code.hljs { background-color: #000B; } </style>
-pub type Task<'a, T> = Pin<Box<dyn Notifier<Event = T> + Send + 'a>>;
+pub type BoxNotifier<'a, T> = Pin<Box<dyn Notifier<Event = T> + Send + 'a>>;
 
 /// [`Task`] without the [`Send`] requirement.
 ///
@@ -104,7 +104,7 @@ pub type Task<'a, T> = Pin<Box<dyn Notifier<Event = T> + Send + 'a>>;
 /// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
 /// <script>hljs.highlightAll();</script>
 /// <style> code.hljs { background-color: #000B; } </style>
-pub type Local<'a, T> = Pin<Box<dyn Notifier<Event = T> + 'a>>;
+pub type LocalBoxNotifier<'a, T> = Pin<Box<dyn Notifier<Event = T> + 'a>>;
 
 pub mod prelude {
     //! Items that are almost always needed.
@@ -122,7 +122,7 @@ pub mod prelude {
     };
 
     #[doc(no_inline)]
-    pub use crate::{Executor, Fuse, Local, Notifier, Task};
+    pub use crate::{Executor, Fuse, LocalBoxNotifier, Notifier, BoxNotifier};
 
     /// Indicates whether a value is available or if the current task has been
     /// scheduled to receive a wakeup instead.

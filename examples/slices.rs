@@ -5,7 +5,7 @@ use pasts::{prelude::*, Join};
 struct Exit;
 
 struct App<'a> {
-    tasks: &'a mut [Task<'static, &'static str>],
+    tasks: &'a mut [BoxNotifier<'static, &'static str>],
 }
 
 impl App<'_> {
@@ -16,7 +16,7 @@ impl App<'_> {
     }
 
     async fn main(_executor: Executor) {
-        let tasks: &mut [Task<'_, _>] = &mut [
+        let tasks: &mut [BoxNotifier<'_, _>] = &mut [
             Box::pin(async { "Hello" }.fuse()),
             Box::pin(async { "World" }.fuse()),
         ];

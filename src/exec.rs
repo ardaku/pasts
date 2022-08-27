@@ -16,7 +16,7 @@ use crate::prelude::*;
 #[cfg(all(not(feature = "no-std"), not(feature = "web")))]
 thread_local! {
     // Thread local tasks
-    static TASKS: std::cell::Cell<Vec<Local<'static, ()>>>
+    static TASKS: std::cell::Cell<Vec<LocalBoxNotifier<'static, ()>>>
         = std::cell::Cell::new(Vec::new());
 
     // Task spawning waker
@@ -131,12 +131,12 @@ impl<I: Spawn> Drop for Executor<I> {
             return;
         }
 
-        struct Tasks(Vec<Local<'static, ()>>, Spawner);
+        struct Tasks(Vec<LocalBoxNotifier<'static, ()>>, Spawner);
 
         struct Spawner;
 
         impl Notifier for Spawner {
-            type Event = Local<'static, ()>;
+            type Event = LocalBoxNotifier<'static, ()>;
 
             fn poll_next(
                 self: Pin<&mut Self>,
@@ -155,7 +155,7 @@ impl<I: Spawn> Drop for Executor<I> {
             }
         }
 
-        fn spawn(cx: &mut Tasks, task: Local<'static, ()>) -> Poll<()> {
+        fn spawn(cx: &mut Tasks, task: LocalBoxNotifier<'static, ()>) -> Poll<()> {
             cx.0.push(task);
             Pending
         }
