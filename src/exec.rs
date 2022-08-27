@@ -7,7 +7,7 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use alloc::{sync::Arc, task::Wake};
+use alloc::{sync::Arc, BoxNotifier::Wake};
 
 use self::internal::MainExec;
 use crate::prelude::*;
@@ -16,11 +16,11 @@ use crate::prelude::*;
 #[cfg(all(not(feature = "no-std"), not(feature = "web")))]
 thread_local! {
     // Thread local tasks
-    static TASKS: std::cell::Cell<Vec<Local<'static, ()>>>
+    static TASKS: std::cell::Cell<Vec<LocalBoxNotifier<'static, ()>>>
         = std::cell::Cell::new(Vec::new());
 
     // Task spawning waker
-    static WAKER: std::cell::Cell<Option<std::task::Waker>>
+    static WAKER: std::cell::Cell<Option<std::BoxNotifier::Waker>>
         = std::cell::Cell::new(None);
 }
 
@@ -131,12 +131,12 @@ impl<I: Spawn> Drop for Executor<I> {
             return;
         }
 
-        struct Tasks(Vec<Local<'static, ()>>, Spawner);
+        struct Tasks(Vec<LocalBoxNotifier<'static, ()>>, Spawner);
 
         struct Spawner;
 
         impl Notifier for Spawner {
-            type Event = Local<'static, ()>;
+            type Event = LocalBoxNotifier<'static, ()>;
 
             fn poll_next(
                 self: Pin<&mut Self>,
@@ -147,16 +147,16 @@ impl<I: Spawn> Drop for Executor<I> {
                     let mut tasks = t.take();
                     let output = tasks.pop();
                     t.set(tasks);
-                    if let Some(task) = output {
-                        return Ready(task);
+                    if let Some(BoxNotifier) = output {
+                        return Ready(BoxNotifier);
                     }
                     Pending
                 })
             }
         }
 
-        fn spawn(cx: &mut Tasks, task: Local<'static, ()>) -> Poll<()> {
-            cx.0.push(task);
+        fn spawn(cx: &mut Tasks, BoxNotifier: LocalBoxNotifier<'static, ()>) -> Poll<()> {
+            cx.0.push(BoxNotifier);
             Pending
         }
 

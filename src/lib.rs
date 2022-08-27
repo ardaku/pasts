@@ -122,7 +122,7 @@ pub mod prelude {
     };
 
     #[doc(no_inline)]
-    pub use crate::{Executor, Fuse, Local, Notifier, Task};
+    pub use crate::{Executor, Fuse, LocalBoxNotifier, Notifier, BoxNotifier};
 
     /// Indicates whether a value is available or if the current task has been
     /// scheduled to receive a wakeup instead.
