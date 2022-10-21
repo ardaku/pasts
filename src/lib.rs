@@ -96,7 +96,7 @@ pub use self::{
 /// <style> code.hljs { background-color: #000B; } </style>
 pub type BoxNotifier<'a, T> = Pin<Box<dyn Notifier<Event = T> + Send + 'a>>;
 
-/// [`Task`] without the [`Send`] requirement.
+/// [`BoxNotifier`] without the [`Send`] requirement.
 ///
 /// **Doesn't work with `one_alloc`**.
 ///
@@ -122,7 +122,7 @@ pub mod prelude {
     };
 
     #[doc(no_inline)]
-    pub use crate::{Executor, Fuse, LocalBoxNotifier, Notifier, BoxNotifier};
+    pub use crate::{BoxNotifier, Executor, Fuse, LocalBoxNotifier, Notifier};
 
     /// Indicates whether a value is available or if the current task has been
     /// scheduled to receive a wakeup instead.

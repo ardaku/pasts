@@ -227,7 +227,7 @@ impl<F: Future + Unpin> Rep<F> for F {
 
 /// A [`Notifier`] created from a function returning [`Future`]s.
 ///
-/// A repeating [`Task`].
+/// A repeating async function.
 ///
 /// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
 /// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>

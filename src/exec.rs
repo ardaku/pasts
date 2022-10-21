@@ -155,7 +155,10 @@ impl<I: Spawn> Drop for Executor<I> {
             }
         }
 
-        fn spawn(cx: &mut Tasks, task: LocalBoxNotifier<'static, ()>) -> Poll<()> {
+        fn spawn(
+            cx: &mut Tasks,
+            task: LocalBoxNotifier<'static, ()>,
+        ) -> Poll<()> {
             cx.0.push(task);
             Pending
         }

@@ -36,7 +36,7 @@ impl<S, T> Stateful<S, T> for Never<'_, S> {
 /// ```
 /// 
 /// # Task spawning
-/// Spawns tasks in a [`Vec`], and removes them as they complete.
+/// Spawns tasks in a [`Vec`](alloc::vec::Vec), and removes them as they complete.
 /// ```rust
 #[doc = include_str!("../gen-docs/tasks.rs")]
 /// ```
