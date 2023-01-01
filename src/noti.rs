@@ -84,12 +84,12 @@ pub trait Notifier {
     }
 }
 
-impl<N: Notifier + ?Sized> Notifier for Box<N> {
+impl<N: ?Sized + Notifier + Unpin> Notifier for Box<N> {
     type Event = N::Event;
 
     #[inline]
     fn poll_next(self: Pin<&mut Self>, e: &mut Exec<'_>) -> Poll<N::Event> {
-        Pin::new(&mut self.get_mut()).poll_next(e)
+        Pin::new(self.get_mut().as_mut()).poll_next(e)
     }
 }
 
