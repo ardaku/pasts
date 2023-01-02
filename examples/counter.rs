@@ -14,7 +14,7 @@ struct App<'a> {
 }
 
 impl App<'_> {
-    fn one(&mut self, _: ()) -> Poll<Exit> {
+    fn one(&mut self, (): ()) -> Poll<Exit> {
         println!("One {}", self.counter);
         self.counter += 1;
 
@@ -25,7 +25,7 @@ impl App<'_> {
         }
     }
 
-    fn two(&mut self, _: ()) -> Poll<Exit> {
+    fn two(&mut self, (): ()) -> Poll<Exit> {
         println!("Two {}", self.counter);
         self.counter += 1;
 
@@ -48,6 +48,6 @@ async fn main(_executor: Executor) {
 }
 
 #[cfg_attr(feature = "web", wasm_bindgen::prelude::wasm_bindgen(start))]
-pub fn start() {
-    main();
-}
+#[allow(clippy::main_recursion)]
+#[rustfmt::skip]
+pub fn start() { main() }
