@@ -34,7 +34,6 @@ impl App<'_> {
 }
 
 #[async_main::async_main(pasts)]
-#[cfg_attr(feature = "web", wasm_bindgen(start))]
 async fn main(_executor: Executor) {
     let sleep = |seconds| sleep(Duration::from_secs_f64(seconds));
     let one = &mut Loop::pin(|| sleep(1.0));
@@ -46,4 +45,9 @@ async fn main(_executor: Executor) {
         .on(|s| s.one, App::one)
         .on(|s| s.two, App::two)
         .await;
+}
+
+#[cfg_attr(feature = "web", wasm_bindgen::prelude::wasm_bindgen(start))]
+pub fn start() {
+    main();
 }

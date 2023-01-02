@@ -34,6 +34,9 @@ optional = true
 async_main = "0.1"
 async-std = "1.11"
 
+[target.'cfg(all(target_arch="wasm32", target_os="unknown"))'.dev-dependencies]
+wasm-bindgen = "0.2"
+
 [features]
 # Target a no-std environment
 no-std = ["dep:pin-utils"]
