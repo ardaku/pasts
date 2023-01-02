@@ -1,5 +1,3 @@
-include!(concat!(env!("OUT_DIR"), "/main.rs"));
-
 use pasts::{prelude::*, Join};
 
 struct Exit;
@@ -14,15 +12,16 @@ impl App<'_> {
 
         Ready(Exit)
     }
+}
 
-    async fn main(_executor: Executor) {
-        let tasks: &mut [BoxNotifier<'_, _>] = &mut [
-            Box::pin(async { "Hello" }.fuse()),
-            Box::pin(async { "World" }.fuse()),
-        ];
-        let mut app = App { tasks };
+#[async_main::async_main(pasts)]
+async fn main(_executor: Executor) {
+    let tasks: &mut [BoxNotifier<'_, _>] = &mut [
+        Box::pin(async { "Hello" }.fuse()),
+        Box::pin(async { "World" }.fuse()),
+    ];
+    let mut app = App { tasks };
 
-        // First task will complete first.
-        Join::new(&mut app).on(|s| s.tasks, App::completion).await;
-    }
+    // First task will complete first.
+    Join::new(&mut app).on(|s| s.tasks, App::completion).await;
 }

@@ -21,34 +21,31 @@
 //! ```toml
 //! [dependencies]
 //! pasts = "0.13"
+//!
+//! ## This example uses async-main for convenience, but it is *not* required to
+//! ## use pasts.
+//! async_main = "0.1"
+//!
 //! ## This example uses async-std for a sleep future, but async-std is *not*
 //! ## required to use pasts.
-//! async-std = "1.11"
+//! async-std = "1.12"
 //!
-//! ## Use web feature when compiling to wasm32-unknown-unknown
-//! [target.'cfg(all(target_arch="wasm32",target_os="unknown"))'.dependencies]
-//! pasts = { version = "0.13", features = ["web"] }
-//! wasm-bindgen = "0.2"
+//! ## Also not required for pasts, but allows for portability with WebAssembly
+//! ## in the browser.
+//! [features]
+//! web = ["pasts/web"]
 //! ```
 //!
-//! Create **`./build.rs`**:
-//! ```rust,no_run
-#![doc = include_str!("../gen-docs/build.rs")]
-//! ```
-//! 
 //! ## Multi-Tasking On Multiple Iterators of Futures
 //! This example runs two timers in parallel using the `async-std` crate
 //! counting from 0 to 6.  The "one" task will always be run for count 6 and
 //! stop the program, although which task will run for count 5 may be either
 //! "one" or "two" because they trigger at the same time.
+//!
 //! ```rust,no_run
-#![doc = include_str!("../gen-docs/counter.rs")]
+#![doc = include_str!("../examples/counter.rs")]
 //! ```
-//! 
-//! <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
-//! <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
-//! <script>hljs.highlightAll();</script>
-//! <style> code.hljs { background-color: #000B; } </style>
+
 #![cfg_attr(feature = "no-std", no_std)]
 #![doc(
     html_logo_url = "https://ardaku.github.io/mm/logo.svg",
@@ -89,21 +86,11 @@ pub use self::{
 /// statically type your result or need to add some indirection.
 ///
 /// **Doesn't work with `one_alloc`**.
-///
-/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
-/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
-/// <script>hljs.highlightAll();</script>
-/// <style> code.hljs { background-color: #000B; } </style>
 pub type BoxNotifier<'a, T> = Pin<Box<dyn Notifier<Event = T> + Send + 'a>>;
 
 /// [`BoxNotifier`] without the [`Send`] requirement.
 ///
 /// **Doesn't work with `one_alloc`**.
-///
-/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
-/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
-/// <script>hljs.highlightAll();</script>
-/// <style> code.hljs { background-color: #000B; } </style>
 pub type LocalBoxNotifier<'a, T> = Pin<Box<dyn Notifier<Event = T> + 'a>>;
 
 pub mod prelude {

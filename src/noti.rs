@@ -16,11 +16,6 @@ use crate::prelude::*;
 /// It's expected that [`Notifier`]s can be polled indefinitely without causing
 /// panics or undefined behavior.  They are not required to continue sending
 /// events indefinitely, though.
-///
-/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
-/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
-/// <script>hljs.highlightAll();</script>
-/// <style> code.hljs { background-color: #000B; } </style>
 pub trait Notifier {
     /// The event produced by this notifier
     type Event;
@@ -49,7 +44,8 @@ pub trait Notifier {
     ///     }
     /// }
     ///
-    /// async fn run() {
+    /// #[async_main::async_main(pasts)]
+    /// async fn main(_executor: Executor) {
     ///     let mut count = 0;
     ///     let mut async_iter = MyAsyncIter;
     ///     let mut iterations = 0;
@@ -62,8 +58,6 @@ pub trait Notifier {
     ///     }
     ///     assert_eq!(count, 3);
     /// }
-    ///
-    /// pasts::Executor::default().spawn(run());
     /// ```
     #[inline]
     fn next(&mut self) -> EventFuture<'_, Self>
@@ -141,11 +135,6 @@ impl<N: Notifier + Unpin> Future for EventFuture<'_, N> {
 }
 
 /// A [`Notifier`] created from a function returning [`Poll`].
-///
-/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
-/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
-/// <script>hljs.highlightAll();</script>
-/// <style> code.hljs { background-color: #000B; } </style>
 #[derive(Debug)]
 pub struct Poller<T, F: FnMut(&mut Exec<'_>) -> Poll<T> + Unpin>(F);
 
@@ -166,11 +155,6 @@ impl<T, F: FnMut(&mut Exec<'_>) -> Poll<T> + Unpin> Notifier for Poller<T, F> {
 }
 
 /// Trait for "fusing" a [`Future`] (conversion to a [`Notifier`]).
-///
-/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
-/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
-/// <script>hljs.highlightAll();</script>
-/// <style> code.hljs { background-color: #000B; } </style>
 pub trait Fuse: Sized {
     /// Fuse the [`Future`]
     fn fuse(self) -> Option<Self>;
@@ -228,11 +212,6 @@ impl<F: Future + Unpin> Rep<F> for F {
 /// A [`Notifier`] created from a function returning [`Future`]s.
 ///
 /// A repeating async function.
-///
-/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
-/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
-/// <script>hljs.highlightAll();</script>
-/// <style> code.hljs { background-color: #000B; } </style>
 #[derive(Debug)]
 pub struct Loop<F: Future, L: FnMut() -> F, S>(S, L);
 

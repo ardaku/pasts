@@ -1,5 +1,3 @@
-include!(concat!(env!("OUT_DIR"), "/main.rs"));
-
 use core::time::Duration;
 
 use async_std::task::sleep;
@@ -33,17 +31,19 @@ impl App<'_> {
 
         Pending
     }
+}
 
-    async fn main(_executor: Executor) {
-        let sleep = |seconds| sleep(Duration::from_secs_f64(seconds));
-        let one = &mut Loop::pin(|| sleep(1.0));
-        let two = &mut Loop::pin(|| sleep(2.0));
-        let counter = 0;
-        let mut app = App { counter, one, two };
+#[async_main::async_main(pasts)]
+#[cfg_attr(feature = "web", wasm_bindgen(start))]
+async fn main(_executor: Executor) {
+    let sleep = |seconds| sleep(Duration::from_secs_f64(seconds));
+    let one = &mut Loop::pin(|| sleep(1.0));
+    let two = &mut Loop::pin(|| sleep(2.0));
+    let counter = 0;
+    let mut app = App { counter, one, two };
 
-        Join::new(&mut app)
-            .on(|s| s.one, App::one)
-            .on(|s| s.two, App::two)
-            .await;
-    }
+    Join::new(&mut app)
+        .on(|s| s.one, App::one)
+        .on(|s| s.two, App::two)
+        .await;
 }

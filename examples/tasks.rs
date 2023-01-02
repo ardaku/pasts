@@ -1,5 +1,3 @@
-include!(concat!(env!("OUT_DIR"), "/main.rs"));
-
 use pasts::{prelude::*, Join};
 
 struct Exit;
@@ -20,17 +18,18 @@ impl App {
             Pending
         }
     }
+}
 
-    async fn main(_executor: Executor) {
-        let mut app = App {
-            tasks: vec![
-                Box::pin(async { "Hello" }.fuse()),
-                Box::pin(async { "World" }.fuse()),
-            ],
-        };
+#[async_main::async_main(pasts)]
+async fn main(_executor: Executor) {
+    let mut app = App {
+        tasks: vec![
+            Box::pin(async { "Hello" }.fuse()),
+            Box::pin(async { "World" }.fuse()),
+        ],
+    };
 
-        Join::new(&mut app)
-            .on(|s| &mut s.tasks[..], App::completion)
-            .await;
-    }
+    Join::new(&mut app)
+        .on(|s| &mut s.tasks[..], App::completion)
+        .await;
 }

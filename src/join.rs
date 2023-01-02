@@ -32,19 +32,14 @@ impl<S, T> Stateful<S, T> for Never<'_, S> {
 /// Select first completed future.
 ///
 /// ```rust
-#[doc = include_str!("../gen-docs/slices.rs")]
+#[doc = include_str!("../examples/slices.rs")]
 /// ```
 /// 
 /// # Task spawning
 /// Spawns tasks in a [`Vec`](alloc::vec::Vec), and removes them as they complete.
 /// ```rust
-#[doc = include_str!("../gen-docs/tasks.rs")]
+#[doc = include_str!("../examples/tasks.rs")]
 /// ```
-/// 
-/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
-/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
-/// <script>hljs.highlightAll();</script>
-/// <style> code.hljs { background-color: #000B; } </style>
 #[derive(Debug)]
 pub struct Join<S: Unpin, T, F: Stateful<S, T>> {
     other: F,

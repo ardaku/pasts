@@ -28,11 +28,6 @@ thread_local! {
 ///
 /// This trait can be used in conjunction with [`Wake`] to create an
 /// [`Executor`].
-///
-/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
-/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
-/// <script>hljs.highlightAll();</script>
-/// <style> code.hljs { background-color: #000B; } </style>
 pub trait Sleep: Send + Sync + 'static {
     /// The sleep routine; should put the processor or thread to sleep in order
     /// to save CPU cycles and power, until the hardware tells it to wake up.
@@ -52,11 +47,6 @@ pub trait Spawner {}
 impl<T> Spawner for T {}
 
 /// The implementation of spawning tasks on an [`Executor`].
-///
-/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
-/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
-/// <script>hljs.highlightAll();</script>
-/// <style> code.hljs { background-color: #000B; } </style>
 pub trait Spawn: Spawner {
     /// Spawn a [`Future`] on the current thread.
     fn spawn<F: 'static + Future<Output = ()>>(self: &Arc<Self>, f: F);
@@ -102,11 +92,6 @@ impl<T: Sleep + Wake> Spawn for T {
 /// ```rust,no_run
 #[doc = include_str!("../examples/timer.rs")]
 /// ```
-/// 
-/// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/a11y-dark.min.css">
-/// <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
-/// <script>hljs.highlightAll();</script>
-/// <style> code.hljs { background-color: #000B; } </style>
 #[derive(Debug)]
 pub struct Executor<I: Spawn = MainExec>(Arc<I>, bool);
 
@@ -296,7 +281,7 @@ impl<I: Spawn> Executor<I> {
     ///
     /// # Example
     /// ```rust,no_run
-    #[doc = include_str!("../gen-docs/spawn.rs")]
+    #[doc = include_str!("../examples/spawn.rs")]
     /// ```
     pub fn spawn(&self, fut: impl Future<Output = ()> + 'static) {
         self.0.spawn(fut);

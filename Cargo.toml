@@ -15,7 +15,7 @@ description = "Minimal and simpler alternative to the futures crate."
 repository = "https://github.com/ardaku/pasts"
 documentation = "https://docs.rs/pasts"
 homepage = "https://github.com/ardaku/pasts/blob/stable/CHANGELOG.md"
-include = ["/src/**", "/gen-docs/**", "/examples/**", "/README.md"]
+include = ["/examples/", "/README.md", "/src/"]
 keywords = ["futures", "platform-agnostic", "cross-platform", "io", "executor"]
 categories = ["asynchronous", "embedded", "no-std", "rust-patterns", "wasm"]
 readme = "README.md"
@@ -31,6 +31,7 @@ version = "0.1"
 optional = true
 
 [dev-dependencies]
+async_main = "0.1"
 async-std = "1.11"
 
 [features]
@@ -39,10 +40,3 @@ no-std = ["dep:pin-utils"]
 
 # Target the DOM via javascript APIs exposed by wasm-bindgen.
 web = ["dep:wasm-bindgen-futures"]
-
-[workspace]
-members = [
-    ".",
-    "examples/counter/",
-    "docs/",
-]

@@ -58,8 +58,10 @@ email at [aldaronlau@gmail.com][13].
 
 ## Related Projects
 Since pasts is not an all-in-one async runtime solution, here's a list of crates
-that are designed to work with pasts:
+that are designed to work well with pasts:
 
+ - [Async Main](https://docs.rs/crate/async_main/latest) - Proc macro crate to
+   remove boilerplate for the main function.
  - [Whisk](https://docs.rs/crate/whisk/latest) - A no-std-compatible MPMC
    (multi-producer/multiple-consumer) asynchronous channel implementation
  - [Smelling Salts](https://docs.rs/crate/smelling_salts/latest) - Abstraction
