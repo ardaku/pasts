@@ -22,7 +22,7 @@
 //! [dependencies]
 //! pasts = "0.13"
 //!
-//! ## This example uses async-main for convenience, but it is *not* required to
+//! ## This example uses async_main for convenience, but it is *not* required to
 //! ## use pasts.
 //! async_main = "0.1"
 //!

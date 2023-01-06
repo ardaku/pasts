@@ -36,10 +36,11 @@ impl App<'_> {
 #[async_main::async_main(pasts)]
 async fn main(_executor: Executor) {
     let sleep = |seconds| sleep(Duration::from_secs_f64(seconds));
-    let one = &mut Loop::pin(|| sleep(1.0));
-    let two = &mut Loop::pin(|| sleep(2.0));
-    let counter = 0;
-    let mut app = App { counter, one, two };
+    let mut app = App {
+        counter: 0,
+        one: &mut Loop::pin(|| sleep(1.0)),
+        two: &mut Loop::pin(|| sleep(2.0)),
+    };
 
     Join::new(&mut app)
         .on(|s| s.one, App::one)
