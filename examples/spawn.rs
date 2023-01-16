@@ -11,7 +11,7 @@ async fn sleep(seconds: f64) {
 fn main() {
     let executor = Executor::default();
 
-    // Spawn before blocking queues it up.
+    // Spawn before blocking puts the task on a queue.
     executor.spawn(async {
         sleep(3.0).await;
         println!("3 seconds");

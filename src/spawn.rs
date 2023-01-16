@@ -90,7 +90,7 @@ impl<P: Pool> Executor<P> {
     /// Block on a future and return it's result.
     ///
     /// # Platform-Specific Behavior
-    /// When building with feature __*`"web"`*__, spawns task and returns
+    /// When building with feature _`web`_, spawns task and returns
     /// immediately instead of blocking.
     #[inline(always)]
     pub fn block_on(self, f: impl Future<Output = ()> + 'static) {

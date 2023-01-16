@@ -1,5 +1,6 @@
 use core::time::Duration;
 
+use async_main::{async_main, LocalSpawner};
 use async_std::task::sleep;
 use pasts::{prelude::*, Join, Loop};
 
@@ -33,8 +34,8 @@ impl App<'_> {
     }
 }
 
-#[async_main::async_main(pasts)]
-async fn main(_executor: Executor) {
+#[async_main]
+async fn main(_spawner: LocalSpawner) {
     let sleep = |seconds| sleep(Duration::from_secs_f64(seconds));
     let mut app = App {
         counter: 0,

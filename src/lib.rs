@@ -10,10 +10,10 @@
 //! Minimal and simpler alternative to the futures crate.
 //!
 //! # Optional Features
-//! Only the *`std`* feature is enabled by default
+//! Only the _`std`_ feature is enabled by default
 //!
-//!  - Disable *`std`* to use pasts without the standard library.
-//!  - Enable *`web`* to use pasts within the javascript DOM.
+//!  - Disable _`std`_ to use pasts without the standard library.
+//!  - Enable _`web`_ to use pasts within the javascript DOM.
 //!
 //! # Getting Started
 //!

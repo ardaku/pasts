@@ -44,8 +44,8 @@ pub trait Notifier {
     ///     }
     /// }
     ///
-    /// #[async_main::async_main(pasts)]
-    /// async fn main(_executor: Executor) {
+    /// #[async_main::async_main]
+    /// async fn main(_spawner: impl Spawn) {
     ///     let mut count = 0;
     ///     let mut async_iter = MyAsyncIter;
     ///     let mut iterations = 0;
