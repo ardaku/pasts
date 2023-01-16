@@ -8,7 +8,7 @@
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
 use alloc::{sync::Arc, task::Wake};
-use core::{cell::Cell, fmt, future::Future, marker::PhantomData};
+use core::{cell::Cell, fmt, future::Future};
 
 use crate::prelude::*;
 
@@ -58,7 +58,7 @@ pub trait Spawn: Clone {
 /// ```rust
 #[doc = include_str!("../examples/resume.rs")]
 /// ```
-pub struct Executor<P: Pool = DefaultPool>(Arc<P>, PhantomData<*mut ()>);
+pub struct Executor<P: Pool = DefaultPool>(Arc<P>);
 
 impl Default for Executor {
     fn default() -> Self {
@@ -68,7 +68,7 @@ impl Default for Executor {
 
 impl<P: Pool> Clone for Executor<P> {
     fn clone(&self) -> Self {
-        Self(Arc::clone(&self.0), PhantomData)
+        Self(Arc::clone(&self.0))
     }
 }
 
@@ -84,7 +84,7 @@ impl<P: Pool> Executor<P> {
     /// Custom executors can be built by implementing [`Pool`].
     #[inline(always)]
     pub fn new(pool: P) -> Self {
-        Self(Arc::new(pool), PhantomData)
+        Self(Arc::new(pool))
     }
 
     /// Block on a future and return it's result.
@@ -111,6 +111,14 @@ impl<P: Pool> Spawn for Executor<P> {
 }
 
 /// Storage for a task pool.
+///
+/// # Implementing `Pool` For A Custom Executor
+/// This example shows how to create a custom single-threaded executor using
+/// [`Executor::new()`].
+///
+/// ```rust
+#[doc = include_str!("../examples/pool.rs")]
+/// ```
 pub trait Pool {
     /// Type that handles the sleeping / waking of the executor.
     type Park: Park;
@@ -136,7 +144,6 @@ pub trait Park: Default + Send + Sync + 'static {
 #[derive(Default)]
 pub struct DefaultPool {
     spawning_queue: Cell<Vec<LocalBoxNotifier<'static, ()>>>,
-    park: Arc<DefaultPark>,
 }
 
 impl fmt::Debug for DefaultPool {
@@ -145,7 +152,6 @@ impl fmt::Debug for DefaultPool {
 
         f.debug_struct("DefaultPool")
             .field("spawning_queue", &queue)
-            .field("park", &self.park)
             .finish()?;
         self.spawning_queue.set(queue);
 
@@ -158,7 +164,7 @@ impl Pool for DefaultPool {
 
     // Push onto queue of tasks to spawn.
     #[inline(always)]
-    fn push(&self, task: LocalBoxNotifier<'static, ()>) {
+    fn push(&self, task: LocalBoxNotifier<'static>) {
         let mut queue = self.spawning_queue.take();
 
         queue.push(task);
@@ -167,7 +173,7 @@ impl Pool for DefaultPool {
 
     // Drain from queue of tasks to spawn.
     #[inline(always)]
-    fn drain(&self, tasks: &mut Vec<LocalBoxNotifier<'static, ()>>) -> bool {
+    fn drain(&self, tasks: &mut Vec<LocalBoxNotifier<'static>>) -> bool {
         let mut queue = self.spawning_queue.take();
         let mut drained = queue.drain(..).peekable();
         let has_drained = drained.peek().is_some();
