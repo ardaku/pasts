@@ -48,8 +48,3 @@ async fn main(_spawner: LocalSpawner) {
         .on(|s| s.two, App::two)
         .await;
 }
-
-#[cfg_attr(feature = "web", wasm_bindgen::prelude::wasm_bindgen(start))]
-#[allow(clippy::main_recursion)]
-#[rustfmt::skip]
-pub fn start() { main() }

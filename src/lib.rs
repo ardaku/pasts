@@ -24,7 +24,7 @@
 //!
 //! ## This example uses async_main for convenience, but it is *not* required to
 //! ## use pasts.
-//! async_main = "0.1"
+//! async_main = { version = "0.2", features = ["pasts"] }
 //!
 //! ## This example uses async-std for a sleep future, but async-std is *not*
 //! ## required to use pasts.
@@ -33,7 +33,7 @@
 //! ## Also not required for pasts, but allows for portability with WebAssembly
 //! ## in the browser.
 //! [features]
-//! web = ["pasts/web"]
+//! web = ["async_main/web", "pasts/web"]
 //! ```
 //!
 //! ## Multi-Tasking On Multiple Iterators of Futures

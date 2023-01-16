@@ -31,7 +31,8 @@ version = "0.1"
 optional = true
 
 [dev-dependencies]
-async_main = { path = "../async_main", features = ["pasts"] } # "0.1"
+# async_main = { version = "0.2", features = ["pasts"] }
+async_main = "0.1"
 async-std = "1.11"
 
 [target.'cfg(all(target_arch="wasm32", target_os="unknown"))'.dev-dependencies]
