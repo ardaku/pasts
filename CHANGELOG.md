@@ -4,9 +4,24 @@ All notable changes to `pasts` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
-## [0.13.0] - Unreleased
+## [0.13.0] - 2023-01-16
+### Added
+ - Added `Spawn` trait for spawning both `Send` futures and local tasks.
+ - Re-export of `Spawn` in the `prelude`.
+ - `Executor::block_on()`
+ - Defaults for `T = ()` on both `BoxNotifier` and `Notifier`
+
 ### Changed
  - `prelude::Poll` is now a type alias with generic default set to unit
+ - Recommend using `async_main` crate in docs
+ - `core::task::Context` is now re-exported as `Task` instead of `Exec` in
+   prelude
+ - `Local` type alias is renamed to `LocalBoxNotifier`
+ - `Task` type alias is renamed to `BoxNotifier`
+ - `Executor` no longer executes on `Drop`; must call `block_on()` instead
+
+### Removed
+ - `Sleep`, use `Pool` and `Park` instead.
 
 ## [0.12.0] - 2022-07-31
 ### Added
