@@ -21,7 +21,10 @@ and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
  - `Executor` no longer executes on `Drop`; must call `block_on()` instead
 
 ### Removed
- - `Sleep`, use `Pool` and `Park` instead.
+ - `Sleep`, use `Pool` and `Park` instead
+
+### Fixed
+ - Infinite recursion in `impl<N: Notifier, ..> Notifier for Box<N>`
 
 ## [0.12.0] - 2022-07-31
 ### Added
