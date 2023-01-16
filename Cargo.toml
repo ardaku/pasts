@@ -38,8 +38,10 @@ async-std = "1.11"
 wasm-bindgen = "0.2"
 
 [features]
+default = ["std"]
+
 # Target a no-std environment
-no-std = ["dep:pin-utils"]
+std = []
 
 # Target the DOM via javascript APIs exposed by wasm-bindgen.
 web = ["dep:wasm-bindgen-futures"]
