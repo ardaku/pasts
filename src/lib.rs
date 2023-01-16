@@ -71,14 +71,12 @@
 
 extern crate alloc;
 
-// mod exec;
 mod join;
 mod noti;
 mod spawn;
 
 use self::prelude::*;
 pub use self::{
-    // exec::{Sleep, Spawner},
     join::Join,
     noti::{Fuse, Loop, Notifier, Poller},
     spawn::{Executor, Park, Pool, Spawn},
@@ -112,7 +110,7 @@ pub mod prelude {
         future::Future,
         pin::Pin,
         task::{
-            Context as Exec,
+            Context as Task,
             Poll::{Pending, Ready},
         },
     };

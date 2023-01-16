@@ -248,14 +248,14 @@ fn block_on<P: Pool>(f: impl Future<Output = ()> + 'static, pool: Arc<P>) {
     // Set up the park, waker, and context.
     let parky = Arc::new(Unpark(<P as Pool>::Park::default()));
     let waker = parky.clone().into();
-    let mut e = Exec::from_waker(&waker);
+    let tasky = &mut Task::from_waker(&waker);
 
     // Spawn main task
     tasks.push(f);
 
     // Run the set of futures to completion.
     while !tasks.is_empty() {
-        let poll = Pin::new(tasks.as_mut_slice()).poll_next(&mut e);
+        let poll = Pin::new(tasks.as_mut_slice()).poll_next(tasky);
         let Ready((task_index, ())) = poll else {
             if !pool.drain(tasks) {
                 parky.0.park();
