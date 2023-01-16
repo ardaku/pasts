@@ -1,3 +1,4 @@
+use async_main::{async_main, LocalSpawner};
 use pasts::{prelude::*, Join};
 
 struct Exit;
@@ -14,8 +15,8 @@ impl App<'_> {
     }
 }
 
-#[async_main::async_main(pasts)]
-async fn main(_executor: Executor) {
+#[async_main]
+async fn main(_spawner: LocalSpawner) {
     let tasks: &mut [BoxNotifier<'_, _>] = &mut [
         Box::pin(async { "Hello" }.fuse()),
         Box::pin(async { "World" }.fuse()),

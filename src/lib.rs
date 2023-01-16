@@ -10,10 +10,10 @@
 //! Minimal and simpler alternative to the futures crate.
 //!
 //! # Optional Features
-//! All features are disabled by default
+//! Only the _`std`_ feature is enabled by default
 //!
-//!  - Enable *`no-std`* to use pasts without the standard library.
-//!  - Enable *`web`* to use pasts within the javascript DOM.
+//!  - Disable _`std`_ to use pasts without the standard library.
+//!  - Enable _`web`_ to use pasts within the javascript DOM.
 //!
 //! # Getting Started
 //!
@@ -24,7 +24,7 @@
 //!
 //! ## This example uses async_main for convenience, but it is *not* required to
 //! ## use pasts.
-//! async_main = "0.1"
+//! async_main = { version = "0.2", features = ["pasts"] }
 //!
 //! ## This example uses async-std for a sleep future, but async-std is *not*
 //! ## required to use pasts.
@@ -33,7 +33,7 @@
 //! ## Also not required for pasts, but allows for portability with WebAssembly
 //! ## in the browser.
 //! [features]
-//! web = ["pasts/web"]
+//! web = ["async_main/web", "pasts/web"]
 //! ```
 //!
 //! ## Multi-Tasking On Multiple Iterators of Futures
@@ -46,7 +46,7 @@
 #![doc = include_str!("../examples/counter.rs")]
 //! ```
 
-#![cfg_attr(feature = "no-std", no_std)]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![doc(
     html_logo_url = "https://ardaku.github.io/mm/logo.svg",
     html_favicon_url = "https://ardaku.github.io/mm/icon.svg",
@@ -71,27 +71,34 @@
 
 extern crate alloc;
 
-mod exec;
 mod join;
 mod noti;
+mod spawn;
 
 use self::prelude::*;
 pub use self::{
-    exec::{Executor, Sleep},
     join::Join,
     noti::{Fuse, Loop, Notifier, Poller},
+    spawn::{Executor, Park, Pool, Spawn},
 };
 
 /// An owned dynamically typed [`Notifier`] for use in cases where you can’t
 /// statically type your result or need to add some indirection.
 ///
 /// **Doesn't work with `one_alloc`**.
-pub type BoxNotifier<'a, T> = Pin<Box<dyn Notifier<Event = T> + Send + 'a>>;
+pub type BoxNotifier<'a, T = ()> =
+    Pin<Box<dyn Notifier<Event = T> + Send + 'a>>;
 
 /// [`BoxNotifier`] without the [`Send`] requirement.
 ///
 /// **Doesn't work with `one_alloc`**.
-pub type LocalBoxNotifier<'a, T> = Pin<Box<dyn Notifier<Event = T> + 'a>>;
+pub type LocalBoxNotifier<'a, T = ()> = Pin<Box<dyn Notifier<Event = T> + 'a>>;
+
+impl<T> core::fmt::Debug for LocalBoxNotifier<'_, T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("LocalBoxNotifier")
+    }
+}
 
 pub mod prelude {
     //! Items that are almost always needed.
@@ -103,13 +110,13 @@ pub mod prelude {
         future::Future,
         pin::Pin,
         task::{
-            Context as Exec,
+            Context as Task,
             Poll::{Pending, Ready},
         },
     };
 
     #[doc(no_inline)]
-    pub use crate::{BoxNotifier, Executor, Fuse, LocalBoxNotifier, Notifier};
+    pub use crate::{BoxNotifier, Fuse, LocalBoxNotifier, Notifier, Spawn};
 
     /// Indicates whether a value is available or if the current task has been
     /// scheduled to receive a wakeup instead.

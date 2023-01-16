@@ -12,7 +12,7 @@ use crate::{prelude::*, Notifier};
 pub trait Stateful<S, T>: Unpin {
     fn state(&mut self) -> &mut S;
 
-    fn poll(&mut self, _: &mut Exec<'_>) -> Poll<Poll<T>> {
+    fn poll(&mut self, _: &mut Task<'_>) -> Poll<Poll<T>> {
         Pending
     }
 }
@@ -75,8 +75,8 @@ impl<S: Unpin, T: Unpin, F: Stateful<S, T>> Future for Join<S, T, F> {
     type Output = T;
 
     #[inline]
-    fn poll(mut self: Pin<&mut Self>, e: &mut Exec<'_>) -> Poll<T> {
-        while let Ready(output) = Pin::new(&mut self.other).poll(e) {
+    fn poll(mut self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<T> {
+        while let Ready(output) = Pin::new(&mut self.other).poll(t) {
             if let Ready(output) = output {
                 return Ready(output);
             }
@@ -104,14 +104,14 @@ where
     }
 
     #[inline]
-    fn poll(&mut self, e: &mut Exec<'_>) -> Poll<Poll<T>> {
+    fn poll(&mut self, t: &mut Task<'_>) -> Poll<Poll<T>> {
         let state = self.other.state();
-        let poll = Pin::new((self.noti)(state)).poll_next(e);
+        let poll = Pin::new((self.noti)(state)).poll_next(t);
 
         if let Ready(out) = poll.map(|x| (self.then)(state, x)) {
             Ready(out)
         } else {
-            self.other.poll(e)
+            self.other.poll(t)
         }
     }
 }

@@ -31,6 +31,7 @@ version = "0.1"
 optional = true
 
 [dev-dependencies]
+# async_main = { version = "0.2", path = "../async_main", features = ["pasts"] }
 async_main = "0.1"
 async-std = "1.11"
 
@@ -38,8 +39,10 @@ async-std = "1.11"
 wasm-bindgen = "0.2"
 
 [features]
+default = ["std"]
+
 # Target a no-std environment
-no-std = ["dep:pin-utils"]
+std = []
 
 # Target the DOM via javascript APIs exposed by wasm-bindgen.
 web = ["dep:wasm-bindgen-futures"]

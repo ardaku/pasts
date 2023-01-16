@@ -1,3 +1,4 @@
+use async_main::{async_main, LocalSpawner};
 use pasts::{prelude::*, Join};
 
 struct Exit;
@@ -20,8 +21,8 @@ impl App {
     }
 }
 
-#[async_main::async_main(pasts)]
-async fn main(_executor: Executor) {
+#[async_main]
+async fn main(_spawner: LocalSpawner) {
     let mut app = App {
         tasks: vec![
             Box::pin(async { "Hello" }.fuse()),

@@ -26,7 +26,7 @@ pub trait Notifier {
     /// # Return Value
     ///  - `Poll::Pending` - Not ready yet
     ///  - `Poll::Ready(val)` - Ready with next value
-    fn poll_next(self: Pin<&mut Self>, e: &mut Exec<'_>) -> Poll<Self::Event>;
+    fn poll_next(self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<Self::Event>;
 
     /// Get the next [`Self::Event`]
     ///
@@ -39,13 +39,13 @@ pub trait Notifier {
     /// impl Notifier for MyAsyncIter {
     ///     type Event = Option<u32>;
     ///
-    ///     fn poll_next(self: Pin<&mut Self>, _: &mut Exec<'_>) -> Poll<Self::Event> {
+    ///     fn poll_next(self: Pin<&mut Self>, _: &mut Task<'_>) -> Poll<Self::Event> {
     ///         Ready(Some(1))
     ///     }
     /// }
     ///
-    /// #[async_main::async_main(pasts)]
-    /// async fn main(_executor: Executor) {
+    /// #[async_main::async_main]
+    /// async fn main(_spawner: impl Spawn) {
     ///     let mut count = 0;
     ///     let mut async_iter = MyAsyncIter;
     ///     let mut iterations = 0;
@@ -82,8 +82,8 @@ impl<N: ?Sized + Notifier + Unpin> Notifier for Box<N> {
     type Event = N::Event;
 
     #[inline]
-    fn poll_next(self: Pin<&mut Self>, e: &mut Exec<'_>) -> Poll<N::Event> {
-        Pin::new(self.get_mut().as_mut()).poll_next(e)
+    fn poll_next(self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<N::Event> {
+        Pin::new(self.get_mut().as_mut()).poll_next(t)
     }
 }
 
@@ -93,8 +93,8 @@ where
 {
     type Event = N::Event;
 
-    fn poll_next(self: Pin<&mut Self>, e: &mut Exec<'_>) -> Poll<Self::Event> {
-        Pin::get_mut(self).as_mut().poll_next(e)
+    fn poll_next(self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<Self::Event> {
+        Pin::get_mut(self).as_mut().poll_next(t)
     }
 }
 
@@ -102,8 +102,8 @@ impl<N: Notifier + Unpin + ?Sized> Notifier for &mut N {
     type Event = N::Event;
 
     #[inline]
-    fn poll_next(mut self: Pin<&mut Self>, e: &mut Exec<'_>) -> Poll<N::Event> {
-        Pin::new(&mut **self).poll_next(e)
+    fn poll_next(mut self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<N::Event> {
+        Pin::new(&mut **self).poll_next(t)
     }
 }
 
@@ -111,9 +111,9 @@ impl<N: Notifier + Unpin> Notifier for [N] {
     type Event = (usize, N::Event);
 
     #[inline]
-    fn poll_next(self: Pin<&mut Self>, e: &mut Exec<'_>) -> Poll<Self::Event> {
+    fn poll_next(self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<Self::Event> {
         for (i, this) in self.get_mut().iter_mut().enumerate() {
-            if let Ready(value) = Pin::new(this).poll_next(e) {
+            if let Ready(value) = Pin::new(this).poll_next(t) {
                 return Ready((i, value));
             }
         }
@@ -129,28 +129,28 @@ impl<N: Notifier + Unpin> Future for EventFuture<'_, N> {
     type Output = N::Event;
 
     #[inline]
-    fn poll(self: Pin<&mut Self>, e: &mut Exec<'_>) -> Poll<Self::Output> {
-        Pin::new(&mut self.get_mut().0).poll_next(e)
+    fn poll(self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<Self::Output> {
+        Pin::new(&mut self.get_mut().0).poll_next(t)
     }
 }
 
 /// A [`Notifier`] created from a function returning [`Poll`].
 #[derive(Debug)]
-pub struct Poller<T, F: FnMut(&mut Exec<'_>) -> Poll<T> + Unpin>(F);
+pub struct Poller<T, F: FnMut(&mut Task<'_>) -> Poll<T> + Unpin>(F);
 
-impl<T, F: FnMut(&mut Exec<'_>) -> Poll<T> + Unpin> Poller<T, F> {
+impl<T, F: FnMut(&mut Task<'_>) -> Poll<T> + Unpin> Poller<T, F> {
     /// Create a new [`Notifier`] from a function returning [`Poll`].
     pub fn new(f: F) -> Self {
         Self(f)
     }
 }
 
-impl<T, F: FnMut(&mut Exec<'_>) -> Poll<T> + Unpin> Notifier for Poller<T, F> {
+impl<T, F: FnMut(&mut Task<'_>) -> Poll<T> + Unpin> Notifier for Poller<T, F> {
     type Event = T;
 
     #[inline]
-    fn poll_next(self: Pin<&mut Self>, e: &mut Exec<'_>) -> Poll<T> {
-        self.get_mut().0(e)
+    fn poll_next(self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<T> {
+        self.get_mut().0(t)
     }
 }
 
@@ -170,9 +170,9 @@ impl<F: Future> Notifier for Option<F> {
     type Event = F::Output;
 
     #[inline]
-    fn poll_next(self: Pin<&mut Self>, e: &mut Exec<'_>) -> Poll<F::Output> {
+    fn poll_next(self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<F::Output> {
         let mut s = self;
-        let out = s.as_mut().as_pin_mut().map(|f| f.poll(e));
+        let out = s.as_mut().as_pin_mut().map(|f| f.poll(t));
         if matches!(out, Some(Ready(_))) {
             s.set(None);
         }
@@ -181,14 +181,14 @@ impl<F: Future> Notifier for Option<F> {
 }
 
 pub trait Rep<F: Future>: Unpin {
-    fn poll(self: Pin<&mut Self>, e: &mut Exec<'_>) -> Poll<F::Output>;
+    fn poll(self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<F::Output>;
     fn set(self: Pin<&mut Self>, future: F);
 }
 
 impl<F: Future> Rep<F> for Pin<Box<F>> {
     #[inline]
-    fn poll(self: Pin<&mut Self>, e: &mut Exec<'_>) -> Poll<F::Output> {
-        Future::poll(self, e)
+    fn poll(self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<F::Output> {
+        Future::poll(self, t)
     }
 
     #[inline]
@@ -199,8 +199,8 @@ impl<F: Future> Rep<F> for Pin<Box<F>> {
 
 impl<F: Future + Unpin> Rep<F> for F {
     #[inline]
-    fn poll(self: Pin<&mut Self>, e: &mut Exec<'_>) -> Poll<F::Output> {
-        Future::poll(self, e)
+    fn poll(self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<F::Output> {
+        Future::poll(self, t)
     }
 
     #[inline]
@@ -235,9 +235,9 @@ impl<F: Future, L: FnMut() -> F + Unpin, S: Rep<F>> Notifier for Loop<F, L, S> {
     type Event = F::Output;
 
     #[inline]
-    fn poll_next(self: Pin<&mut Self>, e: &mut Exec<'_>) -> Poll<F::Output> {
+    fn poll_next(self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<F::Output> {
         let this = self.get_mut();
-        let poll = Pin::new(&mut this.0).poll(e);
+        let poll = Pin::new(&mut this.0).poll(t);
 
         if poll.is_ready() {
             Pin::new(&mut this.0).set(this.1());
@@ -261,7 +261,7 @@ where
     type Event = E;
 
     #[inline]
-    fn poll_next(mut self: Pin<&mut Self>, e: &mut Exec<'_>) -> Poll<E> {
-        Pin::new(&mut self.noti).poll_next(e).map(&mut self.f)
+    fn poll_next(mut self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<E> {
+        Pin::new(&mut self.noti).poll_next(t).map(&mut self.f)
     }
 }
