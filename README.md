@@ -22,8 +22,8 @@ Check out the [documentation][0] for examples.
 
 # Goals
  - No unsafe (safe and sound)
- - No required std (only a single allocation required - see
-   [one_alloc](https://docs.rs/one_alloc))
+ - No required std (executor requires two allocations at startup, if needed can
+   use a bump allocator with small capacity)
  - No macros (fast compile times)
  - No dependencies[^1] (bloat-free)
  - No cost (true zero-cost abstractions)
@@ -69,7 +69,6 @@ that are designed to work well with pasts:
 
 [^1]: Some features require a platform integration dependency, for instance:
       - **`web`** pulls in [`wasm-bindgen-futures`][14]
-      - **`no-std`** pulls in [`pin-utils`][15]
 
 [0]: https://docs.rs/pasts
 [1]: https://crates.io/crates/pasts

@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
  - Re-export of `Spawn` in the `prelude`.
  - `Executor::block_on()`
  - Defaults for `T = ()` on both `BoxNotifier` and `Notifier`
+ - *`std`* feature, enabled by default
 
 ### Changed
  - `prelude::Poll` is now a type alias with generic default set to unit
@@ -22,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
 ### Removed
  - `Sleep`, use `Pool` and `Park` instead
+ - *`no-std`* feature, for no-std environments disable *`std`* instead
 
 ### Fixed
  - Infinite recursion in `impl<N: Notifier, ..> Notifier for Box<N>`

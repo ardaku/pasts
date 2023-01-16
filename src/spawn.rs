@@ -7,7 +7,7 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use alloc::{sync::Arc, task::Wake};
+use alloc::{sync::Arc, task::Wake, vec::Vec};
 use core::{cell::Cell, fmt, future::Future};
 
 use crate::prelude::*;
