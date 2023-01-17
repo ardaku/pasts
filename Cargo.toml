@@ -31,8 +31,7 @@ version = "0.1"
 optional = true
 
 [dev-dependencies]
-# async_main = { version = "0.2", path = "../async_main", features = ["pasts"] }
-async_main = "0.1"
+async_main = { version = "0.2", features = ["pasts"] }
 async-std = "1.11"
 
 [target.'cfg(all(target_arch="wasm32", target_os="unknown"))'.dev-dependencies]
@@ -46,3 +45,6 @@ std = []
 
 # Target the DOM via javascript APIs exposed by wasm-bindgen.
 web = ["dep:wasm-bindgen-futures"]
+
+[patch.crates-io.pasts]
+path = "."
