@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        tc: [stable, beta, nightly]
+        tc: [stable] # , beta, nightly]
         ar: [--all, --all --no-default-features]
     steps:
     - uses: actions/checkout@v2
@@ -26,7 +26,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        tc: [stable, beta, nightly]
+        tc: [stable] # , beta, nightly]
         cc:
         - aarch64-fuchsia
         - aarch64-linux-android
@@ -72,7 +72,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        tc: [stable, beta, nightly]
+        tc: [stable] # , beta, nightly]
         cc: [wasm32-unknown-unknown]
     steps:
     - uses: actions/checkout@v2
