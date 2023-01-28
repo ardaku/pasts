@@ -60,12 +60,11 @@ email at [aldaronlau@gmail.com][13].
 Since pasts is not an all-in-one async runtime solution, here's a list of crates
 that are designed to work well with pasts:
 
- - [Async Main](https://docs.rs/crate/async_main/latest) - Proc macro crate to
-   remove boilerplate for the main function.
- - [Whisk](https://docs.rs/crate/whisk/latest) - A no-std-compatible MPMC
-   (multi-producer/multiple-consumer) asynchronous channel implementation
- - [Smelling Salts](https://docs.rs/crate/smelling_salts/latest) - Abstraction
-   over OS APIs to handle asynchronous device waking by implementing `Notifier`
+ - [Async Main] - Proc macro crate to remove boilerplate for the main function.
+ - [Whisk] - No-std compatible MPMC (multi-producer/multiple-consumer)
+   asynchronous channel implementation
+ - [Smelling Salts] - Library for asynchronous device waking using OS APIs
+ - [Lookit] - Library for asynchronously connecting to devices using OS APIs
 
 [^1]: Some features require a platform integration dependency, for instance:
       - **`web`** pulls in [`wasm-bindgen-futures`][14]
@@ -86,3 +85,8 @@ that are designed to work well with pasts:
 [13]: mailto:aldaronlau@gmail.com
 [14]: https://docs.rs/crate/wasm-bindgen-futures/latest
 [15]: https://docs.rs/crate/pin-utils/latest
+
+[Async Main]: https://docs.rs/crate/async_main
+[Lookit]: https://docs.rs/crate/lookit
+[Smelling Salts]: https://docs.rs/crate/smelling_salts
+[Whisk]: https://docs.rs/crate/whisk
