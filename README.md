@@ -60,9 +60,9 @@ email at [aldaronlau@gmail.com][13].
 Since pasts is not an all-in-one async runtime solution, here's a list of crates
 that are designed to work well with pasts:
 
- - [Async Main] - Proc macro crate to remove boilerplate for the main function.
+ - [Async Main] - Proc macro crate to remove boilerplate for the main function
  - [Whisk] - No-std compatible MPMC (multi-producer/multiple-consumer)
-   asynchronous channel implementation
+   asynchronous channel
  - [Smelling Salts] - Library for asynchronous device waking using OS APIs
  - [Lookit] - Library for asynchronously connecting to devices using OS APIs
 
