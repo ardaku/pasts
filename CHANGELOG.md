@@ -4,6 +4,11 @@ All notable changes to `pasts` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
+## [0.13.1] - 2023-01-28
+### Fixed
+ - Bug where spawning without suspending the future while blocking the executor
+   never executes the spawned future.
+
 ## [0.13.0] - 2023-01-16
 ### Added
  - Added `Spawn` trait for spawning both `Send` futures and local tasks.

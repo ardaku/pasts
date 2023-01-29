@@ -261,13 +261,20 @@ fn block_on<P: Pool>(f: impl Future<Output = ()> + 'static, pool: Arc<P>) {
 
     // Run the set of futures to completion.
     while !tasks.is_empty() {
+        // Poll the set of futures
         let poll = Pin::new(tasks.as_mut_slice()).poll_next(tasky);
+        // If no tasks have completed, then park
         let Ready((task_index, ())) = poll else {
+            // Initiate execution of any spawned tasks - if no new tasks, park
             if !pool.drain(tasks) {
                 parky.0.park();
             }
             continue;
         };
+
+        // Task has completed
         tasks.swap_remove(task_index);
+        // Drain any spawned tasks into the pool
+        pool.drain(tasks);
     }
 }
