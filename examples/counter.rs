@@ -10,8 +10,8 @@ struct Exit;
 // Shared state between tasks on the thread.
 struct App<'a> {
     counter: usize,
-    one: &'a mut (dyn Notifier<Event = ()> + Unpin),
-    two: &'a mut (dyn Notifier<Event = ()> + Unpin),
+    one: &'a mut (dyn Notify<Event = ()> + Unpin),
+    two: &'a mut (dyn Notify<Event = ()> + Unpin),
 }
 
 impl App<'_> {

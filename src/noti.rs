@@ -13,14 +13,14 @@ use crate::prelude::*;
 ///
 /// Similar to [`AsyncIterator`](core::async_iter::AsyncIterator), but infinite.
 ///
-/// It's expected that [`Notifier`]s can be polled indefinitely without causing
+/// It's expected that [`Notify`]s can be polled indefinitely without causing
 /// panics or undefined behavior.  They are not required to continue sending
 /// events indefinitely, though.
-pub trait Notifier {
-    /// The event produced by this notifier
+pub trait Notify {
+    /// The event produced by this notify
     type Event;
 
-    /// Get the next event from this notifier, registering a wakeup when not
+    /// Get the next event from this notify, registering a wakeup when not
     /// ready.
     ///
     /// # Return Value
@@ -32,11 +32,11 @@ pub trait Notifier {
     ///
     /// # Usage
     /// ```rust
-    /// use pasts::{Notifier, prelude::*};
+    /// use pasts::{Notify, prelude::*};
     ///
     /// struct MyAsyncIter;
     ///
-    /// impl Notifier for MyAsyncIter {
+    /// impl Notify for MyAsyncIter {
     ///     type Event = Option<u32>;
     ///
     ///     fn poll_next(self: Pin<&mut Self>, _: &mut Task<'_>) -> Poll<Self::Event> {
@@ -78,7 +78,7 @@ pub trait Notifier {
     }
 }
 
-impl<N: ?Sized + Notifier + Unpin> Notifier for Box<N> {
+impl<N: ?Sized + Notify + Unpin> Notify for Box<N> {
     type Event = N::Event;
 
     #[inline]
@@ -87,7 +87,7 @@ impl<N: ?Sized + Notifier + Unpin> Notifier for Box<N> {
     }
 }
 
-impl<N: Notifier + ?Sized, P> Notifier for Pin<P>
+impl<N: Notify + ?Sized, P> Notify for Pin<P>
 where
     P: core::ops::DerefMut<Target = N> + Unpin,
 {
@@ -98,7 +98,7 @@ where
     }
 }
 
-impl<N: Notifier + Unpin + ?Sized> Notifier for &mut N {
+impl<N: Notify + Unpin + ?Sized> Notify for &mut N {
     type Event = N::Event;
 
     #[inline]
@@ -107,7 +107,7 @@ impl<N: Notifier + Unpin + ?Sized> Notifier for &mut N {
     }
 }
 
-impl<N: Notifier + Unpin> Notifier for [N] {
+impl<N: Notify + Unpin> Notify for [N] {
     type Event = (usize, N::Event);
 
     #[inline]
@@ -123,9 +123,9 @@ impl<N: Notifier + Unpin> Notifier for [N] {
 }
 
 #[derive(Debug)]
-pub struct EventFuture<'a, N: Notifier + Unpin>(&'a mut N);
+pub struct EventFuture<'a, N: Notify + Unpin>(&'a mut N);
 
-impl<N: Notifier + Unpin> Future for EventFuture<'_, N> {
+impl<N: Notify + Unpin> Future for EventFuture<'_, N> {
     type Output = N::Event;
 
     #[inline]
@@ -134,18 +134,18 @@ impl<N: Notifier + Unpin> Future for EventFuture<'_, N> {
     }
 }
 
-/// A [`Notifier`] created from a function returning [`Poll`].
+/// A [`Notify`] created from a function returning [`Poll`].
 #[derive(Debug)]
 pub struct Poller<T, F: FnMut(&mut Task<'_>) -> Poll<T> + Unpin>(F);
 
 impl<T, F: FnMut(&mut Task<'_>) -> Poll<T> + Unpin> Poller<T, F> {
-    /// Create a new [`Notifier`] from a function returning [`Poll`].
+    /// Create a new [`Notify`] from a function returning [`Poll`].
     pub fn new(f: F) -> Self {
         Self(f)
     }
 }
 
-impl<T, F: FnMut(&mut Task<'_>) -> Poll<T> + Unpin> Notifier for Poller<T, F> {
+impl<T, F: FnMut(&mut Task<'_>) -> Poll<T> + Unpin> Notify for Poller<T, F> {
     type Event = T;
 
     #[inline]
@@ -154,7 +154,7 @@ impl<T, F: FnMut(&mut Task<'_>) -> Poll<T> + Unpin> Notifier for Poller<T, F> {
     }
 }
 
-/// Trait for "fusing" a [`Future`] (conversion to a [`Notifier`]).
+/// Trait for "fusing" a [`Future`] (conversion to a [`Notify`]).
 pub trait Fuse: Sized {
     /// Fuse the [`Future`]
     fn fuse(self) -> Option<Self>;
@@ -166,7 +166,7 @@ impl<F: Future> Fuse for F {
     }
 }
 
-impl<F: Future> Notifier for Option<F> {
+impl<F: Future> Notify for Option<F> {
     type Event = F::Output;
 
     #[inline]
@@ -209,21 +209,21 @@ impl<F: Future + Unpin> Rep<F> for F {
     }
 }
 
-/// A [`Notifier`] created from a function returning [`Future`]s.
+/// A [`Notify`] created from a function returning [`Future`]s.
 ///
 /// A repeating async function.
 #[derive(Debug)]
 pub struct Loop<F: Future, L: FnMut() -> F, S>(S, L);
 
 impl<F: Future + Unpin, L: FnMut() -> F> Loop<F, L, F> {
-    /// Create a fused [`Notifier`] from an [`Unpin`] [`Future`] producer.
+    /// Create a fused [`Notify`] from an [`Unpin`] [`Future`] producer.
     pub fn new(mut looper: L) -> Self {
         Self(looper(), looper)
     }
 }
 
 impl<F: Future, L: FnMut() -> F> Loop<F, L, Pin<Box<F>>> {
-    /// Create a fused [`Notifier`] from a `!Unpin` [`Future`] producer.
+    /// Create a fused [`Notify`] from a `!Unpin` [`Future`] producer.
     ///
     /// **Doesn't work with `one_alloc`**.
     pub fn pin(mut looper: L) -> Self {
@@ -231,7 +231,7 @@ impl<F: Future, L: FnMut() -> F> Loop<F, L, Pin<Box<F>>> {
     }
 }
 
-impl<F: Future, L: FnMut() -> F + Unpin, S: Rep<F>> Notifier for Loop<F, L, S> {
+impl<F: Future, L: FnMut() -> F + Unpin, S: Rep<F>> Notify for Loop<F, L, S> {
     type Event = F::Output;
 
     #[inline]
@@ -247,14 +247,14 @@ impl<F: Future, L: FnMut() -> F + Unpin, S: Rep<F>> Notifier for Loop<F, L, S> {
     }
 }
 
-/// A notifier returned from [`Notifier::map()`].
+/// A notify returned from [`Notify::map()`].
 #[derive(Debug)]
 pub struct Map<N, F> {
     noti: N,
     f: F,
 }
 
-impl<N: Notifier + Unpin, F, E> Notifier for Map<N, F>
+impl<N: Notify + Unpin, F, E> Notify for Map<N, F>
 where
     F: FnMut(N::Event) -> E + Unpin,
 {

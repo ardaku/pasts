@@ -78,25 +78,25 @@ mod spawn;
 use self::prelude::*;
 pub use self::{
     join::Join,
-    noti::{Fuse, Loop, Notifier, Poller},
+    noti::{Fuse, Loop, Notify, Poller},
     spawn::{Executor, Park, Pool, Spawn},
 };
 
-/// An owned dynamically typed [`Notifier`] for use in cases where you can’t
+/// An owned dynamically typed [`Notify`] for use in cases where you can’t
 /// statically type your result or need to add some indirection.
 ///
 /// **Doesn't work with `one_alloc`**.
-pub type BoxNotifier<'a, T = ()> =
-    Pin<Box<dyn Notifier<Event = T> + Send + 'a>>;
+pub type BoxNotify<'a, T = ()> =
+    Pin<Box<dyn Notify<Event = T> + Send + 'a>>;
 
-/// [`BoxNotifier`] without the [`Send`] requirement.
+/// [`BoxNotify`] without the [`Send`] requirement.
 ///
 /// **Doesn't work with `one_alloc`**.
-pub type LocalBoxNotifier<'a, T = ()> = Pin<Box<dyn Notifier<Event = T> + 'a>>;
+pub type LocalBoxNotify<'a, T = ()> = Pin<Box<dyn Notify<Event = T> + 'a>>;
 
-impl<T> core::fmt::Debug for LocalBoxNotifier<'_, T> {
+impl<T> core::fmt::Debug for LocalBoxNotify<'_, T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.write_str("LocalBoxNotifier")
+        f.write_str("LocalBoxNotify")
     }
 }
 
@@ -116,7 +116,7 @@ pub mod prelude {
     };
 
     #[doc(no_inline)]
-    pub use crate::{BoxNotifier, Fuse, LocalBoxNotifier, Notifier, Spawn};
+    pub use crate::{BoxNotify, Fuse, LocalBoxNotify, Notify, Spawn};
 
     /// Indicates whether a value is available or if the current task has been
     /// scheduled to receive a wakeup instead.

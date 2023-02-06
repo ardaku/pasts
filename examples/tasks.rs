@@ -4,7 +4,7 @@ use pasts::{prelude::*, Join};
 struct Exit;
 
 struct App {
-    tasks: Vec<BoxNotifier<'static, &'static str>>,
+    tasks: Vec<BoxNotify<'static, &'static str>>,
 }
 
 impl App {
