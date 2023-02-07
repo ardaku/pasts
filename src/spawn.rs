@@ -124,11 +124,11 @@ pub trait Pool {
     type Park: Park;
 
     /// Push a task into the thread pool queue.
-    fn push(&self, task: LocalBoxNotifier<'static, ()>);
+    fn push(&self, task: LocalBoxNotify<'static, ()>);
 
     /// Drain tasks from the thread pool queue.  Should returns true if drained
     /// at least one task.
-    fn drain(&self, tasks: &mut Vec<LocalBoxNotifier<'static, ()>>) -> bool;
+    fn drain(&self, tasks: &mut Vec<LocalBoxNotify<'static, ()>>) -> bool;
 }
 
 /// Trait for implementing the parking / unparking threads.
@@ -143,7 +143,7 @@ pub trait Park: Default + Send + Sync + 'static {
 
 #[derive(Default)]
 pub struct DefaultPool {
-    spawning_queue: Cell<Vec<LocalBoxNotifier<'static, ()>>>,
+    spawning_queue: Cell<Vec<LocalBoxNotify<'static, ()>>>,
 }
 
 impl fmt::Debug for DefaultPool {
@@ -164,7 +164,7 @@ impl Pool for DefaultPool {
 
     // Push onto queue of tasks to spawn.
     #[inline(always)]
-    fn push(&self, task: LocalBoxNotifier<'static>) {
+    fn push(&self, task: LocalBoxNotify<'static>) {
         let mut queue = self.spawning_queue.take();
 
         queue.push(task);
@@ -173,7 +173,7 @@ impl Pool for DefaultPool {
 
     // Drain from queue of tasks to spawn.
     #[inline(always)]
-    fn drain(&self, tasks: &mut Vec<LocalBoxNotifier<'static>>) -> bool {
+    fn drain(&self, tasks: &mut Vec<LocalBoxNotify<'static>>) -> bool {
         let mut queue = self.spawning_queue.take();
         let mut drained = queue.drain(..).peekable();
         let has_drained = drained.peek().is_some();
@@ -246,9 +246,9 @@ impl<P: Park> Wake for Unpark<P> {
 #[cfg(not(feature = "web"))]
 fn block_on<P: Pool>(f: impl Future<Output = ()> + 'static, pool: Arc<P>) {
     // Fuse main task
-    let f: LocalBoxNotifier<'_> = Box::pin(f.fuse());
+    let f: LocalBoxNotify<'_> = Box::pin(f.fuse());
 
-    // Set up the notifier
+    // Set up the notify
     let tasks = &mut Vec::new();
 
     // Set up the park, waker, and context.

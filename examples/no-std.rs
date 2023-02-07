@@ -7,7 +7,7 @@ use pasts::{prelude::*, Join};
 
 struct State {
     // Spawned tasks
-    tasks: [LocalBoxNotifier<'static, &'static str>; 2],
+    tasks: [LocalBoxNotify<'static, &'static str>; 2],
 }
 
 impl State {

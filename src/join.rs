@@ -7,7 +7,7 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use crate::{prelude::*, Notifier};
+use crate::{prelude::*, Notify};
 
 pub trait Stateful<S, T>: Unpin {
     fn state(&mut self) -> &mut S;
@@ -58,7 +58,7 @@ impl<'a, S: Unpin, T> Join<S, T, Never<'a, S>> {
 
 impl<S: Unpin, T, F: Stateful<S, T>> Join<S, T, F> {
     /// Register an event handler.
-    pub fn on<N: Notifier + Unpin + ?Sized>(
+    pub fn on<N: Notify + Unpin + ?Sized>(
         self,
         noti: impl for<'a> FnMut(&'a mut S) -> &'a mut N + Unpin,
         then: fn(&mut S, N::Event) -> Poll<T>,
@@ -95,7 +95,7 @@ struct Joiner<S, T, E, F: Stateful<S, T>, P> {
 impl<S, T, E, F, N, P> Stateful<S, T> for Joiner<S, T, E, F, P>
 where
     F: Stateful<S, T>,
-    N: Notifier<Event = E> + Unpin + ?Sized,
+    N: Notify<Event = E> + Unpin + ?Sized,
     P: for<'a> FnMut(&'a mut S) -> &'a mut N + Unpin,
 {
     #[inline]
