@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
 ## [0.14.0] - Unreleased
 ### Added
+ - `Notify::then()`, to replace `Join`
  - `NotifyExt` trait, split off from `Notify`
  - `NotifyExt` to the prelude
  - `notify::pending()`, `notify::Pending`
@@ -14,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
  - `notify::poll_fn()` to match the rest of the async ecosystem
  - `notify::Map`, returned from `Notify::map()`
  - `notify::Next`, returned from `Notify::next()`
+ - `notify::Then`, returned from `Notify::then()` 
  - Missing `impl Debug for BoxNotify` (was already on `LocalBoxNotify`)
 
 ### Changed

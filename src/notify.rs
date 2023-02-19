@@ -166,6 +166,19 @@ pub trait NotifyExt: Notify {
 
         Map { noti, f }
     }
+
+    /// Call synchronous closure `f` for each event notified.
+    ///
+    /// Returns an adapted `Notify<Event = E>`.
+    fn then<F, E>(self, f: F) -> Then<Self, F>
+    where
+        Self: Sized + Unpin,
+        F: FnMut(Self::Event) -> Poll<E> + Unpin,
+    {
+        let (noti, then) = (self, f);
+
+        Then { noti, then }
+    }
 }
 
 impl<N: Notify> NotifyExt for N {}
@@ -234,6 +247,30 @@ where
     #[inline]
     fn poll_next(mut self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<E> {
         Pin::new(&mut self.noti).poll_next(t).map(&mut self.f)
+    }
+}
+
+/// The [`Notify`] returned from [`NotifyExt::then()`]
+#[derive(Debug)]
+pub struct Then<N, T> {
+    noti: N,
+    then: T,
+}
+
+impl<N, F, E> Notify for Then<N, F>
+where
+    N: Notify + Unpin,
+    F: FnMut(N::Event) -> Poll<E> + Unpin,
+{
+    type Event = E;
+
+    #[inline]
+    fn poll_next(mut self: Pin<&mut Self>, task: &mut Task<'_>) -> Poll<E> {
+        if let Poll::Ready(event) = Pin::new(&mut self.noti).poll_next(task) {
+            (self.then)(event)
+        } else {
+            Poll::Pending
+        }
     }
 }
 
