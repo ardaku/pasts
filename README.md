@@ -38,6 +38,8 @@ on at least the following platforms (may work on others):
  - No standard devices (Tiers 2 and 3)
 
 ## License
+Copyright © 2019-2023 The Pasts Contributors.
+
 Licensed under any of
  - Apache License, Version 2.0, ([LICENSE_APACHE_2_0.txt][7]
    or [https://www.apache.org/licenses/LICENSE-2.0][8])
