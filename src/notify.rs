@@ -39,7 +39,7 @@ pub trait Notify {
     ///
     /// # Usage
     /// ```rust
-    /// use pasts::{Notify, prelude::*};
+    /// use pasts::prelude::*;
     ///
     /// struct MyAsyncIter;
     ///
