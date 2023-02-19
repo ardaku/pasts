@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
 ## [0.14.0] - Unreleased
 ### Added
+ - `notify::pending()`
+ - `notify::ready()`
  - `notify::future_fn()` to match the rest of the async ecosystem
  - `notify::poll_fn()` to match the rest of the async ecosystem
  - `notify::Map`, returned from `Notify::map()`

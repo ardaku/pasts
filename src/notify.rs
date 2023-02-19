@@ -155,12 +155,12 @@ where
     #[inline]
     fn poll_next(self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<Self::Event> {
         for (i, this) in self.get_mut().iter_mut().enumerate() {
-            if let Ready(value) = Pin::new(this).poll_next(t) {
-                return Ready((i, value));
+            if let Poll::Ready(value) = Pin::new(this).poll_next(t) {
+                return Poll::Ready((i, value));
             }
         }
 
-        Pending
+        Poll::Pending
     }
 }
 
@@ -204,10 +204,10 @@ impl<F: Future> Notify for Option<F> {
     fn poll_next(self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<F::Output> {
         let mut s = self;
         let out = s.as_mut().as_pin_mut().map(|f| f.poll(t));
-        if matches!(out, Some(Ready(_))) {
+        if matches!(out, Some(Poll::Ready(_))) {
             s.set(None);
         }
-        out.unwrap_or(Pending)
+        out.unwrap_or(Poll::Pending)
     }
 }
 
@@ -273,6 +273,38 @@ where
     }
 }
 
+/// A [`Notify`] that never produces an event.
+///
+/// This struct is created by [`pending()`].  See its documentation for more.
+#[derive(Debug)]
+pub struct Pending<T>(core::marker::PhantomData<fn() -> T>);
+
+impl<T> Notify for Pending<T> {
+    type Event = T;
+
+    fn poll_next(self: Pin<&mut Self>, _task: &mut Task<'_>) -> Poll<T> {
+        Poll::Pending
+    }
+}
+
+/// A [`Notify`] that immediately produces a single event.
+///
+/// This struct is created by [`ready()`].  See its documentation for more.
+#[derive(Debug)]
+pub struct Ready<T: Unpin>(Option<T>);
+
+impl<T: Unpin> Notify for Ready<T> {
+    type Event = T;
+
+    fn poll_next(self: Pin<&mut Self>, _task: &mut Task<'_>) -> Poll<T> {
+        let Some(event) = self.get_mut().0.take() else {
+            return Poll::Pending;
+        };
+
+        Poll::Ready(event)
+    }
+}
+
 /// Create a [`Notify`] that wraps a function returning a [`Future`].
 ///
 /// Polling the notify delegates to future returned by the wrapped function.
@@ -294,4 +326,14 @@ where
     F: FnMut(&mut Task<'_>) -> Poll<T> + Unpin,
 {
     PollFn(f)
+}
+
+/// Create a [`Notify`] which never becomes ready with an event.
+pub fn pending<T>() -> Pending<T> {
+    Pending(core::marker::PhantomData)
+}
+
+/// Create a [`Notify`] which is immediately ready with an event.
+pub fn ready<T: Unpin>(t: T) -> Ready<T> {
+    Ready(t.into())
 }
