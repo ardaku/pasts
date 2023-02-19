@@ -4,43 +4,54 @@ use async_main::{async_main, LocalSpawner};
 use async_std::task::sleep;
 use pasts::{notify, prelude::*};
 
-// Shared state between tasks on the thread.
-struct App {
-    counter: usize,
+/// List of possible events
+enum Event {
+    One(()),
+    Two(()),
 }
 
-impl App {
-    fn one(&mut self, (): ()) -> bool {
+/// Shared state between tasks on the thread.
+struct App<'a> {
+    counter: usize,
+    one: &'a mut (dyn Notify<Event = Event> + Unpin),
+    two: &'a mut (dyn Notify<Event = Event> + Unpin),
+}
+
+impl App<'_> {
+    fn one(&mut self, (): ()) -> Poll {
         println!("One {}", self.counter);
         self.counter += 1;
 
         if self.counter > 6 {
-            false
+            Ready(())
         } else {
-            true
+            Pending
         }
     }
 
-    fn two(&mut self, (): ()) -> bool {
+    fn two(&mut self, (): ()) -> Poll {
         println!("Two {}", self.counter);
         self.counter += 1;
 
-        true
+        Pending
+    }
+
+    async fn run(&mut self) -> Poll {
+        match notify::select([&mut self.one, &mut self.two]).next().await {
+            Event::One(e) => self.one(e),
+            Event::Two(e) => self.two(e),
+        }
     }
 }
 
 #[async_main]
 async fn main(_spawner: LocalSpawner) {
     let sleep = |seconds| sleep(Duration::from_secs_f64(seconds));
-    let ref mut one = notify::future_fn(|| Box::pin(sleep(1.0)));
-    let ref mut two = notify::future_fn(|| Box::pin(sleep(2.0)));
-    let ref mut app = App { counter: 0 };
+    let mut app = App {
+        counter: 0,
+        one: &mut notify::future_fn(|| Box::pin(sleep(1.0))).map(Event::One),
+        two: &mut notify::future_fn(|| Box::pin(sleep(2.0))).map(Event::Two),
+    };
 
-    while notify::select([
-        &mut one.map(|()| App::one as fn(&mut App, ()) -> bool),
-        &mut two.map(|()| App::two as _),
-    ])
-    .next()
-    .await(app, ())
-    {}
+    while app.run().await.is_pending() {}
 }

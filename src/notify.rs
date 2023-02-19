@@ -20,8 +20,6 @@ use crate::prelude::*;
 
 /// An owned dynamically typed [`Notify`] for use in cases where you can’t
 /// statically type your result or need to add some indirection.
-///
-/// **Doesn't work with `one_alloc`**.
 pub type BoxNotify<'a, T = ()> = Pin<Box<dyn Notify<Event = T> + Send + 'a>>;
 
 impl<T> fmt::Debug for BoxNotify<'_, T> {
@@ -31,8 +29,6 @@ impl<T> fmt::Debug for BoxNotify<'_, T> {
 }
 
 /// [`BoxNotify`] without the [`Send`] requirement.
-///
-/// **Doesn't work with `one_alloc`**.
 pub type LocalBoxNotify<'a, T = ()> = Pin<Box<dyn Notify<Event = T> + 'a>>;
 
 impl<T> fmt::Debug for LocalBoxNotify<'_, T> {
@@ -312,6 +308,8 @@ impl<T: Unpin> Notify for Ready<T> {
 }
 
 /// A [`Notify`] that selects over a list of [`Notify`]s
+///
+/// This struct is created by [`select()`].  See its documentation for more.
 pub struct Select<'a, E, const N: usize>(
     [&'a mut (dyn Notify<Event = E> + Unpin); N],
     usize,
