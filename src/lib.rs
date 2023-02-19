@@ -11,7 +11,7 @@
 //! Add the following to your **`./Cargo.toml`**:
 //! ```toml
 //! [dependencies]
-//! pasts = "0.13"
+//! pasts = "0.14"
 //!
 //! ## This example uses async_main for convenience, but it is *not* required to
 //! ## use pasts.
@@ -73,23 +73,6 @@ pub use self::{
     spawn::{Executor, Park, Pool, Spawn},
 };
 
-/// An owned dynamically typed [`Notify`] for use in cases where you can’t
-/// statically type your result or need to add some indirection.
-///
-/// **Doesn't work with `one_alloc`**.
-pub type BoxNotify<'a, T = ()> = Pin<Box<dyn Notify<Event = T> + Send + 'a>>;
-
-/// [`BoxNotify`] without the [`Send`] requirement.
-///
-/// **Doesn't work with `one_alloc`**.
-pub type LocalBoxNotify<'a, T = ()> = Pin<Box<dyn Notify<Event = T> + 'a>>;
-
-impl<T> core::fmt::Debug for LocalBoxNotify<'_, T> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.write_str("LocalBoxNotify")
-    }
-}
-
 pub mod prelude {
     //! Items that are almost always needed.
 
@@ -107,8 +90,8 @@ pub mod prelude {
 
     #[doc(no_inline)]
     pub use crate::{
-        notify::{Fuse, Notify},
-        BoxNotify, LocalBoxNotify, Spawn,
+        notify::{BoxNotify, Fuse, LocalBoxNotify, Notify},
+        Spawn,
     };
 
     /// Indicates whether a value is available or if the current task has been

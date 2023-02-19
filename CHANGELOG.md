@@ -10,11 +10,12 @@ and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
  - `notify::poll_fn()` to match the rest of the async ecosystem
  - `notify::Map`, returned from `Notify::map()`
  - `notify::Next`, returned from `Notify::next()`
+ - Missing `impl Debug for BoxNotify` (was already on `LocalBoxNotify`).
 
 ### Changed
  - Rename `Notifier` to `notify::Notify`
- - Rename `BoxNotifier` to `BoxNotify`
- - Rename `LocalBoxNotifier` to `LocalBoxNotify`
+ - Rename `BoxNotifier` to `notify::BoxNotify`
+ - Rename `LocalBoxNotifier` to `notify::LocalBoxNotify`
  - Rename `Poller` to `PollFn`
  - Rename `Loop` to `FutureFn`
 

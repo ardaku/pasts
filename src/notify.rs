@@ -12,9 +12,34 @@
 //! simplifications.  Unlike futures and streams, they do not need to be fused,
 //! and if your stream is infinite, you won't need to sprinkle `unwrap()`s in
 //! your code at each call to `.next()`.  They also lend themselves nicely for
-//! creating clean and simple multimedia based APIs.
+//! creating clean and simple multimedia APIs.
+
+use core::fmt;
 
 use crate::prelude::*;
+
+/// An owned dynamically typed [`Notify`] for use in cases where you can’t
+/// statically type your result or need to add some indirection.
+///
+/// **Doesn't work with `one_alloc`**.
+pub type BoxNotify<'a, T = ()> = Pin<Box<dyn Notify<Event = T> + Send + 'a>>;
+
+impl<T> fmt::Debug for BoxNotify<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("BoxNotify")
+    }
+}
+
+/// [`BoxNotify`] without the [`Send`] requirement.
+///
+/// **Doesn't work with `one_alloc`**.
+pub type LocalBoxNotify<'a, T = ()> = Pin<Box<dyn Notify<Event = T> + 'a>>;
+
+impl<T> fmt::Debug for LocalBoxNotify<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("LocalBoxNotify")
+    }
+}
 
 /// Trait for asynchronous event notification
 ///
