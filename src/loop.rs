@@ -32,37 +32,37 @@ impl<S, T> Stateful<S, T> for Never<'_, S> {
 #[doc = include_str!("../examples/tasks.rs")]
 /// ```
 #[derive(Debug)]
-pub struct Join<S: Unpin, T, F: Stateful<S, T>> {
+pub struct Loop<S: Unpin, T, F: Stateful<S, T>> {
     other: F,
     _phantom: core::marker::PhantomData<(S, T)>,
 }
 
-impl<'a, S: Unpin, T> Join<S, T, Never<'a, S>> {
+impl<'a, S: Unpin, T> Loop<S, T, Never<'a, S>> {
     /// Create an empty event loop.
     pub fn new(state: &'a mut S) -> Self {
         let other = Never(state);
         let _phantom = core::marker::PhantomData;
 
-        Join { other, _phantom }
+        Loop { other, _phantom }
     }
 }
 
-impl<S: Unpin, T, F: Stateful<S, T>> Join<S, T, F> {
+impl<S: Unpin, T, F: Stateful<S, T>> Loop<S, T, F> {
     /// Register an event handler.
     pub fn on<N: Notify + Unpin + ?Sized>(
         self,
         noti: impl for<'a> FnMut(&'a mut S) -> &'a mut N + Unpin,
         then: fn(&mut S, N::Event) -> Poll<T>,
-    ) -> Join<S, T, impl Stateful<S, T>> {
+    ) -> Loop<S, T, impl Stateful<S, T>> {
         let other = self.other;
         let _phantom = core::marker::PhantomData;
-        let other = Joiner { other, noti, then };
+        let other = Looper { other, noti, then };
 
-        Join { other, _phantom }
+        Loop { other, _phantom }
     }
 }
 
-impl<S: Unpin, T: Unpin, F: Stateful<S, T>> Future for Join<S, T, F> {
+impl<S: Unpin, T: Unpin, F: Stateful<S, T>> Future for Loop<S, T, F> {
     type Output = T;
 
     #[inline]
@@ -77,13 +77,13 @@ impl<S: Unpin, T: Unpin, F: Stateful<S, T>> Future for Join<S, T, F> {
     }
 }
 
-struct Joiner<S, T, E, F: Stateful<S, T>, P> {
+struct Looper<S, T, E, F: Stateful<S, T>, P> {
     other: F,
     noti: P,
     then: fn(&mut S, E) -> Poll<T>,
 }
 
-impl<S, T, E, F, N, P> Stateful<S, T> for Joiner<S, T, E, F, P>
+impl<S, T, E, F, N, P> Stateful<S, T> for Looper<S, T, E, F, P>
 where
     F: Stateful<S, T>,
     N: Notify<Event = E> + Unpin + ?Sized,

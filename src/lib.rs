@@ -64,12 +64,12 @@ extern crate alloc;
 
 pub mod notify;
 
-mod join;
+mod r#loop;
 mod spawn;
 
 use self::prelude::*;
 pub use self::{
-    join::Join,
+    r#loop::Loop,
     spawn::{Executor, Park, Pool, Spawn},
 };
 

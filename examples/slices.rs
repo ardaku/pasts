@@ -1,5 +1,5 @@
 use async_main::{async_main, LocalSpawner};
-use pasts::{prelude::*, Join};
+use pasts::{prelude::*, Loop};
 
 struct Exit;
 
@@ -24,5 +24,5 @@ async fn main(_spawner: LocalSpawner) {
     let mut app = App { tasks };
 
     // First task will complete first.
-    Join::new(&mut app).on(|s| s.tasks, App::completion).await;
+    Loop::new(&mut app).on(|s| s.tasks, App::completion).await;
 }

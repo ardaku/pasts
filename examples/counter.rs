@@ -2,7 +2,7 @@ use core::time::Duration;
 
 use async_main::{async_main, LocalSpawner};
 use async_std::task::sleep;
-use pasts::{notify, prelude::*, Join};
+use pasts::{notify, prelude::*, Loop};
 
 // Exit type for App.
 struct Exit;
@@ -43,7 +43,7 @@ async fn main(_spawner: LocalSpawner) {
         two: &mut notify::future_fn(|| Box::pin(sleep(2.0))),
     };
 
-    Join::new(&mut app)
+    Loop::new(&mut app)
         .on(|s| s.one, App::one)
         .on(|s| s.two, App::two)
         .await;

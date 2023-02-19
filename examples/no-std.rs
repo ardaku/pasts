@@ -3,7 +3,7 @@
 extern crate alloc;
 
 use async_main::{async_main, LocalSpawner};
-use pasts::{prelude::*, Join};
+use pasts::{prelude::*, Loop};
 
 struct State {
     // Spawned tasks
@@ -40,7 +40,7 @@ async fn main(_spawner: LocalSpawner) {
         tasks: [task_one, task_two],
     };
 
-    Join::new(state)
+    Loop::new(state)
         .on(|s| s.tasks.as_mut_slice(), State::task_done)
         .await;
 }
