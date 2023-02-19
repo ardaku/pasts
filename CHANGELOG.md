@@ -6,13 +6,15 @@ and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
 ## [0.14.0] - Unreleased
 ### Added
- - `notify::pending()`
- - `notify::ready()`
+ - `NotifyExt` trait, split off from `Notify`
+ - `NotifyExt` to the prelude
+ - `notify::pending()`, `notify::Pending`
+ - `notify::ready()`, `notify::Ready`
  - `notify::future_fn()` to match the rest of the async ecosystem
  - `notify::poll_fn()` to match the rest of the async ecosystem
  - `notify::Map`, returned from `Notify::map()`
  - `notify::Next`, returned from `Notify::next()`
- - Missing `impl Debug for BoxNotify` (was already on `LocalBoxNotify`).
+ - Missing `impl Debug for BoxNotify` (was already on `LocalBoxNotify`)
 
 ### Changed
  - Rename `Notifier` to `notify::Notify`
@@ -20,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
  - Rename `LocalBoxNotifier` to `notify::LocalBoxNotify`
  - Rename `Poller` to `PollFn`
  - Rename `Loop` to `FutureFn`
+ - Rename `Join` to `Loop`
 
 ### Removed
  - Unused dependency `pin_utils`
@@ -27,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
  - `Loop::new()`; use `notify::future_fn()` instead
  - `Loop::pin()`; use `notify::future_fn()` instead
  - Third generic for `FutureFn`
+ - `Notify::map()`, use `NotifyExt::map()` instead
+ - `Notify::next()`, use `NotifyExt::next()` instead
 
 ## [0.13.1] - 2023-01-28
 ### Fixed

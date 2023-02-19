@@ -90,7 +90,7 @@ pub mod prelude {
 
     #[doc(no_inline)]
     pub use crate::{
-        notify::{BoxNotify, Fuse, LocalBoxNotify, Notify},
+        notify::{BoxNotify, Fuse, LocalBoxNotify, Notify, NotifyExt},
         Spawn,
     };
 

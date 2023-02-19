@@ -59,55 +59,6 @@ pub trait Notify {
     ///  - `Poll::Pending` - Not ready yet
     ///  - `Poll::Ready(val)` - Ready with next value
     fn poll_next(self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<Self::Event>;
-
-    /// Get the next [`Self::Event`]
-    ///
-    /// # Usage
-    /// ```rust
-    /// use pasts::prelude::*;
-    ///
-    /// struct MyAsyncIter;
-    ///
-    /// impl Notify for MyAsyncIter {
-    ///     type Event = Option<u32>;
-    ///
-    ///     fn poll_next(self: Pin<&mut Self>, _: &mut Task<'_>) -> Poll<Self::Event> {
-    ///         Ready(Some(1))
-    ///     }
-    /// }
-    ///
-    /// #[async_main::async_main]
-    /// async fn main(_spawner: impl Spawn) {
-    ///     let mut count = 0;
-    ///     let mut async_iter = MyAsyncIter;
-    ///     let mut iterations = 0;
-    ///     while let Some(i) = async_iter.next().await {
-    ///         count += i;
-    ///         iterations += 1;
-    ///         if iterations == 3 {
-    ///             break;
-    ///         }
-    ///     }
-    ///     assert_eq!(count, 3);
-    /// }
-    /// ```
-    #[inline]
-    fn next(&mut self) -> Next<'_, Self>
-    where
-        Self: Sized + Unpin,
-    {
-        Next(self)
-    }
-
-    /// Transform produced [`Self::Event`]s with a function.
-    fn map<B, F>(self, f: F) -> Map<Self, F>
-    where
-        Self: Sized + Unpin,
-    {
-        let noti = self;
-
-        Map { noti, f }
-    }
 }
 
 impl<N> Notify for Box<N>
@@ -164,7 +115,62 @@ where
     }
 }
 
-/// The [`Future`] returned from [`Notify::next()`]
+/// An extension trait for [`Notify`]s that provides a variety of convenient
+/// adapters.
+pub trait NotifyExt: Notify {
+    /// Get the next [`Notify::Event`]
+    ///
+    /// # Usage
+    /// ```rust
+    /// use pasts::prelude::*;
+    ///
+    /// struct MyAsyncIter;
+    ///
+    /// impl Notify for MyAsyncIter {
+    ///     type Event = Option<u32>;
+    ///
+    ///     fn poll_next(self: Pin<&mut Self>, _: &mut Task<'_>) -> Poll<Self::Event> {
+    ///         Ready(Some(1))
+    ///     }
+    /// }
+    ///
+    /// #[async_main::async_main]
+    /// async fn main(_spawner: impl Spawn) {
+    ///     let mut count = 0;
+    ///     let mut async_iter = MyAsyncIter;
+    ///     let mut iterations = 0;
+    ///     while let Some(i) = async_iter.next().await {
+    ///         count += i;
+    ///         iterations += 1;
+    ///         if iterations == 3 {
+    ///             break;
+    ///         }
+    ///     }
+    ///     assert_eq!(count, 3);
+    /// }
+    /// ```
+    #[inline]
+    fn next(&mut self) -> Next<'_, Self>
+    where
+        Self: Sized + Unpin,
+    {
+        Next(self)
+    }
+
+    /// Transform produced [`Notify::Event`]s with a function.
+    fn map<B, F>(self, f: F) -> Map<Self, F>
+    where
+        Self: Sized + Unpin,
+    {
+        let noti = self;
+
+        Map { noti, f }
+    }
+}
+
+impl<N: Notify> NotifyExt for N {}
+
+/// The [`Future`] returned from [`NotifyExt::next()`]
 #[derive(Debug)]
 pub struct Next<'a, N>(&'a mut N)
 where
@@ -211,7 +217,7 @@ impl<F: Future> Notify for Option<F> {
     }
 }
 
-/// The [`Notify`] returned from [`Notify::map()`]
+/// The [`Notify`] returned from [`NotifyExt::map()`]
 #[derive(Debug)]
 pub struct Map<N, F> {
     noti: N,
