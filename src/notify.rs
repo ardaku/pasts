@@ -113,7 +113,7 @@ where
 
 /// An extension trait for [`Notify`]s that provides a variety of convenient
 /// adapters.
-pub trait NotifyExt: Notify {
+pub trait NotifyExt: Notify + Sized + Unpin {
     /// Get the next [`Notify::Event`]
     ///
     /// # Usage
@@ -145,26 +145,21 @@ pub trait NotifyExt: Notify {
     ///     assert_eq!(count, 3);
     /// }
     /// ```
-    #[inline]
-    fn next(&mut self) -> Next<'_, Self>
-    where
-        Self: Sized + Unpin,
-    {
+    #[inline(always)]
+    fn next(&mut self) -> Next<'_, Self> {
         Next(self)
     }
 
     /// Transform produced [`Notify::Event`]s with a function.
-    fn map<F>(self, f: F) -> Map<Self, F>
-    where
-        Self: Sized + Unpin,
-    {
+    #[inline(always)]
+    fn map<F>(self, f: F) -> Map<Self, F> {
         let noti = self;
 
         Map { noti, f }
     }
 }
 
-impl<N: Notify> NotifyExt for N {}
+impl<N: Notify + Sized + Unpin> NotifyExt for N {}
 
 /// The [`Future`] returned from [`NotifyExt::next()`]
 #[derive(Debug)]
