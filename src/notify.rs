@@ -158,26 +158,13 @@ pub trait NotifyExt: Notify {
     }
 
     /// Transform produced [`Notify::Event`]s with a function.
-    fn map<B, F>(self, f: F) -> Map<Self, F>
+    fn map<F>(self, f: F) -> Map<Self, F>
     where
         Self: Sized + Unpin,
     {
         let noti = self;
 
         Map { noti, f }
-    }
-
-    /// Call synchronous closure `f` for each event notified.
-    ///
-    /// Returns an adapted `Notify<Event = E>`.
-    fn then<F, E>(self, f: F) -> Then<Self, F>
-    where
-        Self: Sized + Unpin,
-        F: FnMut(Self::Event) -> Poll<E> + Unpin,
-    {
-        let (noti, then) = (self, f);
-
-        Then { noti, then }
     }
 }
 
@@ -247,30 +234,6 @@ where
     #[inline]
     fn poll_next(mut self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<E> {
         Pin::new(&mut self.noti).poll_next(t).map(&mut self.f)
-    }
-}
-
-/// The [`Notify`] returned from [`NotifyExt::then()`]
-#[derive(Debug)]
-pub struct Then<N, T> {
-    noti: N,
-    then: T,
-}
-
-impl<N, F, E> Notify for Then<N, F>
-where
-    N: Notify + Unpin,
-    F: FnMut(N::Event) -> Poll<E> + Unpin,
-{
-    type Event = E;
-
-    #[inline]
-    fn poll_next(mut self: Pin<&mut Self>, task: &mut Task<'_>) -> Poll<E> {
-        if let Poll::Ready(event) = Pin::new(&mut self.noti).poll_next(task) {
-            (self.then)(event)
-        } else {
-            Poll::Pending
-        }
     }
 }
 
@@ -348,6 +311,40 @@ impl<T: Unpin> Notify for Ready<T> {
     }
 }
 
+/// A [`Notify`] that selects over a list of [`Notify`]s
+pub struct Select<'a, E, const N: usize>(
+    [&'a mut (dyn Notify<Event = E> + Unpin); N],
+    usize,
+);
+
+impl<E, const N: usize> fmt::Debug for Select<'_, E, N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Select")
+    }
+}
+
+impl<E: Unpin, const N: usize> Notify for Select<'_, E, N> {
+    type Event = E;
+
+    fn poll_next(self: Pin<&mut Self>, task: &mut Task<'_>) -> Poll<E> {
+        let s = self.get_mut();
+        let start = s.1;
+
+        // Early exit for if there is nothing that can be ready.
+        if N == 0 {
+            return Poll::Pending;
+        }
+
+        for i in (start..N).chain(0..start) {
+            if let Poll::Ready(event) = Pin::new(&mut s.0[i]).poll_next(task) {
+                return Poll::Ready(event);
+            }
+        }
+
+        Poll::Pending
+    }
+}
+
 /// Create a [`Notify`] that wraps a function returning a [`Future`].
 ///
 /// Polling the notify delegates to future returned by the wrapped function.
@@ -379,4 +376,11 @@ pub fn pending<T>() -> Pending<T> {
 /// Create a [`Notify`] which is immediately ready with an event.
 pub fn ready<T: Unpin>(t: T) -> Ready<T> {
     Ready(t.into())
+}
+
+/// Create a [`Notify`] that selects over a list of [`Notify`]s.
+pub fn select<E, const N: usize>(
+    notifys: [&mut (dyn Notify<Event = E> + Unpin); N],
+) -> Select<'_, E, N> {
+    Select(notifys, 0)
 }
