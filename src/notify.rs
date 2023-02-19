@@ -1,6 +1,22 @@
+//! Asynchronous event notifys
+//!
+//! A [`Notify`] is kind of like a cross between a [`Future`] and an
+//! [`AsyncIterator`](core::async_iter::AsyncIterator).  Like streams, they may
+//! return more than one value, and are expected to not panic after polling.
+//! Like futures, they produce non-optional values.  In a sense they are an
+//! infinite stream.  In another sense, they are a repeating future.
+//!
+//! # Why Another Abstraction?
+//! Notifys allow for some nice ergonomics and guarantees when working with
+//! event-loop based asynchronous code, which could lead to some
+//! simplifications.  Unlike futures and streams, they do not need to be fused,
+//! and if your stream is infinite, you won't need to sprinkle `unwrap()`s in
+//! your code at each call to `.next()`.  They also lend themselves nicely for
+//! creating clean and simple multimedia based APIs.
+
 use crate::prelude::*;
 
-/// Trait for asynchronous event notification.
+/// Trait for asynchronous event notification
 ///
 /// Similar to [`AsyncIterator`](core::async_iter::AsyncIterator), but infinite.
 ///
@@ -51,11 +67,11 @@ pub trait Notify {
     /// }
     /// ```
     #[inline]
-    fn next(&mut self) -> EventFuture<'_, Self>
+    fn next(&mut self) -> Next<'_, Self>
     where
         Self: Sized + Unpin,
     {
-        EventFuture(self)
+        Next(self)
     }
 
     /// Transform produced [`Self::Event`]s with a function.
@@ -69,7 +85,10 @@ pub trait Notify {
     }
 }
 
-impl<N: ?Sized + Notify + Unpin> Notify for Box<N> {
+impl<N> Notify for Box<N>
+where
+    N: ?Sized + Notify + Unpin,
+{
     type Event = N::Event;
 
     #[inline]
@@ -78,9 +97,10 @@ impl<N: ?Sized + Notify + Unpin> Notify for Box<N> {
     }
 }
 
-impl<N: Notify + ?Sized, P> Notify for Pin<P>
+impl<N, P> Notify for Pin<P>
 where
     P: core::ops::DerefMut<Target = N> + Unpin,
+    N: Notify + ?Sized,
 {
     type Event = N::Event;
 
@@ -89,7 +109,10 @@ where
     }
 }
 
-impl<N: Notify + Unpin + ?Sized> Notify for &mut N {
+impl<N> Notify for &mut N
+where
+    N: Notify + Unpin + ?Sized,
+{
     type Event = N::Event;
 
     #[inline]
@@ -98,7 +121,10 @@ impl<N: Notify + Unpin + ?Sized> Notify for &mut N {
     }
 }
 
-impl<N: Notify + Unpin> Notify for [N] {
+impl<N> Notify for [N]
+where
+    N: Notify + Unpin,
+{
     type Event = (usize, N::Event);
 
     #[inline]
@@ -113,10 +139,16 @@ impl<N: Notify + Unpin> Notify for [N] {
     }
 }
 
+/// The [`Future`] returned from [`Notify::next()`]
 #[derive(Debug)]
-pub struct EventFuture<'a, N: Notify + Unpin>(&'a mut N);
+pub struct Next<'a, N>(&'a mut N)
+where
+    N: Notify + Unpin;
 
-impl<N: Notify + Unpin> Future for EventFuture<'_, N> {
+impl<N> Future for Next<'_, N>
+where
+    N: Notify + Unpin,
+{
     type Output = N::Event;
 
     #[inline]
@@ -125,33 +157,16 @@ impl<N: Notify + Unpin> Future for EventFuture<'_, N> {
     }
 }
 
-/// A [`Notify`] created from a function returning [`Poll`].
-#[derive(Debug)]
-pub struct Poller<T, F: FnMut(&mut Task<'_>) -> Poll<T> + Unpin>(F);
-
-impl<T, F: FnMut(&mut Task<'_>) -> Poll<T> + Unpin> Poller<T, F> {
-    /// Create a new [`Notify`] from a function returning [`Poll`].
-    pub fn new(f: F) -> Self {
-        Self(f)
-    }
-}
-
-impl<T, F: FnMut(&mut Task<'_>) -> Poll<T> + Unpin> Notify for Poller<T, F> {
-    type Event = T;
-
-    #[inline]
-    fn poll_next(self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<T> {
-        self.get_mut().0(t)
-    }
-}
-
-/// Trait for "fusing" a [`Future`] (conversion to a [`Notify`]).
+/// Trait for "fusing" a [`Future`] (conversion to a [`Notify`])
 pub trait Fuse: Sized {
     /// Fuse the [`Future`]
     fn fuse(self) -> Option<Self>;
 }
 
-impl<F: Future> Fuse for F {
+impl<F> Fuse for F
+where
+    F: Future,
+{
     fn fuse(self) -> Option<Self> {
         self.into()
     }
@@ -171,62 +186,41 @@ impl<F: Future> Notify for Option<F> {
     }
 }
 
-pub trait Rep<F: Future>: Unpin {
-    fn poll(self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<F::Output>;
-    fn set(self: Pin<&mut Self>, future: F);
-}
-
-impl<F: Future> Rep<F> for Pin<Box<F>> {
-    #[inline]
-    fn poll(self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<F::Output> {
-        Future::poll(self, t)
-    }
-
-    #[inline]
-    fn set(self: Pin<&mut Self>, f: F) {
-        Pin::set(self.get_mut(), f);
-    }
-}
-
-impl<F: Future + Unpin> Rep<F> for F {
-    #[inline]
-    fn poll(self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<F::Output> {
-        Future::poll(self, t)
-    }
-
-    #[inline]
-    fn set(mut self: Pin<&mut Self>, f: F) {
-        *self = f;
-    }
-}
-
-/// A [`Notify`] created from a function returning [`Future`]s.
-///
-/// A repeating async function.
+/// The [`Notify`] returned from [`Notify::map()`]
 #[derive(Debug)]
-pub struct Loop<F: Future, L: FnMut() -> F, S>(S, L);
-
-impl<F: Future + Unpin, L: FnMut() -> F> Loop<F, L, F> {
-    /// Create a fused [`Notify`] from an [`Unpin`] [`Future`] producer.
-    pub fn new(mut looper: L) -> Self {
-        Self(looper(), looper)
-    }
+pub struct Map<N, F> {
+    noti: N,
+    f: F,
 }
 
-impl<F: Future, L: FnMut() -> F> Loop<F, L, Pin<Box<F>>> {
-    /// Create a fused [`Notify`] from a `!Unpin` [`Future`] producer.
-    ///
-    /// **Doesn't work with `one_alloc`**.
-    pub fn pin(mut looper: L) -> Self {
-        Self(Box::pin(looper()), looper)
-    }
-}
-
-impl<F: Future, L: FnMut() -> F + Unpin, S: Rep<F>> Notify for Loop<F, L, S> {
-    type Event = F::Output;
+impl<N, F, E> Notify for Map<N, F>
+where
+    N: Notify + Unpin,
+    F: FnMut(N::Event) -> E + Unpin,
+{
+    type Event = E;
 
     #[inline]
-    fn poll_next(self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<F::Output> {
+    fn poll_next(mut self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<E> {
+        Pin::new(&mut self.noti).poll_next(t).map(&mut self.f)
+    }
+}
+
+/// A [`Notify`] that wraps a function returning a [`Future`]
+///
+/// This struct is created by [`future_fn()`].  See its documentation for more.
+#[derive(Debug)]
+pub struct FutureFn<T, F>(T, F);
+
+impl<T, F> Notify for FutureFn<T, F>
+where
+    T: Future + Unpin,
+    F: FnMut() -> T + Unpin,
+{
+    type Event = T::Output;
+
+    #[inline]
+    fn poll_next(self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<T::Output> {
         let this = self.get_mut();
         let poll = Pin::new(&mut this.0).poll(t);
 
@@ -238,21 +232,41 @@ impl<F: Future, L: FnMut() -> F + Unpin, S: Rep<F>> Notify for Loop<F, L, S> {
     }
 }
 
-/// A notify returned from [`Notify::map()`].
+/// A [`Notify`] created from a function returning [`Poll`]
 #[derive(Debug)]
-pub struct Map<N, F> {
-    noti: N,
-    f: F,
-}
+pub struct PollFn<F>(F);
 
-impl<N: Notify + Unpin, F, E> Notify for Map<N, F>
+impl<T, F> Notify for PollFn<F>
 where
-    F: FnMut(N::Event) -> E + Unpin,
+    F: FnMut(&mut Task<'_>) -> Poll<T> + Unpin,
 {
-    type Event = E;
+    type Event = T;
 
     #[inline]
-    fn poll_next(mut self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<E> {
-        Pin::new(&mut self.noti).poll_next(t).map(&mut self.f)
+    fn poll_next(self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<T> {
+        self.get_mut().0(t)
     }
+}
+
+/// Create a [`Notify`] that wraps a function returning a [`Future`].
+///
+/// Polling the notify delegates to future returned by the wrapped function.
+/// The wrapped function is called immediately, and is only called again once
+/// the future is polled and returns `Ready`.
+pub fn future_fn<T, F>(mut f: F) -> FutureFn<T, F>
+where
+    T: Future + Unpin,
+    F: FnMut() -> T + Unpin,
+{
+    FutureFn(f(), f)
+}
+
+/// Create a [`Notify`] that wraps a function returning [`Poll`].
+///
+/// Polling the future delegates to the wrapped function.
+pub fn poll_fn<T, F>(f: F) -> PollFn<F>
+where
+    F: FnMut(&mut Task<'_>) -> Poll<T> + Unpin,
+{
+    PollFn(f)
 }

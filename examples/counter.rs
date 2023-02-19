@@ -2,7 +2,7 @@ use core::time::Duration;
 
 use async_main::{async_main, LocalSpawner};
 use async_std::task::sleep;
-use pasts::{prelude::*, Join, Loop};
+use pasts::{prelude::*, Join};
 
 // Exit type for App.
 struct Exit;
@@ -39,8 +39,8 @@ async fn main(_spawner: LocalSpawner) {
     let sleep = |seconds| sleep(Duration::from_secs_f64(seconds));
     let mut app = App {
         counter: 0,
-        one: &mut Loop::pin(|| sleep(1.0)),
-        two: &mut Loop::pin(|| sleep(2.0)),
+        one: &mut pasts::future_fn(|| Box::pin(sleep(1.0))),
+        two: &mut pasts::future_fn(|| Box::pin(sleep(2.0))),
     };
 
     Join::new(&mut app)

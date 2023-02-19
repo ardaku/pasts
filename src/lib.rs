@@ -62,14 +62,14 @@
 
 extern crate alloc;
 
+pub mod notify;
+
 mod join;
-mod notify;
 mod spawn;
 
 use self::prelude::*;
 pub use self::{
     join::Join,
-    notify::{Fuse, Loop, Notify, Poller},
     spawn::{Executor, Park, Pool, Spawn},
 };
 
@@ -77,8 +77,7 @@ pub use self::{
 /// statically type your result or need to add some indirection.
 ///
 /// **Doesn't work with `one_alloc`**.
-pub type BoxNotify<'a, T = ()> =
-    Pin<Box<dyn Notify<Event = T> + Send + 'a>>;
+pub type BoxNotify<'a, T = ()> = Pin<Box<dyn Notify<Event = T> + Send + 'a>>;
 
 /// [`BoxNotify`] without the [`Send`] requirement.
 ///
@@ -107,7 +106,10 @@ pub mod prelude {
     };
 
     #[doc(no_inline)]
-    pub use crate::{BoxNotify, Fuse, LocalBoxNotify, Notify, Spawn};
+    pub use crate::{
+        notify::{Fuse, Notify},
+        BoxNotify, LocalBoxNotify, Spawn,
+    };
 
     /// Indicates whether a value is available or if the current task has been
     /// scheduled to receive a wakeup instead.

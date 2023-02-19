@@ -5,13 +5,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
 ## [0.14.0] - Unreleased
+### Added
+ - `notify::future_fn()` to match the rest of the async ecosystem
+ - `notify::poll_fn()` to match the rest of the async ecosystem
+ - `notify::Map`, returned from `Notify::map()`
+ - `notify::Next`, returned from `Notify::next()`
+
 ### Changed
- - Rename `Notifier` to `Notify`
+ - Rename `Notifier` to `notify::Notify`
  - Rename `BoxNotifier` to `BoxNotify`
  - Rename `LocalBoxNotifier` to `LocalBoxNotify`
+ - Rename `Poller` to `PollFn`
+ - Rename `Loop` to `FutureFn`
 
 ### Removed
  - Unused dependency `pin_utils`
+ - `Poller::new()`; use `notify::poll_fn()` instead
+ - `Loop::new()`; use `notify::future_fn()` instead
+ - `Loop::pin()`; use `notify::future_fn()` instead
+ - Third generic for `FutureFn`
 
 ## [0.13.1] - 2023-01-28
 ### Fixed
