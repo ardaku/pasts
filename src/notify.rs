@@ -119,6 +119,7 @@ pub trait NotifyExt: Notify + Sized + Unpin {
     /// # Usage
     /// ```rust
     /// use pasts::prelude::*;
+    /// use async_main::Spawn;
     ///
     /// struct MyAsyncIter;
     ///

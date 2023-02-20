@@ -4,7 +4,7 @@ All notable changes to `pasts` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
-## [0.14.0] - Unreleased
+## [0.14.0] - 2023-02-19
 ### Added
  - `NotifyExt` trait, split off from `Notify`
  - `NotifyExt` to the prelude
@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
  - `notify::Map`, returned from `Notify::map()`
  - `notify::Next`, returned from `Notify::next()`
  - Missing `impl Debug for BoxNotify` (was already on `LocalBoxNotify`)
+ - `Executor::spawn_boxed()`
+ - `Executor::spawn_notify()`
 
 ### Changed
  - Rename `Notifier` to `notify::Notify`
@@ -33,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
  - Third generic for `FutureFn`
  - `Notify::map()`, use `NotifyExt::map()` instead
  - `Notify::next()`, use `NotifyExt::next()` instead
+ - `Spawn` trait, use `async_main` crate instead
 
 ### Fixed
  - Remove useless generic `B` from `NotifyExt::map()`

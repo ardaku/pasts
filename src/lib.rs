@@ -70,7 +70,7 @@ mod spawn;
 use self::prelude::*;
 pub use self::{
     r#loop::Loop,
-    spawn::{Executor, Park, Pool, Spawn},
+    spawn::{Executor, Park, Pool},
 };
 
 pub mod prelude {
@@ -89,9 +89,8 @@ pub mod prelude {
     };
 
     #[doc(no_inline)]
-    pub use crate::{
-        notify::{BoxNotify, Fuse, LocalBoxNotify, Notify, NotifyExt},
-        Spawn,
+    pub use crate::notify::{
+        BoxNotify, Fuse, LocalBoxNotify, Notify, NotifyExt,
     };
 
     /// Indicates whether a value is available or if the current task has been

@@ -3,24 +3,6 @@ use core::{cell::Cell, fmt, future::Future};
 
 use crate::prelude::*;
 
-/// Implementation for spawning tasks on an executor.
-pub trait Spawn: Clone {
-    /// Spawn a [`Future`] without the [`Send`] requirement.
-    ///
-    /// This forces the executor to always run the task on the same thread that
-    /// this method is called on.
-    fn spawn_local(&self, f: impl Future<Output = ()> + 'static);
-
-    /// Spawn a [`Future`] that is [`Send`].
-    ///
-    /// This allows the executor to run the task on whatever thread it
-    /// determines is most efficient.
-    #[inline(always)]
-    fn spawn(&self, f: impl Future<Output = ()> + Send + 'static) {
-        self.spawn_local(f)
-    }
-}
-
 /// Pasts' executor.
 ///
 /// # Run a Future
@@ -31,9 +13,8 @@ pub trait Spawn: Clone {
 /// ```
 /// 
 /// # Spawn a Future
-/// The `Executor` type implements [`Spawn`], which means you can spawn tasks
-/// from it.  Only once all tasks have completed, can
-/// [`block_on()`](Executor::block_on()) return.
+/// You may spawn tasks on an `Executor`.  Only once all tasks have completed,
+/// can [`block_on()`](Executor::block_on()) return.
 /// ```rust,no_run
 #[doc = include_str!("../examples/spawn.rs")]
 /// ```
@@ -93,11 +74,19 @@ impl<P: Pool> Executor<P> {
     }
 }
 
-impl<P: Pool> Spawn for Executor<P> {
+impl<P: Pool> Executor<P> {
+    /// Spawn a [`LocalBoxNotify`] on this executor.
     #[inline(always)]
-    fn spawn_local(&self, f: impl Future<Output = ()> + 'static) {
+    pub fn spawn_notify(&self, n: LocalBoxNotify<'static>) {
         // Fuse the future, box it, and push it onto the pool.
-        self.0.push(Box::pin(f.fuse()))
+        self.0.push(n)
+    }
+
+    /// Box and spawn a future on this executor.
+    #[inline(always)]
+    pub fn spawn_boxed(&self, f: impl Future<Output = ()> + 'static) {
+        // Fuse the future, box it, and push it onto the pool.
+        self.spawn_notify(Box::pin(f.fuse()))
     }
 }
 
@@ -115,11 +104,11 @@ pub trait Pool {
     type Park: Park;
 
     /// Push a task into the thread pool queue.
-    fn push(&self, task: LocalBoxNotify<'static, ()>);
+    fn push(&self, task: LocalBoxNotify<'static>);
 
     /// Drain tasks from the thread pool queue.  Should returns true if drained
     /// at least one task.
-    fn drain(&self, tasks: &mut Vec<LocalBoxNotify<'static, ()>>) -> bool;
+    fn drain(&self, tasks: &mut Vec<LocalBoxNotify<'static>>) -> bool;
 }
 
 /// Trait for implementing the parking / unparking threads.
@@ -134,7 +123,7 @@ pub trait Park: Default + Send + Sync + 'static {
 
 #[derive(Default)]
 pub struct DefaultPool {
-    spawning_queue: Cell<Vec<LocalBoxNotify<'static, ()>>>,
+    spawning_queue: Cell<Vec<LocalBoxNotify<'static>>>,
 }
 
 impl fmt::Debug for DefaultPool {
