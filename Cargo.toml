@@ -1,6 +1,6 @@
 [package]
 name = "pasts"
-version = "0.14.0"
+version = "0.14.1"
 license = "Apache-2.0 OR BSL-1.0 OR MIT"
 description = "Minimal and simpler alternative to the futures crate."
 repository = "https://github.com/ardaku/pasts"
@@ -18,7 +18,7 @@ version = "0.4"
 optional = true
 
 [dev-dependencies]
-async_main = { version = "0.2", features = ["pasts"], path = "../async_main" }
+async_main = { version = "0.3", features = ["pasts"] }
 async-std = "1.11"
 whisk = "0.10"
 
@@ -34,5 +34,5 @@ std = []
 # Target the DOM via javascript APIs exposed by wasm-bindgen.
 web = ["dep:wasm-bindgen-futures"]
 
-[patch.crates-io.pasts]
-path = "."
+# [patch.crates-io.pasts]
+# path = "."

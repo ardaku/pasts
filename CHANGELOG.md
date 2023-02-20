@@ -4,6 +4,10 @@ All notable changes to `pasts` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
+## [0.14.1] - 2023-02-19
+### Fixed
+ - Documentation recommending wrong version of `async_main` crate
+
 ## [0.14.0] - 2023-02-19
 ### Added
  - `NotifyExt` trait, split off from `Notify`
