@@ -1,7 +1,5 @@
 #![no_std]
 
-extern crate alloc;
-
 use async_main::{async_main, LocalSpawner};
 use pasts::{prelude::*, Loop};
 
@@ -49,7 +47,7 @@ mod log {
     use core::ffi::CStr;
 
     /// Log a message.  Requires trailing null byte.
-    pub fn log(text: &str) {
+    pub(super) fn log(text: &str) {
         let text = CStr::from_bytes_with_nul(text.as_bytes()).unwrap();
 
         #[link(name = "c")]

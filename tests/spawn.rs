@@ -1,5 +1,3 @@
-extern crate whisk;
-
 use pasts::Executor;
 use whisk::Channel;
 

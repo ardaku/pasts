@@ -1,5 +1,3 @@
-extern crate async_std;
-
 use core::time::Duration;
 
 use pasts::Executor;

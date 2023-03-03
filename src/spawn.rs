@@ -34,7 +34,7 @@ pub struct Executor<P: Pool = DefaultPool>(Arc<P>);
 
 impl Default for Executor {
     fn default() -> Self {
-        Self::new(Default::default())
+        Self::new(DefaultPool::default())
     }
 }
 
@@ -70,23 +70,40 @@ impl<P: Pool> Executor<P> {
         wasm_bindgen_futures::spawn_local(f);
 
         #[cfg(not(feature = "web"))]
-        block_on(f, self.0);
+        block_on(f, &self.0);
     }
 }
 
 impl<P: Pool> Executor<P> {
     /// Spawn a [`LocalBoxNotify`] on this executor.
+    ///
+    /// Execution of the [`LocalBoxNotify`] will halt after the first poll that
+    /// returns [`Ready`].
     #[inline(always)]
     pub fn spawn_notify(&self, n: LocalBoxNotify<'static>) {
-        // Fuse the future, box it, and push it onto the pool.
-        self.0.push(n)
+        // Convert the notify into a future and spawn on wasm_bindgen_futures
+        #[cfg(feature = "web")]
+        wasm_bindgen_futures::spawn_local(async move {
+            let mut n = n;
+
+            n.next().await;
+        });
+
+        // Push the notify onto the pool.
+        #[cfg(not(feature = "web"))]
+        self.0.push(n);
     }
 
     /// Box and spawn a future on this executor.
     #[inline(always)]
     pub fn spawn_boxed(&self, f: impl Future<Output = ()> + 'static) {
+        // Spawn the future on wasm_bindgen_futures
+        #[cfg(feature = "web")]
+        wasm_bindgen_futures::spawn_local(f);
+
         // Fuse the future, box it, and push it onto the pool.
-        self.spawn_notify(Box::pin(f.fuse()))
+        #[cfg(not(feature = "web"))]
+        self.spawn_notify(Box::pin(f.fuse()));
     }
 }
 
@@ -224,7 +241,7 @@ impl<P: Park> Wake for Unpark<P> {
 }
 
 #[cfg(not(feature = "web"))]
-fn block_on<P: Pool>(f: impl Future<Output = ()> + 'static, pool: Arc<P>) {
+fn block_on<P: Pool>(f: impl Future<Output = ()> + 'static, pool: &Arc<P>) {
     // Fuse main task
     let f: LocalBoxNotify<'_> = Box::pin(f.fuse());
 

@@ -1,0 +1,19 @@
+[build]
+rustflags = [
+  "-Danonymous_parameters",
+  "-Dmissing_copy_implementations",
+  "-Dmissing_debug_implementations",
+  "-Dnonstandard_style",
+  "-Drust_2018_idioms",
+  "-Dsingle_use_lifetimes",
+  "-Dtrivial_casts",
+  "-Dtrivial_numeric_casts",
+  "-Dunreachable_pub",
+  "-Dunused_extern_crates",
+  "-Dunused_qualifications",
+  "-Dvariant_size_differences",
+  "-Dclippy::uninlined_format_args",
+  "-Dclippy::needless_pass_by_value",
+  "-Dclippy::semicolon_if_nothing_returned",
+  "-Dclippy::default-trait-access",
+]
