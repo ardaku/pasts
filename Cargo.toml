@@ -18,7 +18,7 @@ version = "0.4"
 optional = true
 
 [dev-dependencies]
-async_main = { version = "0.3", features = ["pasts"] }
+async_main = { version = "0.4", features = ["pasts"] }
 async-std = "1.11"
 whisk = "0.11"
 
