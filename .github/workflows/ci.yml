@@ -28,7 +28,6 @@ jobs:
         os: [ubuntu-latest]
         tc: [stable] # , beta, nightly]
         cc:
-        - aarch64-fuchsia
         - aarch64-linux-android
         - i686-pc-windows-gnu
         - i686-unknown-freebsd
