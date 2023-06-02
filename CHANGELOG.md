@@ -4,6 +4,11 @@ All notable changes to `pasts` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://jeronlau.tk/semver/).
 
+## [0.14.3] - 2023-06-02
+### Changed
+ - Updated documentation and examples to point to the new `0.4` version of the
+   `async_main` crate.
+
 ## [0.14.2] - 2023-03-02
 ### Fixed
  - Tasks not spawning when *`web`* feature is enabled
