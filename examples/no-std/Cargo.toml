@@ -1,0 +1,15 @@
+[package]
+name = "no-std"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies.async_main]
+version = "0.4"
+features = ["pasts"]
+
+[dependencies.pasts]
+version = "0.14"
+default-features = false
+
+[dependencies.rlsf]
+version = "0.2"

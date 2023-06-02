@@ -15,7 +15,7 @@
 //!
 //! ## This example uses async_main for convenience, but it is *not* required to
 //! ## use pasts.
-//! async_main = { version = "0.3", features = ["pasts"] }
+//! async_main = { version = "0.4", features = ["pasts"] }
 //!
 //! ## This example uses async-std for a sleep future, but async-std is *not*
 //! ## required to use pasts.
