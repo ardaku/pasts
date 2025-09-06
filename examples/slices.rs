@@ -1,5 +1,5 @@
-use async_main::{async_main, LocalSpawner};
-use pasts::{prelude::*, Loop};
+use async_main::{LocalSpawner, async_main};
+use pasts::{Loop, prelude::*};
 
 struct Exit;
 

@@ -3,7 +3,7 @@ use std::{
     thread::{self, Thread},
 };
 
-use pasts::{prelude::*, Executor, Park, Pool};
+use pasts::{Executor, Park, Pool, prelude::*};
 
 #[derive(Default)]
 struct SingleThreadedPool {

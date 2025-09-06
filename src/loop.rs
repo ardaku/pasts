@@ -1,4 +1,4 @@
-use crate::{prelude::*, Notify};
+use crate::{Notify, prelude::*};
 
 pub trait Stateful<S, T>: Unpin {
     fn state(&mut self) -> &mut S;
@@ -67,7 +67,9 @@ impl<S: Unpin, T: Unpin, F: Stateful<S, T>> Future for Loop<S, T, F> {
 
     #[inline]
     fn poll(mut self: Pin<&mut Self>, t: &mut Task<'_>) -> Poll<T> {
-        while let Ready(output) = Pin::new(&mut self.other).poll(t) {
+        while let Ready(output) =
+            Stateful::poll(&mut *Pin::new(&mut self.other), t)
+        {
             if let Ready(output) = output {
                 return Ready(output);
             }
@@ -99,10 +101,9 @@ where
         let state = self.other.state();
         let poll = Pin::new((self.noti)(state)).poll_next(t);
 
-        if let Ready(out) = poll.map(|x| (self.then)(state, x)) {
-            Ready(out)
-        } else {
-            self.other.poll(t)
+        match poll.map(|x| (self.then)(state, x)) {
+            Ready(out) => Ready(out),
+            _ => self.other.poll(t),
         }
     }
 }

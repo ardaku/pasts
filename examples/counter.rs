@@ -1,8 +1,8 @@
 use core::time::Duration;
 
-use async_main::{async_main, LocalSpawner};
+use async_main::{LocalSpawner, async_main};
 use async_std::task::sleep;
-use pasts::{notify, prelude::*, Loop};
+use pasts::{Loop, notify, prelude::*};
 
 /// Shared state between tasks on the thread.
 struct App<'a> {
@@ -16,11 +16,7 @@ impl App<'_> {
         println!("One {}", self.counter);
         self.counter += 1;
 
-        if self.counter > 6 {
-            Ready(())
-        } else {
-            Pending
-        }
+        if self.counter > 6 { Ready(()) } else { Pending }
     }
 
     fn two(&mut self, (): ()) -> Poll {

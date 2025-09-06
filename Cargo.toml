@@ -10,7 +10,7 @@ include = ["/examples/", "/README.md", "/src/"]
 keywords = ["futures", "platform-agnostic", "cross-platform", "io", "executor"]
 categories = ["asynchronous", "embedded", "no-std", "rust-patterns", "wasm"]
 readme = "README.md"
-edition = "2021"
+edition = "2024"
 autobins = false
 
 [dependencies.wasm-bindgen-futures]
