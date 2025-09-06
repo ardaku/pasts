@@ -11,16 +11,16 @@
 [![Crates.io](https://img.shields.io/crates/l/pasts)](https://github.com/ardaku/pasts/search?l=Text&q=license)
 [![Docs.rs](https://docs.rs/pasts/badge.svg)](https://docs.rs/pasts/)
 
-**Minimal asynchronous runtime for Rust**
+**Minimal asynchronous executor for Rust**
 
-The pasts asynchronous runtime is designed for creating user-space software and
-embedded software using an asynchronous event loop.  It aims to abstract away
-all of the pain points of using asynchronous Rust.  Pasts is purposely kept
-small with the entire source directory under 500 lines of Rust code.
+The pasts asynchronous executor is designed for creating user-space software and
+embedded software.  Pasts is purposely kept small with the entire source
+directory under 500 lines of Rust code.
 
 Check out the [documentation][0] for examples.
 
 # Goals
+
  - No unsafe (safe and sound)
  - No required std (executor requires two allocations at startup, if needed can
    use a bump allocator with small capacity)
@@ -31,21 +31,24 @@ Check out the [documentation][0] for examples.
  - No platform-specific API differences (code works everywhere).
 
 ### Supported Platforms
+
 Pasts targets all platforms that can run Rust.  The executor works
 on at least the following platforms (may work on others):
+
  - All platforms that support threading (includes all tier 1 and some tier 2, 3)
  - Web Assembly In Browser (Tier 2)
  - No standard devices (Tiers 2 and 3)
 
 ## License
-Copyright © 2019-2023 The Pasts Contributors.
+
+Copyright © 2019-2025 The Pasts Contributors.
 
 Licensed under any of
- - Apache License, Version 2.0, ([LICENSE_APACHE_2_0.txt][7]
+ - Apache License, Version 2.0, ([LICENSE\_APACHE\_2\_0.txt][7]
    or [https://www.apache.org/licenses/LICENSE-2.0][8])
- - Boost Software License, Version 1.0, ([LICENSE_BOOST_1_0.txt][11]
-   or [https://www.boost.org/LICENSE_1_0.txt][12])
- - MIT License, ([LICENSE_MIT.txt][9] or [https://mit-license.org/][10])
+ - Boost Software License, Version 1.0, ([LICENSE\_BOOST\_1\_0.txt][11]
+   or [https://www.boost.org/LICENSE\_1\_0.txt][12])
+ - MIT License, ([LICENSE\_MIT.txt][9] or [https://mit-license.org/][10])
 
 at your option.
 

@@ -1,8 +1,8 @@
 [package]
 name = "pasts"
-version = "0.14.3"
+version = "1.0.0-pre.0"
 license = "Apache-2.0 OR BSL-1.0 OR MIT"
-description = "Minimal asynchronous runtime for Rust"
+description = "Minimal asynchronous executor for Rust"
 repository = "https://github.com/ardaku/pasts"
 documentation = "https://docs.rs/pasts"
 homepage = "https://github.com/ardaku/pasts/blob/stable/CHANGELOG.md"
@@ -14,13 +14,18 @@ edition = "2021"
 autobins = false
 
 [dependencies.wasm-bindgen-futures]
-version = "0.4"
+version = "0.4.51"
 optional = true
 
-[dev-dependencies]
-async_main = { version = "0.4", features = ["pasts"] }
-async-std = "1.11"
-whisk = "0.13"
+[dev-dependencies.async_main]
+version = "0.4.0"
+features = ["pasts"]
+
+[dev-dependencies.async-std]
+version = "1.13.2"
+
+[dev-dependencies.whisk]
+version = "0.13.0"
 
 [target.'cfg(all(target_arch="wasm32", target_os="unknown"))'.dev-dependencies]
 wasm-bindgen = "0.2"
@@ -28,10 +33,10 @@ wasm-bindgen = "0.2"
 [features]
 default = ["std"]
 
-# Target a no-std environment
+## Target a std library environment
 std = []
 
-# Target the DOM via javascript APIs exposed by wasm-bindgen.
+## Target the DOM via javascript APIs exposed by wasm-bindgen.
 web = ["dep:wasm-bindgen-futures"]
 
 # [patch.crates-io.pasts]

@@ -75,12 +75,12 @@ impl<P: Pool> Executor<P> {
 }
 
 impl<P: Pool> Executor<P> {
-    /// Spawn a [`LocalBoxNotify`] on this executor.
+    /// Spawn a [`LocalBoxFuture`] on this executor.
     ///
-    /// Execution of the [`LocalBoxNotify`] will halt after the first poll that
+    /// Execution of the [`LocalBoxFuture`] will halt after the first poll that
     /// returns [`Ready`].
     #[inline(always)]
-    pub fn spawn_notify(&self, n: LocalBoxNotify<'static>) {
+    pub fn spawn_future(&self, n: LocalBoxFuture<'static>) {
         // Convert the notify into a future and spawn on wasm_bindgen_futures
         #[cfg(feature = "web")]
         wasm_bindgen_futures::spawn_local(async move {
@@ -101,9 +101,9 @@ impl<P: Pool> Executor<P> {
         #[cfg(feature = "web")]
         wasm_bindgen_futures::spawn_local(f);
 
-        // Fuse the future, box it, and push it onto the pool.
+        // Box the future, and push it onto the pool.
         #[cfg(not(feature = "web"))]
-        self.spawn_notify(Box::pin(f.fuse()));
+        self.spawn_future(Box::pin(f));
     }
 }
 
@@ -121,11 +121,11 @@ pub trait Pool {
     type Park: Park;
 
     /// Push a task into the thread pool queue.
-    fn push(&self, task: LocalBoxNotify<'static>);
+    fn push(&self, task: LocalBoxFuture<'static>);
 
     /// Drain tasks from the thread pool queue.  Should returns true if drained
     /// at least one task.
-    fn drain(&self, tasks: &mut Vec<LocalBoxNotify<'static>>) -> bool;
+    fn drain(&self, tasks: &mut Vec<LocalBoxFuture<'static>>) -> bool;
 }
 
 /// Trait for implementing the parking / unparking threads.
@@ -140,7 +140,7 @@ pub trait Park: Default + Send + Sync + 'static {
 
 #[derive(Default)]
 pub struct DefaultPool {
-    spawning_queue: Cell<Vec<LocalBoxNotify<'static>>>,
+    spawning_queue: Cell<Vec<LocalBoxFuture<'static>>>,
 }
 
 impl fmt::Debug for DefaultPool {
@@ -148,7 +148,7 @@ impl fmt::Debug for DefaultPool {
         let queue = self.spawning_queue.take();
 
         f.debug_struct("DefaultPool")
-            .field("spawning_queue", &queue)
+            .field("spawning_queue.len()", &queue.len())
             .finish()?;
         self.spawning_queue.set(queue);
 
@@ -161,7 +161,7 @@ impl Pool for DefaultPool {
 
     // Push onto queue of tasks to spawn.
     #[inline(always)]
-    fn push(&self, task: LocalBoxNotify<'static>) {
+    fn push(&self, task: LocalBoxFuture<'static>) {
         let mut queue = self.spawning_queue.take();
 
         queue.push(task);
@@ -170,7 +170,7 @@ impl Pool for DefaultPool {
 
     // Drain from queue of tasks to spawn.
     #[inline(always)]
-    fn drain(&self, tasks: &mut Vec<LocalBoxNotify<'static>>) -> bool {
+    fn drain(&self, tasks: &mut Vec<LocalBoxFuture<'static>>) -> bool {
         let mut queue = self.spawning_queue.take();
         let mut drained = queue.drain(..).peekable();
         let has_drained = drained.peek().is_some();
@@ -204,7 +204,7 @@ impl Park for DefaultPark {
     // Park the current thread.
     #[inline(always)]
     fn park(&self) {
-        // Only park on std; There is no portable parking for no-std.
+        // Only park with std; There is no portable parking for no-std.
         #[cfg(feature = "std")]
         while self.0.swap(true, std::sync::atomic::Ordering::SeqCst) {
             std::thread::park();
@@ -243,7 +243,7 @@ impl<P: Park> Wake for Unpark<P> {
 #[cfg(not(feature = "web"))]
 fn block_on<P: Pool>(f: impl Future<Output = ()> + 'static, pool: &Arc<P>) {
     // Fuse main task
-    let f: LocalBoxNotify<'_> = Box::pin(f.fuse());
+    let f: LocalBoxFuture<'_> = Box::pin(f);
 
     // Set up the notify
     let tasks = &mut Vec::new();
@@ -259,18 +259,27 @@ fn block_on<P: Pool>(f: impl Future<Output = ()> + 'static, pool: &Arc<P>) {
     // Run the set of futures to completion.
     while !tasks.is_empty() {
         // Poll the set of futures
-        let poll = Pin::new(tasks.as_mut_slice()).poll_next(tasky);
+        let poll = 'poll: {
+            for (i, this) in tasks.iter_mut().enumerate() {
+                if let Ready(()) = Pin::new(this).poll(tasky) {
+                    break 'poll Ready(i);
+                }
+            }
+
+            break 'poll Pending;
+        };
         // If no tasks have completed, then park
-        let Ready((task_index, ())) = poll else {
+        let Ready(task_index) = poll else {
             // Initiate execution of any spawned tasks - if no new tasks, park
             if !pool.drain(tasks) {
                 parky.0.park();
             }
+
             continue;
         };
 
-        // Task has completed
-        tasks.swap_remove(task_index);
+        // Task has completed, drop it
+        drop(tasks.swap_remove(task_index));
         // Drain any spawned tasks into the pool
         pool.drain(tasks);
     }
