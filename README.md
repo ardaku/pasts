@@ -44,6 +44,7 @@ on at least the following platforms (may work on others):
 Copyright © 2019-2025 The Pasts Contributors.
 
 Licensed under any of
+
  - Apache License, Version 2.0, ([LICENSE\_APACHE\_2\_0.txt][7]
    or [https://www.apache.org/licenses/LICENSE-2.0][8])
  - Boost Software License, Version 1.0, ([LICENSE\_BOOST\_1\_0.txt][11]
@@ -53,15 +54,18 @@ Licensed under any of
 at your option.
 
 ### Contribution
+
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 licensed as described above, without any additional terms or conditions.
 
 ## Help
+
 If you want help using or contributing to this library, feel free to send me an
 email at [aldaronlau@gmail.com][13].
 
 ## Related Projects
+
 Since pasts is not an all-in-one async runtime solution, here's a list of crates
 that are designed to work well with pasts:
 
