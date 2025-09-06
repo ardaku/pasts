@@ -6,6 +6,7 @@ use crate::{Park, park::DefaultPark, prelude::*};
 /// Storage for a task pool.
 ///
 /// # Implementing `Pool` For A Custom Executor
+///
 /// This example shows how to create a custom single-threaded executor using
 /// [`Executor::new()`].
 ///
@@ -37,7 +38,6 @@ impl fmt::Debug for DefaultPool {
             .field("spawning_queue.len()", &queue.len())
             .finish()?;
         self.spawning_queue.set(queue);
-
         Ok(())
     }
 }
@@ -63,7 +63,6 @@ impl Pool for DefaultPool {
 
         tasks.extend(drained);
         self.spawning_queue.set(queue);
-
         has_drained
     }
 }

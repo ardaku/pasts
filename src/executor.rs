@@ -10,6 +10,7 @@ use crate::{
 /// Pasts' executor.
 ///
 /// # Run a Future
+///
 /// It's relatively simple to block on a future, and run it to completion:
 ///
 /// ```rust
@@ -17,20 +18,25 @@ use crate::{
 /// ```
 /// 
 /// # Spawn a Future
+///
 /// You may spawn tasks on an `Executor`.  Only once all tasks have completed,
 /// can [`block_on()`](Executor::block_on()) return.
+///
 /// ```rust,no_run
 #[doc = include_str!("../examples/spawn.rs")]
 /// ```
 /// 
 /// # Recursive `block_on()`
+///
 /// One cool feature about the pasts executor is that you can run it from within
 /// the context of another:
+///
 /// ```rust
 #[doc = include_str!("../examples/recursive.rs")]
 /// ```
 /// 
 /// Or even resume the executor from within it's own context:
+///
 /// ```rust
 #[doc = include_str!("../examples/resume.rs")]
 /// ```
@@ -66,6 +72,7 @@ impl<P: Pool> Executor<P> {
     /// Block on a future and return it's result.
     ///
     /// # Platform-Specific Behavior
+    ///
     /// When building with feature _`web`_, spawns task and returns
     /// immediately instead of blocking.
     #[inline(always)]
@@ -116,7 +123,7 @@ struct Unpark<P: Park>(P);
 impl<P: Park> Wake for Unpark<P> {
     #[inline(always)]
     fn wake(self: Arc<Self>) {
-        self.0.unpark();
+        self.wake_by_ref();
     }
 
     #[inline(always)]
@@ -127,30 +134,41 @@ impl<P: Park> Wake for Unpark<P> {
 
 #[cfg(not(feature = "web"))]
 fn block_on<P: Pool>(f: impl Future<Output = ()> + 'static, pool: &Arc<P>) {
-    // Fuse main task
+    // Box and pin main task
     let f: LocalBoxFuture<'_> = Box::pin(f);
-
     // Set up the notify
     let tasks = &mut Vec::new();
-
-    // Set up the park, waker, and context.
+    // Set up the park, waker, and context
     let parky = Arc::new(Unpark(<P as Pool>::Park::default()));
     let waker = parky.clone().into();
     let tasky = &mut Task::from_waker(&waker);
+    // Which task's turn it is (for basic fairness)
+    let mut index = 0;
 
     // Spawn main task
     tasks.push(f);
 
     // Run the set of futures to completion.
     while !tasks.is_empty() {
-        // Poll the set of futures
+        // Wrap index
+        index %= tasks.len();
+
+        // Poll the entire set of futures on wake
         let poll = 'poll: {
-            for (i, this) in tasks.iter_mut().enumerate() {
+            for (i, this) in tasks.iter_mut().skip(index).enumerate() {
+                if let Ready(()) = Pin::new(this).poll(tasky) {
+                    break 'poll Ready(i);
+                }
+            }
+            
+            for (i, this) in tasks.iter_mut().take(index).enumerate() {
                 if let Ready(()) = Pin::new(this).poll(tasky) {
                     break 'poll Ready(i);
                 }
             }
 
+            // Take turns which task polls first
+            index += 1;
             break 'poll Pending;
         };
         // If no tasks have completed, then park
