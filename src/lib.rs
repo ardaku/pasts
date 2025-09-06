@@ -49,9 +49,9 @@ extern crate alloc;
 
 pub mod notify;
 
+mod future;
 mod r#loop;
 mod spawn;
-mod future;
 
 use self::prelude::*;
 pub use self::{
@@ -75,9 +75,10 @@ pub mod prelude {
     };
 
     #[doc(no_inline)]
-    pub use crate::{notify::{
-        BoxNotify, Fuse, LocalBoxNotify, Notify, NotifyExt,
-    }, future::{LocalBoxFuture, BoxFuture}};
+    pub use crate::{
+        future::{BoxFuture, LocalBoxFuture},
+        notify::{BoxNotify, Fuse, LocalBoxNotify, Notify, NotifyExt},
+    };
 
     /// Indicates whether a value is available or if the current task has been
     /// scheduled to receive a wakeup instead.
