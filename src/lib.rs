@@ -26,16 +26,6 @@
 //! [features]
 //! web = ["async_main/web", "pasts/web"]
 //! ```
-//!
-//! ## Multi-Tasking On Multiple Iterators of Futures
-//! This example runs two timers in parallel using the `async-std` crate
-//! counting from 0 to 6.  The "one" task will always be run for count 6 and
-//! stop the program, although which task will run for count 5 may be either
-//! "one" or "two" because they trigger at the same time.
-//!
-//! ```rust,no_run
-#![doc = include_str!("../examples/counter.rs")]
-//! ```
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![forbid(unsafe_code, missing_docs)]
@@ -47,15 +37,10 @@
 
 extern crate alloc;
 
-pub mod notify;
-
 mod future;
-mod r#loop;
 mod spawn;
 
-use self::prelude::*;
 pub use self::{
-    r#loop::Loop,
     spawn::{Executor, Park, Pool},
 };
 
@@ -77,7 +62,6 @@ pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{
         future::{BoxFuture, LocalBoxFuture},
-        notify::{BoxNotify, Fuse, LocalBoxNotify, Notify, NotifyExt},
     };
 
     /// Indicates whether a value is available or if the current task has been
