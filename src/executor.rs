@@ -1,10 +1,10 @@
 use alloc::{sync::Arc, task::Wake, vec::Vec};
-use core::fmt;
+use core::{fmt, pin::Pin, task::Context};
 
 use crate::{
+    LocalBoxFuture, Poll,
     park::Park,
     pool::{DefaultPool, Pool},
-    prelude::*,
 };
 
 /// Pasts' executor.
@@ -21,7 +21,6 @@ use crate::{
 ///
 /// You may spawn tasks on an `Executor`.  Only once all tasks have completed,
 /// can [`block_on()`](Executor::block_on()) return.
-///
 /// ```rust,no_run
 #[doc = include_str!("../examples/spawn.rs")]
 /// ```
@@ -30,13 +29,11 @@ use crate::{
 ///
 /// One cool feature about the pasts executor is that you can run it from within
 /// the context of another:
-///
 /// ```rust
 #[doc = include_str!("../examples/recursive.rs")]
 /// ```
 /// 
 /// Or even resume the executor from within it's own context:
-///
 /// ```rust
 #[doc = include_str!("../examples/resume.rs")]
 /// ```
@@ -139,9 +136,9 @@ fn block_on<P: Pool>(f: impl Future<Output = ()> + 'static, pool: &Arc<P>) {
     // Set up the notify
     let tasks = &mut Vec::new();
     // Set up the park, waker, and context
-    let parky = Arc::new(Unpark(<P as Pool>::Park::default()));
-    let waker = parky.clone().into();
-    let tasky = &mut Task::from_waker(&waker);
+    let unpark = Arc::new(Unpark(<P as Pool>::Park::default()));
+    let waker = unpark.clone().into();
+    let cx = &mut Context::from_waker(&waker);
     // Which task's turn it is (for basic fairness)
     let mut index = 0;
 
@@ -156,26 +153,26 @@ fn block_on<P: Pool>(f: impl Future<Output = ()> + 'static, pool: &Arc<P>) {
         // Poll the entire set of futures on wake
         let poll = 'poll: {
             for (i, this) in tasks.iter_mut().skip(index).enumerate() {
-                if let Ready(()) = Pin::new(this).poll(tasky) {
-                    break 'poll Ready(i);
+                if let Poll::Ready(()) = Pin::new(this).poll(cx) {
+                    break 'poll Poll::Ready(i);
                 }
             }
-            
+
             for (i, this) in tasks.iter_mut().take(index).enumerate() {
-                if let Ready(()) = Pin::new(this).poll(tasky) {
-                    break 'poll Ready(i);
+                if let Poll::Ready(()) = Pin::new(this).poll(cx) {
+                    break 'poll Poll::Ready(i);
                 }
             }
 
             // Take turns which task polls first
             index += 1;
-            break 'poll Pending;
+            break 'poll Poll::Pending;
         };
         // If no tasks have completed, then park
-        let Ready(task_index) = poll else {
+        let Poll::Ready(task_index) = poll else {
             // Initiate execution of any spawned tasks - if no new tasks, park
             if !pool.drain(tasks) {
-                parky.0.park();
+                unpark.0.park();
             }
 
             continue;

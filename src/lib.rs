@@ -42,26 +42,13 @@ mod future;
 mod park;
 mod pool;
 
-pub use self::{executor::Executor, park::Park, pool::Pool};
+pub use self::{
+    executor::Executor,
+    future::{BoxFuture, LocalBoxFuture},
+    park::Park,
+    pool::Pool,
+};
 
-pub mod prelude {
-    //! Items that are almost always needed.
-
-    #[doc(no_inline)]
-    pub use alloc::boxed::Box;
-    #[doc(no_inline)]
-    pub use core::{
-        pin::Pin,
-        task::{
-            Context as Task,
-            Poll::{Pending, Ready},
-        },
-    };
-
-    #[doc(no_inline)]
-    pub use crate::future::{BoxFuture, LocalBoxFuture};
-
-    /// Indicates whether a value is available or if the current task has been
-    /// scheduled to receive a wakeup instead.
-    pub type Poll<T = ()> = core::task::Poll<T>;
-}
+/// Indicates whether a value is available or if the current task has been
+/// scheduled to receive a wakeup instead.
+pub type Poll<T = ()> = core::task::Poll<T>;

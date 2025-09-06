@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 use core::{cell::Cell, fmt};
 
-use crate::{Park, park::DefaultPark, prelude::*};
+use crate::{LocalBoxFuture, Park, park::DefaultPark};
 
 /// Storage for a task pool.
 ///
