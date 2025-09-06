@@ -34,7 +34,7 @@ impl Park for DefaultPark {
     fn park(&self) {
         // Only park with std; There is no portable parking for no-std.
         #[cfg(feature = "std")]
-        while self.0.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        while self.0.swap(true, std::sync::atomic::Ordering::Relaxed) {
             std::thread::park();
         }
 
@@ -48,7 +48,7 @@ impl Park for DefaultPark {
     fn unpark(&self) {
         // Only unpark on std; Since no-std doesn't park, it's already unparked.
         #[cfg(feature = "std")]
-        if self.0.swap(false, std::sync::atomic::Ordering::SeqCst) {
+        if self.0.swap(false, std::sync::atomic::Ordering::Relaxed) {
             self.1.unpark();
         }
     }
