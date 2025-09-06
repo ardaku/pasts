@@ -1,7 +1,11 @@
 use alloc::{sync::Arc, task::Wake, vec::Vec};
-use core::{cell::Cell, fmt, future::Future};
+use core::fmt;
 
-use crate::prelude::*;
+use crate::{
+    park::Park,
+    pool::{DefaultPool, Pool},
+    prelude::*,
+};
 
 /// Pasts' executor.
 ///
@@ -104,125 +108,6 @@ impl<P: Pool> Executor<P> {
         // Box the future, and push it onto the pool.
         #[cfg(not(feature = "web"))]
         self.spawn_future(Box::pin(f));
-    }
-}
-
-/// Storage for a task pool.
-///
-/// # Implementing `Pool` For A Custom Executor
-/// This example shows how to create a custom single-threaded executor using
-/// [`Executor::new()`].
-///
-/// ```rust
-#[doc = include_str!("../examples/pool.rs")]
-/// ```
-pub trait Pool {
-    /// Type that handles the sleeping / waking of the executor.
-    type Park: Park;
-
-    /// Push a task into the thread pool queue.
-    fn push(&self, task: LocalBoxFuture<'static>);
-
-    /// Drain tasks from the thread pool queue.  Should returns true if drained
-    /// at least one task.
-    fn drain(&self, tasks: &mut Vec<LocalBoxFuture<'static>>) -> bool;
-}
-
-/// Trait for implementing the parking / unparking threads.
-pub trait Park: Default + Send + Sync + 'static {
-    /// The park routine; should put the processor or thread to sleep in order
-    /// to save CPU cycles and power, until the hardware tells it to wake up.
-    fn park(&self);
-
-    /// Wake the processor or thread.
-    fn unpark(&self);
-}
-
-#[derive(Default)]
-pub struct DefaultPool {
-    spawning_queue: Cell<Vec<LocalBoxFuture<'static>>>,
-}
-
-impl fmt::Debug for DefaultPool {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let queue = self.spawning_queue.take();
-
-        f.debug_struct("DefaultPool")
-            .field("spawning_queue.len()", &queue.len())
-            .finish()?;
-        self.spawning_queue.set(queue);
-
-        Ok(())
-    }
-}
-
-impl Pool for DefaultPool {
-    type Park = DefaultPark;
-
-    // Push onto queue of tasks to spawn.
-    #[inline(always)]
-    fn push(&self, task: LocalBoxFuture<'static>) {
-        let mut queue = self.spawning_queue.take();
-
-        queue.push(task);
-        self.spawning_queue.set(queue);
-    }
-
-    // Drain from queue of tasks to spawn.
-    #[inline(always)]
-    fn drain(&self, tasks: &mut Vec<LocalBoxFuture<'static>>) -> bool {
-        let mut queue = self.spawning_queue.take();
-        let mut drained = queue.drain(..).peekable();
-        let has_drained = drained.peek().is_some();
-
-        tasks.extend(drained);
-        self.spawning_queue.set(queue);
-
-        has_drained
-    }
-}
-
-#[cfg(not(feature = "std"))]
-#[derive(Copy, Clone, Debug, Default)]
-pub struct DefaultPark;
-
-#[cfg(feature = "std")]
-#[derive(Debug)]
-pub struct DefaultPark(std::sync::atomic::AtomicBool, std::thread::Thread);
-
-#[cfg(feature = "std")]
-impl Default for DefaultPark {
-    fn default() -> Self {
-        Self(
-            std::sync::atomic::AtomicBool::new(true),
-            std::thread::current(),
-        )
-    }
-}
-
-impl Park for DefaultPark {
-    // Park the current thread.
-    #[inline(always)]
-    fn park(&self) {
-        // Only park with std; There is no portable parking for no-std.
-        #[cfg(feature = "std")]
-        while self.0.swap(true, std::sync::atomic::Ordering::SeqCst) {
-            std::thread::park();
-        }
-
-        // Hint at spin loop to possibly short sleep on no-std to save CPU time.
-        #[cfg(not(feature = "std"))]
-        core::hint::spin_loop();
-    }
-
-    // Unpark the parked thread
-    #[inline(always)]
-    fn unpark(&self) {
-        // Only unpark on std; Since no-std doesn't park, it's already unparked.
-        #[cfg(feature = "std")]
-        if self.0.swap(false, std::sync::atomic::Ordering::SeqCst) {
-            self.1.unpark();
-        }
     }
 }
 

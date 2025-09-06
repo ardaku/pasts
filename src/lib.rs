@@ -11,15 +11,15 @@
 //! Add the following to your **`./Cargo.toml`**:
 //! ```toml
 //! [dependencies]
-//! pasts = "0.14"
+//! pasts = "1.0.0"
 //!
 //! ## This example uses async_main for convenience, but it is *not* required to
 //! ## use pasts.
-//! async_main = { version = "0.4", features = ["pasts"] }
+//! async_main = { version = "0.4.0", features = ["pasts"] }
 //!
 //! ## This example uses async-std for a sleep future, but async-std is *not*
 //! ## required to use pasts.
-//! async-std = "1.12"
+//! async-std = "1.13.2"
 //!
 //! ## Also not required for pasts, but allows for portability with WebAssembly
 //! ## in the browser.
@@ -37,12 +37,12 @@
 
 extern crate alloc;
 
+mod executor;
 mod future;
-mod spawn;
+mod park;
+mod pool;
 
-pub use self::{
-    spawn::{Executor, Park, Pool},
-};
+pub use self::{executor::Executor, park::Park, pool::Pool};
 
 pub mod prelude {
     //! Items that are almost always needed.
@@ -51,7 +51,6 @@ pub mod prelude {
     pub use alloc::boxed::Box;
     #[doc(no_inline)]
     pub use core::{
-        future::Future,
         pin::Pin,
         task::{
             Context as Task,
@@ -60,9 +59,7 @@ pub mod prelude {
     };
 
     #[doc(no_inline)]
-    pub use crate::{
-        future::{BoxFuture, LocalBoxFuture},
-    };
+    pub use crate::future::{BoxFuture, LocalBoxFuture};
 
     /// Indicates whether a value is available or if the current task has been
     /// scheduled to receive a wakeup instead.
