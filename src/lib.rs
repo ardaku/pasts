@@ -27,7 +27,7 @@
 //! web = ["async_main/web", "pasts/web"]
 //! ```
 
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 #![forbid(unsafe_code, missing_docs)]
 #![doc(
     html_logo_url = "https://ardaku.github.io/mm/logo.svg",
@@ -36,6 +36,8 @@
 )]
 
 extern crate alloc;
+#[cfg(feature = "std")]
+extern crate std;
 
 mod executor;
 mod future;
