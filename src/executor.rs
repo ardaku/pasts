@@ -1,9 +1,9 @@
-use alloc::{boxed::Box, sync::Arc, task::Wake, vec::Vec};
-use core::{fmt, pin::Pin, task::Context};
+use alloc::sync::Arc;
+use core::fmt;
 
 use crate::{
-    LocalBoxFuture, Poll,
-    park::Park,
+    LocalBoxFuture,
+    os::{Os, Target},
     pool::{DefaultPool, Pool},
 };
 
@@ -74,11 +74,7 @@ impl<P: Pool> Executor<P> {
     /// immediately instead of blocking.
     #[inline(always)]
     pub fn block_on(self, f: impl Future<Output = ()> + 'static) {
-        #[cfg(feature = "web")]
-        wasm_bindgen_futures::spawn_local(f);
-
-        #[cfg(not(feature = "web"))]
-        block_on(f, &self.0);
+        Os.block_on(&*self.0, f);
     }
 }
 
@@ -88,99 +84,13 @@ impl<P: Pool> Executor<P> {
     /// Execution of the [`LocalBoxFuture`] will halt after the first poll that
     /// returns [`Ready`](Poll::Ready).
     #[inline(always)]
-    pub fn spawn_future(&self, n: LocalBoxFuture<'static>) {
-        // Convert the notify into a future and spawn on wasm_bindgen_futures
-        #[cfg(feature = "web")]
-        wasm_bindgen_futures::spawn_local(async move {
-            let mut n = n;
-
-            n.next().await;
-        });
-
-        // Push the notify onto the pool.
-        #[cfg(not(feature = "web"))]
-        self.0.push(n);
+    pub fn spawn_future(&self, f: LocalBoxFuture<'static>) {
+        Os.spawn_boxed(&*self.0, f);
     }
 
     /// Box and spawn a future on this executor.
     #[inline(always)]
     pub fn spawn_boxed(&self, f: impl Future<Output = ()> + 'static) {
-        // Spawn the future on wasm_bindgen_futures
-        #[cfg(feature = "web")]
-        wasm_bindgen_futures::spawn_local(f);
-
-        // Box the future, and push it onto the pool.
-        #[cfg(not(feature = "web"))]
-        self.spawn_future(Box::pin(f));
-    }
-}
-
-struct Unpark<P: Park>(P);
-
-impl<P: Park> Wake for Unpark<P> {
-    #[inline(always)]
-    fn wake(self: Arc<Self>) {
-        self.wake_by_ref();
-    }
-
-    #[inline(always)]
-    fn wake_by_ref(self: &Arc<Self>) {
-        self.0.unpark();
-    }
-}
-
-#[cfg(not(feature = "web"))]
-fn block_on<P: Pool>(f: impl Future<Output = ()> + 'static, pool: &Arc<P>) {
-    // Box and pin main task
-    let f: LocalBoxFuture<'_> = Box::pin(f);
-    // Set up the notify
-    let tasks = &mut Vec::new();
-    // Set up the park, waker, and context
-    let unpark = Arc::new(Unpark(<P as Pool>::Park::default()));
-    let waker = unpark.clone().into();
-    let cx = &mut Context::from_waker(&waker);
-    // Which task's turn it is (for basic fairness)
-    let mut index = 0;
-
-    // Spawn main task
-    tasks.push(f);
-
-    // Run the set of futures to completion.
-    while !tasks.is_empty() {
-        // Wrap index
-        index %= tasks.len();
-
-        // Poll the entire set of futures on wake
-        let poll = 'poll: {
-            for (i, this) in tasks.iter_mut().skip(index).enumerate() {
-                if let Poll::Ready(()) = Pin::new(this).poll(cx) {
-                    break 'poll Poll::Ready(i);
-                }
-            }
-
-            for (i, this) in tasks.iter_mut().take(index).enumerate() {
-                if let Poll::Ready(()) = Pin::new(this).poll(cx) {
-                    break 'poll Poll::Ready(i);
-                }
-            }
-
-            // Take turns which task polls first
-            index += 1;
-            break 'poll Poll::Pending;
-        };
-        // If no tasks have completed, then park
-        let Poll::Ready(task_index) = poll else {
-            // Initiate execution of any spawned tasks - if no new tasks, park
-            if !pool.drain(tasks) {
-                unpark.0.park();
-            }
-
-            continue;
-        };
-
-        // Task has completed, drop it
-        drop(tasks.swap_remove(task_index));
-        // Drain any spawned tasks into the pool
-        pool.drain(tasks);
+        Os.spawn(&*self.0, f);
     }
 }
