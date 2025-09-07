@@ -8,7 +8,7 @@ use crate::{LocalBoxFuture, Park, park::DefaultPark};
 /// # Implementing `Pool` For A Custom Executor
 ///
 /// This example shows how to create a custom single-threaded executor using
-/// [`Executor::new()`].
+/// [`Executor::new()`](crate::Executor::new).
 ///
 /// ```rust
 #[doc = include_str!("../examples/pool.rs")]
@@ -20,8 +20,8 @@ pub trait Pool {
     /// Push a task into the thread pool queue.
     fn push(&self, task: LocalBoxFuture<'static>);
 
-    /// Drain tasks from the thread pool queue.  Should returns true if drained
-    /// at least one task.
+    /// Drain tasks from the thread pool queue to a `Vec`.  Should returns true
+    /// if drained at least one task.
     fn drain(&self, tasks: &mut Vec<LocalBoxFuture<'static>>) -> bool;
 }
 

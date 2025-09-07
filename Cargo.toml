@@ -5,7 +5,7 @@ license = "Apache-2.0 OR BSL-1.0 OR MIT"
 description = "Minimal asynchronous executor for Rust"
 repository = "https://github.com/ardaku/pasts"
 documentation = "https://docs.rs/pasts"
-homepage = "https://github.com/ardaku/pasts/blob/stable/CHANGELOG.md"
+homepage = "https://github.com/ardaku/pasts/blob/v0/CHANGELOG.md"
 include = ["/examples/", "/README.md", "/src/"]
 keywords = ["futures", "platform-agnostic", "cross-platform", "io", "executor"]
 categories = ["asynchronous", "embedded", "no-std", "rust-patterns", "wasm"]
@@ -28,7 +28,7 @@ version = "1.13.2"
 version = "0.13.0"
 
 [target.'cfg(all(target_arch="wasm32", target_os="unknown"))'.dev-dependencies]
-wasm-bindgen = "0.2"
+wasm-bindgen = "0.2.101"
 
 [features]
 default = ["std"]
@@ -38,6 +38,9 @@ std = []
 
 ## Target the DOM via javascript APIs exposed by wasm-bindgen.
 web = ["dep:wasm-bindgen-futures"]
+
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(daku)'] }
 
 # [patch.crates-io.pasts]
 # path = "."

@@ -1,4 +1,4 @@
-use alloc::{sync::Arc, task::Wake, vec::Vec, boxed::Box};
+use alloc::{boxed::Box, sync::Arc, task::Wake, vec::Vec};
 use core::{fmt, pin::Pin, task::Context};
 
 use crate::{
@@ -86,7 +86,7 @@ impl<P: Pool> Executor<P> {
     /// Spawn a [`LocalBoxFuture`] on this executor.
     ///
     /// Execution of the [`LocalBoxFuture`] will halt after the first poll that
-    /// returns [`Ready`].
+    /// returns [`Ready`](Poll::Ready).
     #[inline(always)]
     pub fn spawn_future(&self, n: LocalBoxFuture<'static>) {
         // Convert the notify into a future and spawn on wasm_bindgen_futures
