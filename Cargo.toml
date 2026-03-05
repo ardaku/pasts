@@ -14,7 +14,7 @@ edition = "2024"
 autobins = false
 
 [dependencies.wasm-bindgen-futures]
-version = "0.4.63"
+version = "0.4.64"
 optional = true
 
 [dev-dependencies.async_main]
